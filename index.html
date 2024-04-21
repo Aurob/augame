@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Tilesh - Explore Your World</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Shader-Based Terrain Generation and Exploration: A WebAssembly Prototype Utilizing SDL2 and GLSL">
+    <meta property="og:title" content="Shader Terrain" />
+    <meta property="og:description" content="Shader-Based Terrain Generation and Exploration: A WebAssembly Prototype Utilizing SDL2 and GLSL" />
+    <meta property="og:image" content="https://rau.lol/tilesh/resources/images/noise.png" />
+    <meta property="og:url" content="https://rau.lol/tilesh/index.html" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Tilesh" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Shader Terrain" />
+    <meta name="twitter:description" content="Shader-Based Terrain Generation and Exploration: A WebAssembly Prototype Utilizing SDL2 and GLSL" />
+    <meta name="twitter:image" content="https://rau.lol/tilesh/resources/images/noise.png" />
+    <meta name="twitter:url" content="https://rau.lol/tilesh/index.html" />
+    <link rel="shortcut icon" href="favicon.ico">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        #content {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #temp-zoom-modal {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.0);
+            z-index: 100;
+            pointer-events: none;
+            font-size: 2em;
+            padding-bottom: 2vh;
+            /* display: none; */
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="data"></div>
+    <div id="content" style="position: relative;">
+        <div id="main">
+            <canvas id="canvas" oncontextmenu="event.preventDefault()"  tabindex="-1"></canvas>
+        </div>
+        <div id="control-instructions" style="position: absolute; right: 0; top: 0; width: 200px; height: 100%; background: rgba(255, 255, 255, 0.9); padding: 10px; box-sizing: border-box;">
+            <!-- Control instructions content goes here -->
+        <div style="font-family: Arial, sans-serif; color: #333;">
+            <h2>Controls</h2>
+            <ul>
+                <li><strong>Move:</strong> W/A/S/D keys</li>
+                <li><strong>Zoom:</strong> Mouse wheel</li>
+                <li><strong>Speed Boost:</strong> Hold Shift</li>
+            </ul>
+            <h2>Parameters</h2>
+            
+        </div>
+        </div>
+    </div>
+    <div id="temp-zoom-modal">
+        <div id="temp-zoom-modal-content">
+        </div>
+    </div>
+</body>
+<script>
+    // on scroll out remove the modal  
+    window.addEventListener('wheel', function(e) {
+        document.getElementById('temp-zoom-modal').style.display = 'none';
+    });
+
+    // on slider change, normalize all values to fit a total of 1
+    // then send the values to the webassembly module
+    document.querySelectorAll('.param').forEach(function(el) {
+        el.addEventListener('input', function(e) {
+            console.log(e.target.id, e.target.value);
+            Module.js_to_c({option: e.target.id, value: parseFloat(e.target.value)});
+        });
+    });
+</script>
+<script src="web/scripts.js"></script>
+<script src="web/module.js"></script>
+<script src="build/main.js"></script>
+
+</html>
