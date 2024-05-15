@@ -5,7 +5,7 @@ start_time=$(date +%s)
   -s WASM=1 -s USE_SDL=2 -s USE_WEBGL2=1\
   -lSDL\
   -s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap']"\
-  -s EXPORTED_FUNCTIONS="['_main', '_load_json', _malloc, UTF8ToString, stringToUTF8]"\
+  -s EXPORTED_FUNCTIONS="['_main', '_load_json', '_isready', _malloc, UTF8ToString, stringToUTF8]"\
   --use-preload-plugins\
   -s ALLOW_MEMORY_GROWTH=1 \
   -s NO_DISABLE_EXCEPTION_CATCHING\

@@ -1,22 +1,23 @@
 
 
 function setEvents() {
+
 }
 
 function loadInputs() {
     const parameters = [
-        {'name': 'waterMax', 'min': -1, 'max': 1, 'step': 0.000001},
-        {'name': 'sandMax', 'min': -1, 'max': 1, 'step': 0.000001},
-        {'name': 'dirtMax', 'min': -1, 'max': 1, 'step': 0.000001},
-        {'name': 'grassMax', 'min': -1, 'max': 1, 'step': 0.000001},
-        {'name': 'stoneMax', 'min': -1, 'max': 1, 'step': 0.000001},
-        {'name': 'snowMax', 'min': -1, 'max': 1, 'step': 0.000001},
-        {'name': 'frequency', 'min': -16, 'max': 16, 'step': 0.000000000001},
-        {'name': 'amplitude', 'min': -1, 'max': 1, 'step': 0.000000001},
-        {'name': 'persistence', 'min': -1, 'max': 1, 'step': 0.000000001},
-        {'name': 'lacunarity', 'min': -16, 'max': 16, 'step': 1},
-        {'name': 'octaves', 'min': -16, 'max': 16, 'step': 0.1},
-        {'name': 'scale', 'min': -100, 'max': 100, 'step': 0.000001}
+        { 'name': 'waterMax', 'min': -1, 'max': 1, 'step': 0.000001 },
+        { 'name': 'sandMax', 'min': -1, 'max': 1, 'step': 0.000001 },
+        { 'name': 'dirtMax', 'min': -1, 'max': 1, 'step': 0.000001 },
+        { 'name': 'grassMax', 'min': -1, 'max': 1, 'step': 0.000001 },
+        { 'name': 'stoneMax', 'min': -1, 'max': 1, 'step': 0.000001 },
+        { 'name': 'snowMax', 'min': -1, 'max': 1, 'step': 0.000001 },
+        { 'name': 'frequency', 'min': -16, 'max': 16, 'step': 0.000000000001 },
+        { 'name': 'amplitude', 'min': -1, 'max': 1, 'step': 0.000000001 },
+        { 'name': 'persistence', 'min': -1, 'max': 1, 'step': 0.000000001 },
+        { 'name': 'lacunarity', 'min': -16, 'max': 16, 'step': 1 },
+        { 'name': 'octaves', 'min': -16, 'max': 16, 'step': 0.1 },
+        { 'name': 'scale', 'min': -100, 'max': 100, 'step': 0.000001 }
     ];
 
     const container = document.createElement('div');
@@ -47,7 +48,7 @@ function loadInputs() {
         container.appendChild(div);
 
 
-        rangeInput.addEventListener('input', function() {
+        rangeInput.addEventListener('input', function () {
             labelVal.textContent = rangeInput.value;
         });
 
@@ -55,4 +56,17 @@ function loadInputs() {
     });
 
     document.getElementById('control-instructions').appendChild(container);
+
+    
+    const createButton = document.createElement('button');
+    createButton.textContent = 'Create Link';
+    createButton.addEventListener('click', function () {
+        console.log('Create link clicked');
+        let x = Module.c_kv_data.x;
+        let y = Module.c_kv_data.y;
+        let scale = Module.c_kv_data.scale;
+        let url = `?x=${x}&y=${y}&scale=${scale}`;
+        window.history.pushState({}, '', url);
+    });
+    document.getElementById('control-instructions').appendChild(createButton);
 }

@@ -29,6 +29,8 @@
             height: 100%;
             overflow: hidden;
         }
+        #main {
+        }
         #content {
             position: absolute;
             width: 100%;
@@ -36,6 +38,8 @@
             display: flex;
             justify-content: center;
             align-items: center;
+        }
+        #control-instructions {
         }
 
         #temp-zoom-modal {
@@ -65,14 +69,19 @@
         <div id="control-instructions" style="position: absolute; right: 0; top: 0; width: 200px; height: 100%; background: rgba(255, 255, 255, 0.9); padding: 10px; box-sizing: border-box;">
             <!-- Control instructions content goes here -->
         <div style="font-family: Arial, sans-serif; color: #333;">
-            <h2>Controls</h2>
+            <h3>Controls</h3>
             <ul>
                 <li><strong>Move:</strong> W/A/S/D keys</li>
                 <li><strong>Zoom:</strong> Mouse wheel</li>
                 <li><strong>Speed Boost:</strong> Hold Shift</li>
             </ul>
-            <h2>Parameters</h2>
-            
+            <h3>Info</h3>
+            <div id="info">
+                <p>Position: <span id="position"></span></p>
+                <p>Tile: <span id="tile"></span></p>
+                <p>Scale: <span id="scale"></span></p>
+            </div>
+            <h3>Parameters</h3>
         </div>
         </div>
     </div>
