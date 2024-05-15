@@ -1,0 +1,38 @@
+{
+    "World": {
+        "Window": {
+        },
+        "Tiles": {
+            "minx": -10,
+            "maxx": 10,
+            "miny": -1000,
+            "maxy": 1000
+        },
+        "Scale": {
+            "scale": 1024
+        }
+    },
+    "Entities": [  
+        {
+            "Player": true,
+            "Position": {
+                "x": 702,
+                "y": -124
+            },
+            "Shape": {
+                "w":50.1,
+                "h":50.25
+            },
+            "Movement": {
+                "speed": 65.5,
+                "max_speed": 110,
+                "friction": 0.9,
+                "mass": 5
+            }
+        }
+    ],
+    "shaders": {
+        "vertex": "attribute vec4 position; void main() { gl_Position = vec4(position.xyz, 1.0); }",
+        "fragment": "precision mediump float; void main() { gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); }"
+    }
+}

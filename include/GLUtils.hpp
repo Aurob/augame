@@ -6,7 +6,7 @@ extern int seed;
 extern GLfloat cursorPos[2];
 
 
-void updateUniforms(GLuint shaderProgram, 
+void updateUniforms(GLuint &shaderProgram, 
 float gridSpacingValue, 
 float offsetValue[2], 
 float _width, float _height, 
@@ -17,6 +17,7 @@ float waterMax, float sandMax, float dirtMax, float grassMax, float stoneMax, fl
 float lastTime, 
 float frequency, float amplitude, float persistence, float lacunarity, int octaves) {
     
+    printf("A\n");
     glUseProgram(shaderProgram);
     // grid_spacing uniform
     GLint gridSpacingLocation = glGetUniformLocation(shaderProgram, "grid_spacing");
@@ -94,6 +95,7 @@ float frequency, float amplitude, float persistence, float lacunarity, int octav
     GLint octavesLocation = glGetUniformLocation(shaderProgram, "octaves");
     glUniform1i(octavesLocation, octaves);
 
+    printf("A\n");
     
 }
 
@@ -155,24 +157,51 @@ GLuint loadGL2(GLuint &shaderProgram) {
     return shaderProgram;
 }
 
-GLuint loadGL1(GLuint &shaderProgram) {
-    
+void loadGL1(GLuint &shaderProgram) {
+
+    printf("Vertex source: %s\n", vertexSource);
+
     // Create and compile vertex shader
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &vertexSource, NULL);
     glCompileShader(vertexShader);
+
+    // Check for vertex shader compilation errors
+    GLint success;
+    GLchar infoLog[512];
+    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        printf("%s\n", vertexSource);
+        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+        printf("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n%s\n", infoLog);
+    }
 
     // Create and compile fragment shader
     GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
     glCompileShader(fragmentShader);
 
+    // Check for fragment shader compilation errors
+    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+        printf("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n%s\n", infoLog);
+    }
+
     shaderProgram = glCreateProgram();
 
+    printf("Attaching shaders...\n");
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
     glLinkProgram(shaderProgram);
-    
+    printf("Linking shaders...\n");
+
+    // Check for linking errors
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+        printf("ERROR::SHADER::PROGRAM::LINKING_FAILED\n%s\n", infoLog);
+    }
 
     GLuint vbo;
     glGenBuffers(1, &vbo);
@@ -246,5 +275,5 @@ GLuint loadGL1(GLuint &shaderProgram) {
     // In your render loop, use the generated texture
     glBindTexture(GL_TEXTURE_2D, textureID);
 
-    return shaderProgram;
+    // return shaderProgram;
 }

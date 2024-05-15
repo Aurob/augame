@@ -29,20 +29,26 @@ extern float persistence;
 extern float lacunarity;
 extern float scale;
 extern int octaves;
+extern int tileMinMax[4];
+extern bool windowResized;
+extern GLfloat playerPosition[2];
+extern GLfloat gridSpacingValue;
+extern bool ready;
 
 float deltaTime = 0;
 int seed = 0;
 unordered_map<int, bool> keys;
 GLfloat cursorPos[2] = {0, 0};
 
-GLuint shaderProgram;
+GLuint *shaderProgram;
 GLuint shaderProgram2;
-GLfloat gridSpacingValue = 256.0f;
+GLfloat gridSpacingValue = 8.0f;
 GLfloat offsetValue[2] = {0.0f, 0.0f};
 int width = 1024;
 int height = 1024;
 GLfloat playerPosition[2] = {0, 0};
 GLfloat toplefttile[2] = {0.0f, 0.0f};
+int tileMinMax[4] = {0, 0, 0, 0};
 float waterMax;
 float sandMax;
 float dirtMax;
@@ -56,6 +62,8 @@ float persistence = 0.5;
 float lacunarity = 2.0;
 float scale = 1;
 int octaves = 6;
+bool windowResized = false;
+bool ready = false;
 
 GLubyte pixelData[4];
 
@@ -86,9 +94,10 @@ void animations(context *ctx);
 int main(int argc, char *argv[])
 {
 
-    seed = time(0);
-    srand(seed);
-    seed = rand() % 100000;
+    // seed = time(0);
+    // srand(seed);
+    // seed = rand() % 100000;
+    seed = 0;
 
     printf("Seed: %d\n", seed);
 
@@ -104,7 +113,7 @@ int main(int argc, char *argv[])
 
     // Link vertex and fragment shader into shader program and use it
     loadGl(mpWindow);
-    shaderProgram = loadGL1(shaderProgram);
+    // shaderProgram = loadGL1(shaderProgram);
     // shaderProgram2 = loadGL2(shaderProgram2);
     
     // --------------------------------
@@ -146,6 +155,28 @@ int main(int argc, char *argv[])
     _js__kvdata("scale", scale);
     _js__kvdata("octaves", octaves);
 
+    // Commented solution to clean this up and be more conventional:
+    /*
+    const std::vector<std::pair<std::string, float>> kvdata = {
+        {"waterMax", waterMax},
+        {"sandMax", sandMax},
+        {"dirtMax", dirtMax},
+        {"grassMax", grassMax},
+        {"stoneMax", stoneMax},
+        {"snowMax", snowMax},
+        {"frequency", frequency},
+        {"amplitude", amplitude},
+        {"persistence", persistence},
+        {"lacunarity", lacunarity},
+        {"scale", scale},
+        {"octaves", static_cast<float>(octaves)}
+    };
+
+    for (const auto& kv : kvdata) {
+        _js__kvdata(kv.first, kv.second);
+    }
+    */
+
     _js__ready();
     
     // Set the main loop
@@ -162,40 +193,7 @@ void animations(context *ctx)
     // Clear screen
     glClear(GL_COLOR_BUFFER_BIT);
 
-    // glUseProgram(shaderProgram);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    // Read the pixel color at the center of the screen
-    // glReadPixels(centerX, centerY, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixelData);
-
-    
-    // glUseProgram(shaderProgram2);
-    // GLfloat vertices[] = {
-    //     // Positions        // Colors (R, G, B)
-    //     0.0f,  0.5f, 0.0f,  1.0f, 0.0f, 0.0f,  // Top vertex (Red)
-    //     -0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,  // Bottom left vertex (Green)
-    //     0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f,  // Bottom right vertex (Blue)
-    //     0.0f, -0.5f, 0.0f,  1.0f, 1.0f, 0.0f   // Additional vertex to satisfy vertex fetch requirement
-    // };
-    // GLuint VBO;
-    // glGenBuffers(1, &VBO);
-    // glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    // glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    // //Bind VBO before setting vertex attributes for safety
-    // glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    // // Position attribute
-    // glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)0);
-    // glEnableVertexAttribArray(0);
-    // // Color attribute
-    // glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
-    // glEnableVertexAttribArray(1);
-
-    // // glDrawArrays(GL_TRIANGLES, 0, 3); // Draw the triangle
-    // glDrawArrays(GL_TRIANGLE_STRIP, 0, 4); // Draw the triangle
-
-    // // Optionally disable vertex attrib array if not used elsewhere
-    // glDisableVertexAttribArray(0);
-    // glDisableVertexAttribArray(1);
-
     // Swap buffers
     SDL_GL_SwapWindow(ctx->window);
 }
@@ -215,7 +213,7 @@ void updateFrame()
 
     if (keys[SPEED_MULTI])
     {
-        moveSpeed = defaultMoveSpeed * 200.0f;
+        moveSpeed = defaultMoveSpeed * 20.0f;
         keys[SPEED_MULTI] = false;
     }
     else if (keys[SPEED_DIV])
@@ -224,28 +222,8 @@ void updateFrame()
         keys[SPEED_DIV] = false;
     }
 
-    // if (gridSpacingValue > (width / 2)/2/2)
-    // {
-    //     gridSpacingValue = (width / 2)/2/2;
-    // }
-    // else if (gridSpacingValue < .0625)
-    // {
-    //     gridSpacingValue = .0625;
-    // }
-
     // Update player position
     float _moveSpeed = moveSpeed * deltaTime;
-
-    // // if pixeldata is blue, revert movement
-    // if (pixelData[2] > pixelData[0] && pixelData[2] > pixelData[1])
-    // {
-    //     // playerPosition = tempPlayerPosition;
-    //     playerPosition[0] = tempPlayerPosition[0];
-    //     playerPosition[1] = tempPlayerPosition[1];
-    // }
-    // else
-    // {
-    //     // tempPlayerPosition = playerPosition;
     tempPlayerPosition[0] = playerPosition[0];
     tempPlayerPosition[1] = playerPosition[1];
 
@@ -269,13 +247,27 @@ void updateFrame()
     toplefttile[1] = static_cast<int>(playerPosition[1] / defaultGSV) - (height / gridSpacingValue / 2);
 }
 
-
+bool first_start = false;
 void mainloop(void *arg)
 {
-
     deltaTime = (SDL_GetTicks() - lastTime) / 1000.0f;
     lastTime = SDL_GetTicks();
     context *ctx = static_cast<context *>(arg);
+
+    // Check if the window size has been updated
+    if (windowResized)
+    {
+        glViewport(0, 0, width, height);
+        SDL_SetWindowSize(ctx->window, width, height);
+
+        windowResized = false;
+    }
+
+    if(!ready) return;
+    else if(!first_start) {
+        first_start = true;
+        loadGL1(*shaderProgram);
+    }
 
     while (SDL_PollEvent(&ctx->event))
     {
@@ -283,8 +275,10 @@ void mainloop(void *arg)
     }
 
     updateFrame();
+
+    // Original code
     updateUniforms(
-        shaderProgram, 
+        *shaderProgram,
         gridSpacingValue, 
         offsetValue, 
         width, height, 
@@ -299,6 +293,52 @@ void mainloop(void *arg)
         snowMax,
         lastTime,
         frequency, amplitude, persistence, lacunarity, octaves);
+    // Suggested more conventional way using a struct to hold all the dynamic values
+    /*
+    struct Uniforms {
+        float gridSpacingValue;
+        float offsetValue[2];
+        float width, height;
+        float playerPosition[2];
+        float toplefttile[2];
+        float scale;
+        float waterMax, sandMax, dirtMax, grassMax, stoneMax, snowMax;
+        float lastTime;
+        float frequency, amplitude, persistence, lacunarity;
+        int octaves;
+    };
+
+    // Initialize the struct with current values
+    Uniforms uniforms = {
+        gridSpacingValue,
+        {offsetValue[0], offsetValue[1]},
+        width, height,
+        {playerPosition[0], playerPosition[1]},
+        {toplefttile[0], toplefttile[1]},
+        scale,
+        waterMax, sandMax, dirtMax, grassMax, stoneMax, snowMax,
+        lastTime,
+        frequency, amplitude, persistence, lacunarity,
+        octaves
+    };
+
+    // Pass the struct to the updateUniforms function
+    updateUniforms(shaderProgram, uniforms);
+    */
+
+    // Update Info on front end
+
+    // Player position x:y
+    _js__kvdata("x", playerPosition[0]);
+    _js__kvdata("y", playerPosition[1]);
+
+    // Current tile x:y
+    _js__kvdata("tilex", static_cast<int>(playerPosition[0] / defaultGSV));
+    _js__kvdata("tiley", static_cast<int>(playerPosition[1] / defaultGSV));
+
+    // Current scale from gridSpacingValue
+    _js__kvdata("scale", gridSpacingValue);
+
 
 
 
@@ -306,4 +346,5 @@ void mainloop(void *arg)
     animations(ctx);
 
     ctx->iteration++;
+    
 }
