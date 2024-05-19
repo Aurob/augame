@@ -12,41 +12,44 @@ var Module = {
 
     setTimeout(() => {
       // duplicate the canvas
-      const duplicateCanvas = self.canvas.cloneNode();
-      duplicateCanvas.id = 'duplicateCanvas';
-      // copy all the styles
-      duplicateCanvas.style = self.canvas.style;
-      // position absolute, z-index 1, pointer-events none
-      duplicateCanvas.style.position = 'absolute';
-      duplicateCanvas.style.zIndex = 1;
-      duplicateCanvas.style.pointerEvents = 'none';
-      document.getElementById('main').prepend(duplicateCanvas);
+      // const duplicateCanvas = self.canvas.cloneNode();
+      // duplicateCanvas.id = 'duplicateCanvas';
+      // // copy all the styles
+      // duplicateCanvas.style = self.canvas.style;
+      // // position absolute, z-index 1, pointer-events none
+      // duplicateCanvas.style.position = 'absolute';
+      // duplicateCanvas.style.zIndex = 1;
+      // duplicateCanvas.style.pointerEvents = 'none';
+      // document.getElementById('main').prepend(duplicateCanvas);
 
-      // render small red circel in center
-      const ctx = duplicateCanvas.getContext('2d');
-      ctx.beginPath();
-      ctx.arc(duplicateCanvas.width / 2, duplicateCanvas.height / 2, 10, 0, 2 * Math.PI, false);
-      ctx.fillStyle = 'red';
-      ctx.fill();
-      ctx.lineWidth = 5;
-      ctx.strokeStyle = '#003300';
-      ctx.stroke();
-      ctx.closePath();
+      // // render small red circel in center
+      // const ctx = duplicateCanvas.getContext('2d');
+      // ctx.beginPath();
+      // ctx.arc(duplicateCanvas.width / 2, duplicateCanvas.height / 2, 10, 0, 2 * Math.PI, false);
+      // ctx.fillStyle = 'red';
+      // ctx.fill();
+      // ctx.lineWidth = 5;
+      // ctx.strokeStyle = '#003300';
+      // ctx.stroke();
+      // ctx.closePath();
 
-      setEvents();
-      Module._isready();
     }, 1);
+
+    Module._isready();
   },
 
   onRuntimeInitialized: function () {
     console.log("Runtime initialized");
 
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    // canvas.width = window.innerWidth;
+    // canvas.height = window.innerHeight;
+    canvas.width = 800;
+    canvas.height = 600;
   },
 
   ready() {
     console.log("Ready");
+    setEvents();
     loadInputs();
     // Set input values in c_kv_data
     const inputs = document.querySelectorAll('input');
@@ -67,49 +70,6 @@ var Module = {
         Module.js_to_c({ option: e.target.id, value: parseFloat(e.target.value) });
       });
     });
-
-    // Load World config
-
-    let fetch_path = "demo-a";
-
-
-    fetch(`web/${fetch_path}.json?${Math.random()}`)
-      .then(res => res.json())
-      .then(json => {
-
-        Module.js_to_c(JSON.stringify(json));
-
-        // Check for url params for x, y, and scale using URLSearchParams
-        const params = new URLSearchParams(window.location.search);
-        let x = params.get('x');
-        let y = params.get('y');
-        let scale = params.get('scale');
-
-        if(x && y && scale) {
-          console.log(x, y, scale);
-          Module.js_to_c({
-            "World": {
-              "Scale": {
-                "scale": parseFloat(scale)
-              }
-            },
-            "Entities": [
-              {
-                "Player": true,
-                "Position": {
-                  "x": parseFloat(x),
-                  "y": parseFloat(y)
-                }
-              }
-            ]
-          });
-        }
-
-
-        Module.start();
-
-      })
-
   },
   setkv: function (key, value) {
     Module.c_kv_data[key] = value;

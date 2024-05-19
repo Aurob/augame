@@ -31,8 +31,16 @@
             }
         }
     ],
-    "shaders": {
-        "vertex": "attribute vec4 position; void main() { gl_Position = vec4(position.xyz, 1.0); }",
-        "fragment": "precision mediump float; void main() { gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); }"
-    }
+    "shaders": [
+        {
+            "type": "1",
+            "vertex": "attribute vec4 position; void main() { gl_Position = vec4(position.xyz, 1.0); }",
+            "fragment": "fragment1.glsl"
+        },
+        {
+            "type": "2",
+            "vertex": "attribute vec4 position; void main() { gl_Position = vec4(position.xyz, 1.0); }",
+            "fragment": "fragment2.glsl"
+        }
+    ]
 }

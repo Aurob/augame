@@ -41,7 +41,8 @@ unordered_map<int, bool> keys;
 GLfloat cursorPos[2] = {0, 0};
 
 GLuint *shaderProgram;
-GLuint shaderProgram2;
+GLuint *shaderProgram2;
+
 GLfloat gridSpacingValue = 8.0f;
 GLfloat offsetValue[2] = {0.0f, 0.0f};
 int width = 1024;
@@ -98,7 +99,8 @@ int main(int argc, char *argv[])
     // srand(seed);
     // seed = rand() % 100000;
     seed = 0;
-
+    shaderProgram = new GLuint;
+    shaderProgram2 = new GLuint;
     printf("Seed: %d\n", seed);
 
     SDL_Window *mpWindow =
@@ -113,8 +115,6 @@ int main(int argc, char *argv[])
 
     // Link vertex and fragment shader into shader program and use it
     loadGl(mpWindow);
-    // shaderProgram = loadGL1(shaderProgram);
-    // shaderProgram2 = loadGL2(shaderProgram2);
     
     // --------------------------------
     centerX = width / 2;
@@ -154,28 +154,6 @@ int main(int argc, char *argv[])
     _js__kvdata("lacunarity", lacunarity);
     _js__kvdata("scale", scale);
     _js__kvdata("octaves", octaves);
-
-    // Commented solution to clean this up and be more conventional:
-    /*
-    const std::vector<std::pair<std::string, float>> kvdata = {
-        {"waterMax", waterMax},
-        {"sandMax", sandMax},
-        {"dirtMax", dirtMax},
-        {"grassMax", grassMax},
-        {"stoneMax", stoneMax},
-        {"snowMax", snowMax},
-        {"frequency", frequency},
-        {"amplitude", amplitude},
-        {"persistence", persistence},
-        {"lacunarity", lacunarity},
-        {"scale", scale},
-        {"octaves", static_cast<float>(octaves)}
-    };
-
-    for (const auto& kv : kvdata) {
-        _js__kvdata(kv.first, kv.second);
-    }
-    */
 
     _js__ready();
     
@@ -267,6 +245,7 @@ void mainloop(void *arg)
     else if(!first_start) {
         first_start = true;
         loadGL1(*shaderProgram);
+        loadGL2(*shaderProgram2);
     }
 
     while (SDL_PollEvent(&ctx->event))
@@ -276,7 +255,6 @@ void mainloop(void *arg)
 
     updateFrame();
 
-    // Original code
     updateUniforms(
         *shaderProgram,
         gridSpacingValue, 
@@ -293,39 +271,13 @@ void mainloop(void *arg)
         snowMax,
         lastTime,
         frequency, amplitude, persistence, lacunarity, octaves);
-    // Suggested more conventional way using a struct to hold all the dynamic values
-    /*
-    struct Uniforms {
-        float gridSpacingValue;
-        float offsetValue[2];
-        float width, height;
-        float playerPosition[2];
-        float toplefttile[2];
-        float scale;
-        float waterMax, sandMax, dirtMax, grassMax, stoneMax, snowMax;
-        float lastTime;
-        float frequency, amplitude, persistence, lacunarity;
-        int octaves;
-    };
 
-    // Initialize the struct with current values
-    Uniforms uniforms = {
-        gridSpacingValue,
-        {offsetValue[0], offsetValue[1]},
-        width, height,
-        {playerPosition[0], playerPosition[1]},
-        {toplefttile[0], toplefttile[1]},
-        scale,
-        waterMax, sandMax, dirtMax, grassMax, stoneMax, snowMax,
-        lastTime,
-        frequency, amplitude, persistence, lacunarity,
-        octaves
-    };
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    
+    updateUniforms2(*shaderProgram2, width, height);
 
-    // Pass the struct to the updateUniforms function
-    updateUniforms(shaderProgram, uniforms);
-    */
-
+    
     // Update Info on front end
 
     // Player position x:y

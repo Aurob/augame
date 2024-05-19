@@ -79,20 +79,36 @@ extern "C"
     {
         ready = true;
     }
+
     void load_json(char *str)
     {
+        printf("Loading JSON\n");
         nlohmann::json js_json = str_to_json(str);
         // printf("Loaded JSON: %s\n", js_json.dump().c_str());
         // Process config
-        if (js_json.contains("shaders") && js_json["shaders"].is_object())
+        if (js_json.contains("shaders") && js_json["shaders"].is_array())
         {
-            auto &shaders = js_json["shaders"];
-            if (shaders.contains("vertex") && shaders["vertex"].is_string() && shaders.contains("fragment") && shaders["fragment"].is_string())
+            // printf("Shaders: %s\n", js_json["shaders"].dump().c_str());
+            for (const auto& shader : js_json["shaders"])
             {
-                // read string as glsl
-                // use *vertexSourceTest2 and *fragmentSourceTest2
-                vertexSource = strdup(shaders["vertex"].get<std::string>().c_str());
-                fragmentSource = strdup(shaders["fragment"].get<std::string>().c_str());
+                // printf("Shader: %s\n", shader.dump().c_str());
+                if (shader.is_object() && shader.contains("vertex") && shader["vertex"].is_string() && shader.contains("fragment") && shader["fragment"].is_string())
+                {
+
+                    // printf("Shader: %s\n", shader.dump().c_str());
+                    if(shader.contains("type") && shader["type"].is_string()) {
+                        if(shader["type"] == "1") {
+                            vertexSource = strdup(shader["vertex"].get<std::string>().c_str());
+                            fragmentSource = strdup(shader["fragment"].get<std::string>().c_str());
+                        }
+                        else if(shader["type"] == "2") {
+                            vertexSource2 = strdup(shader["vertex"].get<std::string>().c_str());
+                            fragmentSource2 = strdup(shader["fragment"].get<std::string>().c_str());
+                        }
+                    }
+                }
+                // printf("Shader: %s\n", shader.dump().c_str());
+            // }
             }
         }
         if (js_json.contains("option") && js_json["option"].is_string() && js_json.contains("value"))
