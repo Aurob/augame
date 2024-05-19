@@ -1,23 +1,63 @@
 
 
 function setEvents() {
+    // on anywhere click run Module.start();
+    function startModuleOnce(event) {
+        console.log(123);
+        Module.start();
+        document.removeEventListener('click', startModuleOnce);
+        document.removeEventListener('touchstart', startModuleOnce);
+    }
 
+    document.addEventListener('click', startModuleOnce);
+    document.addEventListener('touchstart', startModuleOnce);
+    // Load World config
+
+    let fetch_path = "demo-a";
+
+
+    fetch(`web/${fetch_path}.json?${Math.random()}`)
+      .then(res => res.json())
+      .then(json => {
+
+        // json['shaders']['fragment'] = 
+        if (json['shaders'] && Array.isArray(json['shaders'])) {
+          json['shaders'].forEach(shader => {
+            if (shader['fragment'] && shader['fragment'].includes('.glsl')) {
+              fetch(`web/${shader['fragment']}?${Math.random()}`)
+                .then(res => res.text())
+                .then(text => {
+                  shader['fragment'] = text;
+                  Module.js_to_c(JSON.stringify(json));
+                });
+            }
+          });
+        }
+
+        // Check for url params for x, y, and scale using URLSearchParams
+        const params = new URLSearchParams(window.location.search);
+        let x = params.get('x');
+        let y = params.get('y');
+        let scale = params.get('scale');
+
+
+      });
 }
 
 function loadInputs() {
     const parameters = [
-        { 'name': 'waterMax', 'min': -1, 'max': 1, 'step': 0.000001 },
-        { 'name': 'sandMax', 'min': -1, 'max': 1, 'step': 0.000001 },
-        { 'name': 'dirtMax', 'min': -1, 'max': 1, 'step': 0.000001 },
-        { 'name': 'grassMax', 'min': -1, 'max': 1, 'step': 0.000001 },
-        { 'name': 'stoneMax', 'min': -1, 'max': 1, 'step': 0.000001 },
-        { 'name': 'snowMax', 'min': -1, 'max': 1, 'step': 0.000001 },
-        { 'name': 'frequency', 'min': -16, 'max': 16, 'step': 0.000000000001 },
-        { 'name': 'amplitude', 'min': -1, 'max': 1, 'step': 0.000000001 },
-        { 'name': 'persistence', 'min': -1, 'max': 1, 'step': 0.000000001 },
+        { 'name': 'waterMax', 'min': -1, 'max': 1, 'step': 0.0001 },
+        { 'name': 'sandMax', 'min': -1, 'max': 1, 'step': 0.0001 },
+        { 'name': 'dirtMax', 'min': -1, 'max': 1, 'step': 0.0001 },
+        { 'name': 'grassMax', 'min': -1, 'max': 1, 'step': 0.0001 },
+        { 'name': 'stoneMax', 'min': -1, 'max': 1, 'step': 0.0001 },
+        { 'name': 'snowMax', 'min': -1, 'max': 1, 'step': 0.0001 },
+        { 'name': 'frequency', 'min': -16, 'max': 16, 'step': 0.000000001 },
+        { 'name': 'amplitude', 'min': -1, 'max': 1, 'step': 0.00001 },
+        { 'name': 'persistence', 'min': -1, 'max': 1, 'step': 0.00001 },
         { 'name': 'lacunarity', 'min': -16, 'max': 16, 'step': 1 },
         { 'name': 'octaves', 'min': -16, 'max': 16, 'step': 0.1 },
-        { 'name': 'scale', 'min': -100, 'max': 100, 'step': 0.000001 }
+        { 'name': 'scale', 'min': -100, 'max': 100, 'step': 0.001 }
     ];
 
     const container = document.createElement('div');

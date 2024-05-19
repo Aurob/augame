@@ -6,6 +6,22 @@ extern int seed;
 extern GLfloat cursorPos[2];
 
 
+void loadGl(SDL_Window *mpWindow) {
+    
+    // Create OpenGLES 2 context on SDL window
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+    SDL_GL_SetSwapInterval(1);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+    SDL_GLContext glc = SDL_GL_CreateContext(mpWindow);
+
+    // Set clear color to transparent
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+
+}
+
+
 void updateUniforms(GLuint &shaderProgram, 
 float gridSpacingValue, 
 float offsetValue[2], 
@@ -99,67 +115,19 @@ float frequency, float amplitude, float persistence, float lacunarity, int octav
     
 }
 
-void loadGl(SDL_Window *mpWindow) {
-    
-    // Create OpenGLES 2 context on SDL window
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-    SDL_GL_SetSwapInterval(1);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-    SDL_GLContext glc = SDL_GL_CreateContext(mpWindow);
+void updateUniforms2(GLuint &shaderProgram, float _width, float _height) {
+    glUseProgram(shaderProgram);
 
-    // Set clear color to black
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-
-}
-
-GLuint loadGL2(GLuint &shaderProgram) {
-
-    // Create and compile vertex shader
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexSourceTest, NULL);
-    glCompileShader(vertexShader);
-
-    // Create and compile fragment shader
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentSourceTest, NULL);
-    glCompileShader(fragmentShader);
-
-    shaderProgram = glCreateProgram();    
-
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-    
-    GLfloat vertices[] = {
-        // Positions        // Colors (R, G, B)
-        0.0f,  0.5f, 0.0f,  1.0f, 0.0f, 0.0f,  // Top vertex (Red)
-        -0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,  // Bottom left vertex (Green)
-        0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f,  // Bottom right vertex (Blue)
-        0.0f, -0.5f, 0.0f,  1.0f, 1.0f, 0.0f   // Additional vertex to satisfy vertex fetch requirement
-    };
-    GLuint VBO;
-    glGenBuffers(1, &VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    //Bind VBO before setting vertex attributes for safety
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    // Position attribute
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)0);
-    glEnableVertexAttribArray(0);
-    // Color attribute
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
-    glEnableVertexAttribArray(1);
+    // resolution uniform
+    GLint resolutionLocation = glGetUniformLocation(shaderProgram, "resolution");
+    glUniform2f(resolutionLocation, _width, _height);
 
 
-
-    return shaderProgram;
 }
 
 void loadGL1(GLuint &shaderProgram) {
 
-    printf("Vertex source: %s\n", vertexSource);
+    printf("Vertex source 123: %s\n", vertexSource);
 
     // Create and compile vertex shader
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -276,4 +244,123 @@ void loadGL1(GLuint &shaderProgram) {
     glBindTexture(GL_TEXTURE_2D, textureID);
 
     // return shaderProgram;
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+}
+
+void loadGL2(GLuint &shaderProgram) {
+    // Create and compile vertex shader
+    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexSource2, NULL);
+    glCompileShader(vertexShader);
+
+    // Check for vertex shader compilation errors
+    GLint success;
+    GLchar infoLog[512];
+    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        printf("%s\n", vertexSource2);
+        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+        printf("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n%s\n", infoLog);
+    }
+
+    // Create and compile fragment shader
+    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragmentSource2, NULL);
+    glCompileShader(fragmentShader);
+
+    // Check for fragment shader compilation errors
+    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+        printf("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n%s\n", infoLog);
+    }
+
+    shaderProgram = glCreateProgram();
+
+    printf("Attaching shaders...\n");
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+    printf("Linking shaders...\n");
+
+    // Check for linking errors
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+        printf("ERROR::SHADER::PROGRAM::LINKING_FAILED\n%s\n", infoLog);
+    }
+
+    GLuint vbo;
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    GLfloat vertices[] =
+        {
+            -1.0f, 1.0f, 0.0f,  // Top Left
+            1.0f, 1.0f, 0.0f,   // Top Right
+            -1.0f, -1.0f, 0.0f, // Bottom Left
+            1.0f, -1.0f, 0.0f   // Bottom Right
+        };
+
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glUseProgram(shaderProgram);
+
+    // Specify the layout of the shader vertex data
+    GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
+    glEnableVertexAttribArray(posAttrib);
+    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    // Don't forget to bind the VAO before you draw
+    GLuint ebo;
+    GLuint indices[] = {
+        0, 1, 2, // First Triangle
+        2, 1, 3  // Second Triangle
+    };
+
+    glGenBuffers(1, &ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    
+    // // -------------------------------------------------------------
+    // Create texture
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    // Set texture parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    // Allocate texture storage (but don't upload data yet)
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1000, 1000, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+    // Attach texture to framebuffer
+    GLuint fbo;
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureID, 0);
+
+    // Check framebuffer is complete
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        printf("Framebuffer not complete!\n");
+
+    // Render to texture (rtt)
+    glViewport(0, 0, 1000, 1000); // Match texture size
+    // Add your render code here: this will render to texture instead of screen
+    // Remember to clear the framebuffer using glClear if necessary
+
+    // Bind the default framebuffer to render to screen again
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, 1000, 1000); // Match window size
+
+    // In your render loop, use the generated texture
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    // return shaderProgram;
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
 }
