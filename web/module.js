@@ -9,42 +9,14 @@ var Module = {
 
   start: function () {
     console.log("Starting...");
-
-    setTimeout(() => {
-      // duplicate the canvas
-      // const duplicateCanvas = self.canvas.cloneNode();
-      // duplicateCanvas.id = 'duplicateCanvas';
-      // // copy all the styles
-      // duplicateCanvas.style = self.canvas.style;
-      // // position absolute, z-index 1, pointer-events none
-      // duplicateCanvas.style.position = 'absolute';
-      // duplicateCanvas.style.zIndex = 1;
-      // duplicateCanvas.style.pointerEvents = 'none';
-      // document.getElementById('main').prepend(duplicateCanvas);
-
-      // // render small red circel in center
-      // const ctx = duplicateCanvas.getContext('2d');
-      // ctx.beginPath();
-      // ctx.arc(duplicateCanvas.width / 2, duplicateCanvas.height / 2, 10, 0, 2 * Math.PI, false);
-      // ctx.fillStyle = 'red';
-      // ctx.fill();
-      // ctx.lineWidth = 5;
-      // ctx.strokeStyle = '#003300';
-      // ctx.stroke();
-      // ctx.closePath();
-
-    }, 1);
-
     Module._isready();
   },
 
   onRuntimeInitialized: function () {
     console.log("Runtime initialized");
 
-    // canvas.width = window.innerWidth;
-    // canvas.height = window.innerHeight;
-    canvas.width = 800;
-    canvas.height = 600;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
   },
 
   ready() {

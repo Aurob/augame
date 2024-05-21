@@ -16,8 +16,8 @@ void loadGl(SDL_Window *mpWindow) {
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GLContext glc = SDL_GL_CreateContext(mpWindow);
 
-    // Set clear color to transparent
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    // Set clear color to black
+    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
 }
 
@@ -33,7 +33,6 @@ float waterMax, float sandMax, float dirtMax, float grassMax, float stoneMax, fl
 float lastTime, 
 float frequency, float amplitude, float persistence, float lacunarity, int octaves) {
     
-    printf("A\n");
     glUseProgram(shaderProgram);
     // grid_spacing uniform
     GLint gridSpacingLocation = glGetUniformLocation(shaderProgram, "grid_spacing");
@@ -110,17 +109,19 @@ float frequency, float amplitude, float persistence, float lacunarity, int octav
     // octaves uniform
     GLint octavesLocation = glGetUniformLocation(shaderProgram, "octaves");
     glUniform1i(octavesLocation, octaves);
-
-    printf("A\n");
     
 }
 
-void updateUniforms2(GLuint &shaderProgram, float _width, float _height) {
+void updateUniforms2(GLuint &shaderProgram, float _width, float _height, float gridSpacingValue) {
     glUseProgram(shaderProgram);
 
     // resolution uniform
     GLint resolutionLocation = glGetUniformLocation(shaderProgram, "resolution");
     glUniform2f(resolutionLocation, _width, _height);
+
+    // grid_spacing uniform
+    GLint gridSpacingLocation = glGetUniformLocation(shaderProgram, "grid_spacing");
+    glUniform1f(gridSpacingLocation, gridSpacingValue);
 
 
 }

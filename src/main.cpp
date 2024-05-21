@@ -57,12 +57,12 @@ float grassMax;
 float stoneMax;
 float snowMax;
 int lastTime = 0;
-float frequency = 1.0;
+float frequency = -0.07243269;
 float amplitude = 1.0;
 float persistence = 0.5;
 float lacunarity = 2.0;
 float scale = 1;
-int octaves = 6;
+int octaves = 12;
 bool windowResized = false;
 bool ready = false;
 
@@ -73,7 +73,7 @@ GLfloat tempPlayerPosition[2] = {0, 0};
 
 GLint centerX;
 GLint centerY;
-float moveSpeed = 5;
+float moveSpeed = 1;
 float defaultMoveSpeed = moveSpeed;
 bool zooming = false;
 // General variables
@@ -121,8 +121,10 @@ int main(int argc, char *argv[])
     centerY = height / 2;
 
     // Set random position
-    playerPosition[0] = static_cast<float>(playerPosition[0]);
-    playerPosition[1] = static_cast<float>(playerPosition[1]);
+    // playerPosition[0] = static_cast<float>(playerPosition[0]);
+    // playerPosition[1] = static_cast<float>(playerPosition[1]);
+    playerPosition[0] = rand() % 1000;
+    playerPosition[1] = rand() % 1000;
 
     // Assume total weight = 1.0; adjust weights as desired
     const float totalWeight = 1.0;
@@ -166,16 +168,6 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
 }
 
-void animations(context *ctx)
-{
-    // Clear screen
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    // Swap buffers
-    SDL_GL_SwapWindow(ctx->window);
-}
-
 void updateFrame()
 {
     if (keys[ZOOM_IN])
@@ -212,9 +204,10 @@ void updateFrame()
         deltaX /= normFactor;
         deltaY /= normFactor;
     }
+
     playerPosition[0] -= deltaX * _moveSpeed;
     playerPosition[1] += deltaY * _moveSpeed;
-    // }
+
     
     // set view offset
     offsetValue[0] = (fmod(playerPosition[0], defaultGSV) * gridSpacingValue) / defaultGSV;
@@ -255,6 +248,8 @@ void mainloop(void *arg)
 
     updateFrame();
 
+    glClear(GL_COLOR_BUFFER_BIT);
+
     updateUniforms(
         *shaderProgram,
         gridSpacingValue, 
@@ -272,12 +267,29 @@ void mainloop(void *arg)
         lastTime,
         frequency, amplitude, persistence, lacunarity, octaves);
 
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    
-    updateUniforms2(*shaderProgram2, width, height);
 
-    
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+
+    // Enable blending for the second shader
+
+    glEnable(GL_BLEND);
+
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+
+    // Render the second shader
+
+    updateUniforms2(*shaderProgram2, width, height, gridSpacingValue);
+
+
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+
+    // Swap buffers
+
+    SDL_GL_SwapWindow(ctx->window);
+
     // Update Info on front end
 
     // Player position x:y
@@ -291,11 +303,6 @@ void mainloop(void *arg)
     // Current scale from gridSpacingValue
     _js__kvdata("scale", gridSpacingValue);
 
-
-
-
-    // Draw
-    animations(ctx);
 
     ctx->iteration++;
     

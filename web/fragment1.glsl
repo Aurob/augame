@@ -45,65 +45,44 @@ vec3 tile_color(vec2 _coord, float n) {
     vec3 color;
     if (n < waterMax) {
         // Water
-        // Normalize the RGB values to the range [0, 1] and lighten the colors slightly
-        vec3 deepColor = vec3(27.0 / 255.0, 57.0 / 255.0, 68.0 / 255.0); // Lightened deep water color
-        vec3 shallowColor = vec3(20.0 / 255.0, 24.0 / 255.0, 34.0 / 255.0); // Lightened shallow water color
-        // Interpolate between shallow and deep water colors based on n
-        color = mix(deepColor, shallowColor, mod(n, 1.0));
+        vec3 deepColor = vec3(20.0 / 255.0, 24.0 / 255.0, 34.0 / 255.0); // Darker deep water color
+        vec3 shallowColor = vec3(27.0 / 255.0, 57.0 / 255.0, 68.0 / 255.0); // Lighter shallow water color
+        // Interpolate between deep and shallow water colors based on n
+        color = mix(deepColor, shallowColor, n / waterMax);
 
     } else if (n < sandMax) {
         // Sand 
-        color = vec3(0.95, 0.87, 0.70 + mod(n, 1.0) * 0.3);
+        vec3 lightSand = vec3(0.95, 0.87, 0.70); // Lighter sand color
+        vec3 darkSand = vec3(0.70, 0.60, 0.50); // Darker sand color
+        // Interpolate between light and dark sand colors based on n
+        color = mix(lightSand, darkSand, (n - waterMax) / (sandMax - waterMax));
     } else if (n < dirtMax) {
         // Dirt
-        // darkest: 130, 110, 82
-        // mid: 164, 158, 130
-        // lightest: 90, 80, 54
-        vec3 darkestColor = vec3(130.0 / 255.0, 110.0 / 255.0, 82.0 / 255.0);
-        vec3 midColor = vec3(164.0 / 255.0, 158.0 / 255.0, 130.0 / 255.0);
-        vec3 lightestColor = vec3(90.0 / 255.0, 80.0 / 255.0, 54.0 / 255.0);
-        // Interpolate between darkest and mid colors based on n
-        vec3 color1 = mix(darkestColor, midColor, mod(n, 1.0));
-        // Interpolate between mid and lightest colors based on n
-        vec3 color2 = mix(midColor, lightestColor, mod(n, 1.0));
-        // Interpolate between color1 and color2 based on n
-        color = mix(color1, color2, mod(n, 1.0));
+        vec3 lightestDirtColor = vec3(164.0 / 255.0, 158.0 / 255.0, 130.0 / 255.0); // Lightest dirt color
+        vec3 darkestDirtColor = vec3(90.0 / 255.0, 80.0 / 255.0, 54.0 / 255.0); // Darkest dirt color
+        // Smoothly transition between lightest and darkest dirt colors based on n
+        color = mix(lightestDirtColor, darkestDirtColor, (n - sandMax) / (dirtMax - sandMax));
     } else if (n < grassMax) {
         // Grass
-        // darkest: 48, 71, 40
-        // mid: 56, 82, 47
-        // lightest: 93, 109, 73
-        vec3 darkestColor = vec3((48.0 / 255.0) * 1.25, (71.0 / 255.0) * 1.25, (40.0 / 255.0) * 1.25);
-        vec3 midColor = vec3((56.0 / 255.0) * 1.25, (82.0 / 255.0) * 1.25, (47.0 / 255.0) * 1.25);
-        vec3 lightestColor = vec3((93.0 / 255.0) * 1.25, (109.0 / 255.0) * 1.25, (73.0 / 255.0) * 1.25);
-        // Interpolate between darkest and mid colors based on n
-        vec3 color1 = mix(darkestColor, midColor, mod(n, 1.0));
-        // Interpolate between mid and lightest colors based on n
-        vec3 color2 = mix(midColor, lightestColor, mod(n, 1.0));
-        // Interpolate between color1 and color2 based on n
-        color = mix(color1, color2, mod(n, 1.0));
+        vec3 darkestGrassColor = vec3(48.0 / 255.0, 71.0 / 255.0, 40.0 / 255.0); // Darkest grass color
+        vec3 lightestGrassColor = vec3(93.0 / 255.0, 109.0 / 255.0, 73.0 / 255.0); // Lightest grass color
+        // Smoothly transition between darkest and lightest grass colors based on n
+        color = mix(darkestGrassColor, lightestGrassColor, (n - dirtMax) / (grassMax - dirtMax));
     } else if (n < stoneMax) {
         // Stone
-        // darkest: 112, 112, 112
-        // mid: 128, 128, 128
-        // lightest: 144, 144, 144
-        vec3 darkestColor = vec3((112.0 / 255.0) * 1.25, (112.0 / 255.0) * 1.25, (112.0 / 255.0) * 1.25);
-        vec3 midColor = vec3((128.0 / 255.0) * 1.25, (128.0 / 255.0) * 1.25, (128.0 / 255.0) * 1.25);
-        vec3 lightestColor = vec3((144.0 / 255.0) * 1.25, (144.0 / 255.0) * 1.25, (144.0 / 255.0) * 1.25);
-        // Interpolate between darkest and mid colors based on n
-        vec3 color1 = mix(darkestColor, midColor, mod(n, 1.0));
-        // Interpolate between mid and lightest colors based on n
-        vec3 color2 = mix(midColor, lightestColor, mod(n, 1.0));
-        // Interpolate between color1 and color2 based on n
-        color = mix(color1, color2, mod(n, 1.0));
+        vec3 lightestColor = vec3(144.0 / 255.0, 144.0 / 255.0, 144.0 / 255.0); // Lightest stone color
+        vec3 darkestColor = vec3(112.0 / 255.0, 112.0 / 255.0, 112.0 / 255.0); // Darkest stone color
+        // Interpolate between lightest and darkest stone colors based on n
+        color = mix(lightestColor, darkestColor, (n - grassMax) / (stoneMax - grassMax));
     } else {
         // Snow
-        color = vec3(1.0, 1.0, 1.0);
+        vec3 lightSnow = vec3(1.0, 1.0, 1.0); // Lighter snow color
+        vec3 darkSnow = vec3(0.8, 0.8, 0.8); // Darker snow color
+        // Interpolate between light and dark snow colors based on n
+        color = mix(lightSnow, darkSnow, (n - stoneMax) / (snowMax - stoneMax));
     }
-    // color = adjustLightness(color);
     return color;
 }
-    
 // Improved GLSL implementation for smooth noise with scale parameter
 
 uniform float scale; // Add scale as a uniform to control zoom level
@@ -215,18 +194,22 @@ void main() {
 
     vec3 color = tile_color(_coord, n);
 
-    // Add grid lines
-    float grid_line_width = 0.02; // Width of the grid lines
-    vec3 grid_color = vec3(0.0); // Color of the grid lines (black)
-    vec2 grid_coord = fract(coord / grid_spacing);
-    if (grid_coord.x < grid_line_width || grid_coord.y < grid_line_width) {
-        color = mix(color, grid_color, 0.5);
-    }
-    gl_FragColor = vec4(color, 1.0);
+    // Add grid lines only if grid_spacing is < 8
+//    if (grid_spacing < 1024.0) {
+//        float grid_line_width = 0.02; // Width of the grid lines
+//        vec3 grid_color = vec3(0.0); // Color of the grid lines (black)
+//        vec2 grid_coord = fract(coord / grid_spacing);
+//        if (grid_coord.x < grid_line_width || grid_coord.y < grid_line_width) {
+//            color = vec3(1.0, 1.0, 1.0);
+//        }
+//    }
 
-    // if pixel in 10 r around mouse, lighten the color to simulate a flashlight
-    float distance = distance(vec2(coord1.x, resolution.y - coord1.y), cursorPos);
-    if (distance < 10.0) {
-        gl_FragColor = vec4(makeLighter(gl_FragColor.rgb, 0.2), 1.0);
-    }
+    gl_FragColor = vec4(color, 1.0);
+    
+    // if pixel in area around mouse scaled by grid_spacing, lighten the color to simulate a flashlight
+    //float scaledRadius = grid_spacing * .1;
+    //float distance = distance(vec2(coord1.x, resolution.y - coord1.y), cursorPos);
+    //if (distance < scaledRadius) {
+    //    gl_FragColor = vec4(makeLighter(gl_FragColor.rgb, 0.2), 1.0);
+    //}
 }
