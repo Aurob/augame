@@ -105,6 +105,10 @@ extern "C"
                             vertexSource2 = strdup(shader["vertex"].get<std::string>().c_str());
                             fragmentSource2 = strdup(shader["fragment"].get<std::string>().c_str());
                         }
+                        else if(shader["type"] == "3") {
+                            vertexSourceTexture = strdup(shader["vertex"].get<std::string>().c_str());
+                            fragmentSourceTexture = strdup(shader["fragment"].get<std::string>().c_str());
+                        }
                     }
                 }
                 // printf("Shader: %s\n", shader.dump().c_str());

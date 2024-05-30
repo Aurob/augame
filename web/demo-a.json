@@ -41,6 +41,11 @@
             "type": "2",
             "vertex": "attribute vec4 position; void main() { gl_Position = vec4(position.xyz, 1.0); }",
             "fragment": "fragment2.glsl"
+        },
+        {
+            "type": "3",
+            "vertex": "vert_tex.glsl",
+            "fragment": "frag_tex.glsl"
         }
     ]
 }

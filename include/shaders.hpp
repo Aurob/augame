@@ -26,9 +26,11 @@ const GLchar *fragmentSourceTest = R"glsl(
 // Test Shaders that will be set when json config is loaded
 //  using the shaders passed from the json config
 const GLchar *vertexSource = nullptr;
-
 const GLchar *fragmentSource = nullptr;
-
 
 const GLchar *vertexSource2 = nullptr;
 const GLchar *fragmentSource2 = nullptr;
+
+// Texture shader
+const GLchar *vertexSourceTexture = nullptr;
+const GLchar *fragmentSourceTexture = nullptr;

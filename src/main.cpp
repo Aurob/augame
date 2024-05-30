@@ -1,5 +1,6 @@
 #include <emscripten.h>
 #include <SDL2/SDL.h>
+#include <SDL_image.h>
 #include <SDL_opengles2.h>
 #include <unordered_map>
 #include <cmath>
@@ -42,6 +43,10 @@ GLfloat cursorPos[2] = {0, 0};
 
 GLuint *shaderProgram;
 GLuint *shaderProgram2;
+GLuint *shaderProgramTexture;
+
+GLfloat positions[1][2]; // Adjust the size as needed
+int numPositions = 0;
 
 GLfloat gridSpacingValue = 8.0f;
 GLfloat offsetValue[2] = {0.0f, 0.0f};
@@ -71,6 +76,9 @@ GLubyte pixelData[4];
 float defaultGSV = gridSpacingValue;
 GLfloat tempPlayerPosition[2] = {0, 0};
 
+SDL_Surface *image = nullptr;
+
+GLuint textureID;
 GLint centerX;
 GLint centerY;
 float moveSpeed = 1;
@@ -101,6 +109,7 @@ int main(int argc, char *argv[])
     seed = 0;
     shaderProgram = new GLuint;
     shaderProgram2 = new GLuint;
+    shaderProgramTexture = new GLuint;
     printf("Seed: %d\n", seed);
 
     SDL_Window *mpWindow =
@@ -125,6 +134,10 @@ int main(int argc, char *argv[])
     // playerPosition[1] = static_cast<float>(playerPosition[1]);
     playerPosition[0] = rand() % 1000;
     playerPosition[1] = rand() % 1000;
+
+    positions[0][0] = playerPosition[0];
+    positions[0][1] = playerPosition[1];
+    numPositions = 1;
 
     // Assume total weight = 1.0; adjust weights as desired
     const float totalWeight = 1.0;
@@ -156,6 +169,24 @@ int main(int argc, char *argv[])
     _js__kvdata("lacunarity", lacunarity);
     _js__kvdata("scale", scale);
     _js__kvdata("octaves", octaves);
+
+
+    // Load test image: bark.jpg using SDL/EMSDK
+    image = IMG_Load("resources/newa.png");
+    if (image == NULL) {
+        printf("IMG_Load: %s\n", IMG_GetError());
+    }
+    else {
+        printf("Image loaded successfully\n");
+
+        // Generate textureId for frag shader uniform sampler2D texture
+        glGenTextures(1, &textureID);
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image->w, image->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, image->pixels);
+        SDL_FreeSurface(image);
+    }
 
     _js__ready();
     
@@ -239,6 +270,7 @@ void mainloop(void *arg)
         first_start = true;
         loadGL1(*shaderProgram);
         loadGL2(*shaderProgram2);
+        loadGLTexture(*shaderProgramTexture);
     }
 
     while (SDL_PollEvent(&ctx->event))
@@ -250,6 +282,7 @@ void mainloop(void *arg)
 
     glClear(GL_COLOR_BUFFER_BIT);
 
+    // Render terrain (first shader)
     updateUniforms(
         *shaderProgram,
         gridSpacingValue, 
@@ -266,23 +299,19 @@ void mainloop(void *arg)
         snowMax,
         lastTime,
         frequency, amplitude, persistence, lacunarity, octaves);
-
-
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 
-    // Enable blending for the second shader
-
+    // Enable blending for the next shaders
     glEnable(GL_BLEND);
-
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+    // // Render the test texture (second shader)
+    updateUniformsTexture(*shaderProgramTexture, textureID, 100, 100);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-    // Render the second shader
-
+    // Render the crosshair (third shader)
     updateUniforms2(*shaderProgram2, width, height, gridSpacingValue);
-
-
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 
@@ -302,6 +331,7 @@ void mainloop(void *arg)
 
     // Current scale from gridSpacingValue
     _js__kvdata("scale", gridSpacingValue);
+
 
 
     ctx->iteration++;
