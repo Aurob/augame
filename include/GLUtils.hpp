@@ -5,9 +5,9 @@
 extern int seed;
 extern GLfloat cursorPos[2];
 
+void loadGl(SDL_Window *mpWindow)
+{
 
-void loadGl(SDL_Window *mpWindow) {
-    
     // Create OpenGLES 2 context on SDL window
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
@@ -18,21 +18,20 @@ void loadGl(SDL_Window *mpWindow) {
 
     // Set clear color to black
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-
 }
 
+void updateUniforms(GLuint &shaderProgram,
+                    float gridSpacingValue,
+                    float offsetValue[2],
+                    float _width, float _height,
+                    float playerPosition[2],
+                    float toplefttile[2],
+                    float scale,
+                    float waterMax, float sandMax, float dirtMax, float grassMax, float stoneMax, float snowMax,
+                    float lastTime,
+                    float frequency, float amplitude, float persistence, float lacunarity, int octaves)
+{
 
-void updateUniforms(GLuint &shaderProgram, 
-float gridSpacingValue, 
-float offsetValue[2], 
-float _width, float _height, 
-float playerPosition[2], 
-float toplefttile[2], 
-float scale,
-float waterMax, float sandMax, float dirtMax, float grassMax, float stoneMax, float snowMax, 
-float lastTime, 
-float frequency, float amplitude, float persistence, float lacunarity, int octaves) {
-    
     glUseProgram(shaderProgram);
     // grid_spacing uniform
     GLint gridSpacingLocation = glGetUniformLocation(shaderProgram, "grid_spacing");
@@ -109,10 +108,10 @@ float frequency, float amplitude, float persistence, float lacunarity, int octav
     // octaves uniform
     GLint octavesLocation = glGetUniformLocation(shaderProgram, "octaves");
     glUniform1i(octavesLocation, octaves);
-    
 }
 
-void updateUniforms2(GLuint &shaderProgram, float _width, float _height, float gridSpacingValue) {
+void updateUniforms2(GLuint &shaderProgram, float _width, float _height, float gridSpacingValue)
+{
     glUseProgram(shaderProgram);
 
     // resolution uniform
@@ -122,11 +121,10 @@ void updateUniforms2(GLuint &shaderProgram, float _width, float _height, float g
     // grid_spacing uniform
     GLint gridSpacingLocation = glGetUniformLocation(shaderProgram, "grid_spacing");
     glUniform1f(gridSpacingLocation, gridSpacingValue);
-
-
 }
 
-void loadGL1(GLuint &shaderProgram) {
+void loadGL1(GLuint &shaderProgram)
+{
 
     printf("Vertex source 123: %s\n", vertexSource);
 
@@ -139,7 +137,8 @@ void loadGL1(GLuint &shaderProgram) {
     GLint success;
     GLchar infoLog[512];
     glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
+    if (!success)
+    {
         printf("%s\n", vertexSource);
         glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
         printf("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n%s\n", infoLog);
@@ -152,7 +151,8 @@ void loadGL1(GLuint &shaderProgram) {
 
     // Check for fragment shader compilation errors
     glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
+    if (!success)
+    {
         glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
         printf("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n%s\n", infoLog);
     }
@@ -167,7 +167,8 @@ void loadGL1(GLuint &shaderProgram) {
 
     // Check for linking errors
     glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if (!success) {
+    if (!success)
+    {
         glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
         printf("ERROR::SHADER::PROGRAM::LINKING_FAILED\n%s\n", infoLog);
     }
@@ -193,7 +194,7 @@ void loadGL1(GLuint &shaderProgram) {
     glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
     // seed uniform
-    GLint seedLocation = glGetUniformLocation(shaderProgram, "seed");    
+    GLint seedLocation = glGetUniformLocation(shaderProgram, "seed");
     glUniform1f(seedLocation, static_cast<float>(seed));
 
     // Don't forget to bind the VAO before you draw
@@ -206,7 +207,7 @@ void loadGL1(GLuint &shaderProgram) {
     glGenBuffers(1, &ebo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-    
+
     // -------------------------------------------------------------
     // Create texture
     GLuint textureID;
@@ -229,7 +230,7 @@ void loadGL1(GLuint &shaderProgram) {
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureID, 0);
 
     // Check framebuffer is complete
-    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         printf("Framebuffer not complete!\n");
 
     // Render to texture (rtt)
@@ -249,7 +250,8 @@ void loadGL1(GLuint &shaderProgram) {
     glDeleteShader(fragmentShader);
 }
 
-void loadGL2(GLuint &shaderProgram) {
+void loadGL2(GLuint &shaderProgram)
+{
     // Create and compile vertex shader
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &vertexSource2, NULL);
@@ -259,7 +261,8 @@ void loadGL2(GLuint &shaderProgram) {
     GLint success;
     GLchar infoLog[512];
     glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
+    if (!success)
+    {
         printf("%s\n", vertexSource2);
         glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
         printf("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n%s\n", infoLog);
@@ -272,7 +275,8 @@ void loadGL2(GLuint &shaderProgram) {
 
     // Check for fragment shader compilation errors
     glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
+    if (!success)
+    {
         glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
         printf("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n%s\n", infoLog);
     }
@@ -287,7 +291,8 @@ void loadGL2(GLuint &shaderProgram) {
 
     // Check for linking errors
     glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if (!success) {
+    if (!success)
+    {
         glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
         printf("ERROR::SHADER::PROGRAM::LINKING_FAILED\n%s\n", infoLog);
     }
@@ -322,7 +327,7 @@ void loadGL2(GLuint &shaderProgram) {
     glGenBuffers(1, &ebo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-    
+
     // // -------------------------------------------------------------
     // Create texture
     GLuint textureID;
@@ -345,7 +350,7 @@ void loadGL2(GLuint &shaderProgram) {
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureID, 0);
 
     // Check framebuffer is complete
-    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         printf("Framebuffer not complete!\n");
 
     // Render to texture (rtt)
@@ -363,5 +368,97 @@ void loadGL2(GLuint &shaderProgram) {
     // return shaderProgram;
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
+}
 
+
+// Texture Stuff
+
+GLuint compileShader(const char* shaderSource, GLenum shaderType) {
+    GLuint shader = glCreateShader(shaderType);
+    glShaderSource(shader, 1, &shaderSource, NULL);
+    glCompileShader(shader);
+    return shader;
+}
+
+GLuint createProgram(const char* vertexShaderSrc, const char* fragmentShaderSrc) {
+    GLuint vertexShader = compileShader(vertexShaderSrc, GL_VERTEX_SHADER);
+    GLuint fragmentShader = compileShader(fragmentShaderSrc, GL_FRAGMENT_SHADER);
+    GLuint program = glCreateProgram();
+    glAttachShader(program, vertexShader);
+    glAttachShader(program, fragmentShader);
+    glLinkProgram(program);
+    return program;
+}
+
+void loadImageAndCreateTexture(const char* imagePath, GLuint &textureID) {
+    SDL_Surface* image = IMG_Load(imagePath);
+    if (!image) {
+        printf("IMG_Load: %s\n", IMG_GetError());
+        return;
+    }
+    printf("Image loaded successfully\n");
+
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image->w, image->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, image->pixels);
+    SDL_FreeSurface(image);
+}
+
+void loadGLTexture(GLuint &shaderProgram)
+{
+    // Load shaders and create a program
+    // vertexSourceTexture and fragmentSourceTexture are shader source codes
+    shaderProgram = createProgram(vertexSourceTexture, fragmentSourceTexture);
+    // Use the created program
+    glUseProgram(shaderProgram);
+
+    // Load an image and create a texture from it
+    GLuint textureID;
+    loadImageAndCreateTexture("resources/bark.jpg", textureID);
+
+    // Define vertices for the texture
+    // Each vertex has a position (x, y) and texture coordinates (s, t)
+    GLfloat vertices[] = {
+        // Positions       // TexCoords
+        -0.5f, -0.5f,     0.0f, 1.0f,
+         0.5f, -0.5f,     1.0f, 1.0f,
+         0.5f,  0.5f,     1.0f, 0.0f,
+        -0.5f,  0.5f,     0.0f, 0.0f
+    };
+
+    // Define indices for the vertices
+    GLuint indices[] = { 0, 1, 2, 2, 3, 0 };
+
+    // Generate buffers for vertices and elements
+    GLuint VBO, EBO;
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    // Bind the vertex buffer and load the vertices into it
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    
+    // Bind the element buffer and load the indices into it
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    
+    // Get the location of the 'position' attribute in the shader program
+    GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
+    // Specify how the data for that attribute is retrieved from the array
+    glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
+    // Enable the vertex attribute
+    glEnableVertexAttribArray(posAttrib);
+    
+    // Get the location of the 'texCoord' attribute in the shader program
+    GLint texAttrib = glGetAttribLocation(shaderProgram, "texCoord");
+    // Specify how the data for that attribute is retrieved from the array
+    glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
+    // Enable the vertex attribute
+    glEnableVertexAttribArray(texAttrib);
+
+}
+void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, int x, int y) {
+    glUseProgram(shaderProgram);
 }

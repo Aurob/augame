@@ -47,25 +47,27 @@ function setEvents() {
       // json['shaders']['fragment'] = 
       if (json['shaders'] && Array.isArray(json['shaders'])) {
         json['shaders'].forEach(shader => {
-          if (shader['fragment'] && shader['fragment'].includes('.glsl')) {
-            fetch(`web/${shader['fragment']}?${Math.random()}`)
-              .then(res => res.text())
-              .then(text => {
-                shader['fragment'] = text;
-                Module.js_to_c(JSON.stringify(json));
+          ['vertex', 'fragment'].forEach(type => {
+            if (shader[type] && shader[type].includes('.glsl')) {
+              fetch(`web/${shader[type]}?${Math.random()}`)
+                .then(res => res.text())
+                .then(text => {
+                  shader[type] = text;
+                  Module.js_to_c(JSON.stringify(json));
 
-                // on anywhere click run Module.start();                 
-                document.addEventListener('click', startModuleOnce);
-                document.addEventListener('touchstart', startModuleOnce);
+                  // on anywhere click run Module.start();                 
+                  document.addEventListener('click', startModuleOnce);
+                  document.addEventListener('touchstart', startModuleOnce);
 
-                // update temp canvas text
-                ctx.clearRect(0, 0, duplicateCanvas.width, duplicateCanvas.height);
-                ctx.font = '30px Arial';
-                ctx.fillStyle = 'white';
-                ctx.textAlign = 'center';
-                ctx.fillText('Click to start', duplicateCanvas.width / 2, duplicateCanvas.height / 2);
-              });
-          }
+                  // update temp canvas text
+                  ctx.clearRect(0, 0, duplicateCanvas.width, duplicateCanvas.height);
+                  ctx.font = '30px Arial';
+                  ctx.fillStyle = 'white';
+                  ctx.textAlign = 'center';
+                  ctx.fillText('Click to start', duplicateCanvas.width / 2, duplicateCanvas.height / 2);
+                });
+            }
+          });
         });
       }
 
