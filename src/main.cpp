@@ -5,9 +5,11 @@
 #include <unordered_map>
 #include <cmath>
 #include <time.h>
+
 #include "../include/events.hpp"
 #include "../include/GLUtils.hpp"
 #include "../include/JSUtils.hpp"
+
 
 using namespace std;
 
@@ -112,13 +114,32 @@ int main(int argc, char *argv[])
     shaderProgramTexture = new GLuint;
     printf("Seed: %d\n", seed);
 
-    SDL_Window *mpWindow =
-        SDL_CreateWindow("Shader Terrain",
-                            SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                            width, height,
-                            SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN);
+    // Initialize SDL and SDL_Image
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
 
-    Uint32 mWindowID = SDL_GetWindowID(mpWindow);
+        printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
+
+        return -1;
+
+    }
+    if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
+
+        printf("SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError());
+
+        return -1;
+
+    }
+
+    SDL_Window *mpWindow = SDL_CreateWindow("Shader Terrain",
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        width, height,
+        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN);
+
+    if (!mpWindow) {
+        printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
+        return -1;
+
+    }
 
     ctx.window = mpWindow;
 
@@ -170,24 +191,6 @@ int main(int argc, char *argv[])
     _js__kvdata("scale", scale);
     _js__kvdata("octaves", octaves);
 
-
-    // Load test image: bark.jpg using SDL/EMSDK
-    image = IMG_Load("resources/newa.png");
-    if (image == NULL) {
-        printf("IMG_Load: %s\n", IMG_GetError());
-    }
-    else {
-        printf("Image loaded successfully\n");
-
-        // Generate textureId for frag shader uniform sampler2D texture
-        glGenTextures(1, &textureID);
-        glBindTexture(GL_TEXTURE_2D, textureID);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image->w, image->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, image->pixels);
-        SDL_FreeSurface(image);
-    }
-
     _js__ready();
     
     // Set the main loop
@@ -195,7 +198,10 @@ int main(int argc, char *argv[])
     emscripten_set_main_loop_timing(EM_TIMING_RAF, 1);
 
     // Quit
+    SDL_DestroyWindow(mpWindow);
     SDL_Quit();
+    IMG_Quit();
+
     return EXIT_SUCCESS;
 }
 
@@ -301,14 +307,12 @@ void mainloop(void *arg)
         frequency, amplitude, persistence, lacunarity, octaves);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
+    // // Render the test texture (second shader)
+    // updateUniformsTexture(*shaderProgramTexture, textureID, 100, 100);
 
     // Enable blending for the next shaders
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    // // Render the test texture (second shader)
-    updateUniformsTexture(*shaderProgramTexture, textureID, 100, 100);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
     // Render the crosshair (third shader)
     updateUniforms2(*shaderProgram2, width, height, gridSpacingValue);

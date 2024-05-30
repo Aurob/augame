@@ -1,4 +1,3 @@
-
 #include <SDL_opengles2.h>
 #include "../include/shaders.hpp"
 
@@ -400,18 +399,34 @@ void loadImageAndCreateTexture(const char* imagePath, GLuint &textureID) {
 
     glGenTextures(1, &textureID);
     glBindTexture(GL_TEXTURE_2D, textureID);
+
+    // Set texture parameters
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image->w, image->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, image->pixels);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    // Determine the format
+    GLenum format;
+    if (image->format->BytesPerPixel == 3) { // RGB 24bit
+        format = GL_RGB;
+    } else if (image->format->BytesPerPixel == 4) { // RGBA 32bit
+        format = GL_RGBA;
+    } else {
+        printf("Unknown image format\n");
+        SDL_FreeSurface(image);
+        return;
+    }
+
+    // Load the texture data
+    glTexImage2D(GL_TEXTURE_2D, 0, format, image->w, image->h, 0, format, GL_UNSIGNED_BYTE, image->pixels);
+
     SDL_FreeSurface(image);
 }
 
-void loadGLTexture(GLuint &shaderProgram)
-{
+void loadGLTexture(GLuint &shaderProgram) {
     // Load shaders and create a program
-    // vertexSourceTexture and fragmentSourceTexture are shader source codes
     shaderProgram = createProgram(vertexSourceTexture, fragmentSourceTexture);
-    // Use the created program
     glUseProgram(shaderProgram);
 
     // Load an image and create a texture from it
@@ -439,27 +454,24 @@ void loadGLTexture(GLuint &shaderProgram)
     // Bind the vertex buffer and load the vertices into it
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    
+
     // Bind the element buffer and load the indices into it
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-    
+
     // Get the location of the 'position' attribute in the shader program
     GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
-    // Specify how the data for that attribute is retrieved from the array
     glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
-    // Enable the vertex attribute
     glEnableVertexAttribArray(posAttrib);
-    
+
     // Get the location of the 'texCoord' attribute in the shader program
     GLint texAttrib = glGetAttribLocation(shaderProgram, "texCoord");
-    // Specify how the data for that attribute is retrieved from the array
     glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
-    // Enable the vertex attribute
     glEnableVertexAttribArray(texAttrib);
-
 }
 
 void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, int x, int y) {
     glUseProgram(shaderProgram);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
