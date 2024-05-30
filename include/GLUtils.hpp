@@ -422,10 +422,10 @@ void loadGLTexture(GLuint &shaderProgram)
     // Each vertex has a position (x, y) and texture coordinates (s, t)
     GLfloat vertices[] = {
         // Positions       // TexCoords
-        -0.5f, -0.5f,     0.0f, 1.0f,
-         0.5f, -0.5f,     1.0f, 1.0f,
-         0.5f,  0.5f,     1.0f, 0.0f,
-        -0.5f,  0.5f,     0.0f, 0.0f
+        -1.0f, -1.0f,     0.0f, 1.0f,
+         1.0f, -1.0f,     1.0f, 1.0f,
+         1.0f,  1.0f,     1.0f, 0.0f,
+        -1.0f,  1.0f,     0.0f, 0.0f
     };
 
     // Define indices for the vertices
@@ -459,6 +459,7 @@ void loadGLTexture(GLuint &shaderProgram)
     glEnableVertexAttribArray(texAttrib);
 
 }
+
 void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, int x, int y) {
     glUseProgram(shaderProgram);
 }
