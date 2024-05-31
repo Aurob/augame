@@ -73,6 +73,9 @@ int octaves = 12;
 bool windowResized = false;
 bool ready = false;
 
+// test entity for frustrum cull testing
+float _testEntity[2] = {0.0f, 500.0f};
+
 GLubyte pixelData[4];
 
 float defaultGSV = gridSpacingValue;
@@ -140,6 +143,8 @@ int main(int argc, char *argv[])
         return -1;
 
     }
+
+    // SDL_ShowCursor(SDL_DISABLE);
 
     ctx.window = mpWindow;
 
@@ -310,8 +315,25 @@ void mainloop(void *arg)
     // Render the test texture (second shader)
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    updateUniformsTexture(*shaderProgramTexture, textureID, 100, 100);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+    // Calculate the distance between the player and the test entity
+    float distanceX = abs(playerPosition[0] - _testEntity[0]);
+    float distanceY = abs(playerPosition[1] - _testEntity[1]);
+
+    // Determine if the test entity is within the view frustum based on the grid spacing scale
+    if(distanceX <= width/gridSpacingValue/2 && distanceY <= height/gridSpacingValue/2) {
+
+        printf("Test entity is visible\n");
+        // The test entity is visible
+        // calculate the position of the test entity on the screen
+        float screenX = 2 * ((playerPosition[0] - _testEntity[0]) * gridSpacingValue + width/2) / width - 1;
+        float screenY = 2 * ((playerPosition[1] - _testEntity[1]) * gridSpacingValue + height/2) / height - 1;
+        // Render the test entity
+        updateUniformsTexture(*shaderProgramTexture, textureID, screenX, screenY, 0.1f * gridSpacingValue/1000);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    } else {
+        // The test entity is not visible
+    }
 
     // // Render the crosshair (third shader)
     updateUniforms2(*shaderProgram2, width, height, gridSpacingValue);
@@ -331,8 +353,6 @@ void mainloop(void *arg)
 
     // Current scale from gridSpacingValue
     _js__kvdata("scale", gridSpacingValue);
-
-
 
     ctx->iteration++;
     
