@@ -477,8 +477,13 @@ GLuint loadGLTexture(GLuint &shaderProgram) {
     return textureID;
 }
 
-void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, int x, int y) {
+void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, float x, float y, float scale) {
     glUseProgram(shaderProgram);
     glBindTexture(GL_TEXTURE_2D, textureID);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+    GLint instancePositionLocation = glGetUniformLocation(shaderProgram, "instancePosition");
+    glUniform2f(instancePositionLocation, x, y);
+
+    GLint instanceScaleLocation = glGetUniformLocation(shaderProgram, "instanceScale");
+    glUniform1f(instanceScaleLocation, scale);
 }

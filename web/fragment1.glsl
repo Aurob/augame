@@ -183,7 +183,7 @@ float fBm(float x, float y, float z, float frequency, float amplitude,
 
 void main() {
     float line_width = 1.0; // Line width in pixels
-    vec2 coord1 = gl_FragCoord.xy; // - offset; // Current fragment position with offset
+    vec2 coord1 = gl_FragCoord.xy;
     vec2 coord = (((coord1/grid_spacing) - toplefttile) * grid_spacing) - offset;
     vec2 _coord = coord / grid_spacing;
 

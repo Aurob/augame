@@ -1,11 +1,11 @@
 function teleport(x, y) {
   Module.js_to_c(
     {"Entities": [  {
-                "Player": true,
-                "Position": {
-                    "x": x,
-                    "y": y
-                }
+      "Player": true,
+      "Position": {
+          "x": x,
+          "y": y
+      }
     }]});
 }
 
@@ -15,13 +15,15 @@ function setEvents() {
 
   // on anywhere click run Module.start();
   function startModuleOnce(event) {
-    console.log(123);
     Module.start();
     document.removeEventListener('click', startModuleOnce);
     document.removeEventListener('touchstart', startModuleOnce);
 
     // remove the temp canvas
     duplicateCanvas.remove();
+
+    // hide cursor on main canvas
+    self.canvas.style.cursor = 'none';
   }
 
 
@@ -131,7 +133,7 @@ function loadInputs() {
     container.appendChild(div);
 
 
-    rangeInput.addEventListener('input', function () {
+    rangeInput.addEventListener('change', function () {
       labelVal.textContent = rangeInput.value;
     });
 
