@@ -198,7 +198,7 @@ int main(int argc, char *argv[])
     emscripten_set_main_loop_timing(EM_TIMING_RAF, 1);
 
     // Quit
-    SDL_DestroyWindow(mpWindow);
+    glDeleteTextures(1, &textureID);
     SDL_Quit();
     IMG_Quit();
 
@@ -276,7 +276,7 @@ void mainloop(void *arg)
         first_start = true;
         loadGL1(*shaderProgram);
         loadGL2(*shaderProgram2);
-        loadGLTexture(*shaderProgramTexture);
+        textureID = loadGLTexture(*shaderProgramTexture);
     }
 
     while (SDL_PollEvent(&ctx->event))
@@ -306,25 +306,21 @@ void mainloop(void *arg)
         lastTime,
         frequency, amplitude, persistence, lacunarity, octaves);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-    // // Render the test texture (second shader)
-    // updateUniformsTexture(*shaderProgramTexture, textureID, 100, 100);
-
-    // Enable blending for the next shaders
+    
+    // Render the test texture (second shader)
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    updateUniformsTexture(*shaderProgramTexture, textureID, 100, 100);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-    // Render the crosshair (third shader)
+    // // Render the crosshair (third shader)
     updateUniforms2(*shaderProgram2, width, height, gridSpacingValue);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-
     // Swap buffers
-
     SDL_GL_SwapWindow(ctx->window);
 
     // Update Info on front end
-
     // Player position x:y
     _js__kvdata("x", playerPosition[0]);
     _js__kvdata("y", playerPosition[1]);

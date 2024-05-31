@@ -16,7 +16,9 @@ void loadGl(SDL_Window *mpWindow)
     SDL_GLContext glc = SDL_GL_CreateContext(mpWindow);
 
     // Set clear color to black
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+    // glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+    // testing red
+    glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
 }
 
 void updateUniforms(GLuint &shaderProgram,
@@ -220,7 +222,7 @@ void loadGL1(GLuint &shaderProgram)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     // Allocate texture storage (but don't upload data yet)
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1000, 1000, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
     // Attach texture to framebuffer
     GLuint fbo;
@@ -233,13 +235,13 @@ void loadGL1(GLuint &shaderProgram)
         printf("Framebuffer not complete!\n");
 
     // Render to texture (rtt)
-    glViewport(0, 0, 1000, 1000); // Match texture size
+    glViewport(0, 0, width, height); // Match texture size
     // Add your render code here: this will render to texture instead of screen
     // Remember to clear the framebuffer using glClear if necessary
 
     // Bind the default framebuffer to render to screen again
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, 1000, 1000); // Match window size
+    glViewport(0, 0, width, height); // Match window size
 
     // In your render loop, use the generated texture
     glBindTexture(GL_TEXTURE_2D, textureID);
@@ -340,7 +342,7 @@ void loadGL2(GLuint &shaderProgram)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     // Allocate texture storage (but don't upload data yet)
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1000, 1000, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
     // Attach texture to framebuffer
     GLuint fbo;
@@ -353,13 +355,13 @@ void loadGL2(GLuint &shaderProgram)
         printf("Framebuffer not complete!\n");
 
     // Render to texture (rtt)
-    glViewport(0, 0, 1000, 1000); // Match texture size
+    glViewport(0, 0, width, height); // Match texture size
     // Add your render code here: this will render to texture instead of screen
     // Remember to clear the framebuffer using glClear if necessary
 
     // Bind the default framebuffer to render to screen again
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, 1000, 1000); // Match window size
+    glViewport(0, 0, width, height); // Match window size
 
     // In your render loop, use the generated texture
     glBindTexture(GL_TEXTURE_2D, textureID);
@@ -412,26 +414,29 @@ void loadImageAndCreateTexture(const char* imagePath, GLuint &textureID) {
         format = GL_RGB;
     } else if (image->format->BytesPerPixel == 4) { // RGBA 32bit
         format = GL_RGBA;
+    } else if (image->format->BytesPerPixel == 1) { // Grayscale 8bit
+        format = GL_LUMINANCE;
+    } else if (image->format->BytesPerPixel == 2) { // Grayscale 16bit
+        format = GL_LUMINANCE_ALPHA;
     } else {
         printf("Unknown image format\n");
         SDL_FreeSurface(image);
         return;
     }
-
     // Load the texture data
     glTexImage2D(GL_TEXTURE_2D, 0, format, image->w, image->h, 0, format, GL_UNSIGNED_BYTE, image->pixels);
 
     SDL_FreeSurface(image);
 }
 
-void loadGLTexture(GLuint &shaderProgram) {
+GLuint loadGLTexture(GLuint &shaderProgram) {
     // Load shaders and create a program
     shaderProgram = createProgram(vertexSourceTexture, fragmentSourceTexture);
     glUseProgram(shaderProgram);
 
     // Load an image and create a texture from it
     GLuint textureID;
-    loadImageAndCreateTexture("resources/bark.jpg", textureID);
+    loadImageAndCreateTexture(texturePath, textureID);
 
     // Define vertices for the texture
     // Each vertex has a position (x, y) and texture coordinates (s, t)
@@ -468,6 +473,8 @@ void loadGLTexture(GLuint &shaderProgram) {
     GLint texAttrib = glGetAttribLocation(shaderProgram, "texCoord");
     glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
     glEnableVertexAttribArray(texAttrib);
+
+    return textureID;
 }
 
 void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, int x, int y) {

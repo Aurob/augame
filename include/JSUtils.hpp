@@ -108,6 +108,11 @@ extern "C"
                         else if(shader["type"] == "3") {
                             vertexSourceTexture = strdup(shader["vertex"].get<std::string>().c_str());
                             fragmentSourceTexture = strdup(shader["fragment"].get<std::string>().c_str());
+
+                            // set texturePath if 'texture' key is present
+                            if(shader.contains("texture") && shader["texture"].is_string()) {
+                                texturePath = strdup(shader["texture"].get<std::string>().c_str());
+                            }
                         }
                     }
                 }
