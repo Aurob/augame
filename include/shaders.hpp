@@ -34,3 +34,6 @@ const GLchar *fragmentSource2 = nullptr;
 // Texture shader
 const GLchar *vertexSourceTexture = nullptr;
 const GLchar *fragmentSourceTexture = nullptr;
+
+
+const char* texturePath = nullptr;

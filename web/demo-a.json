@@ -45,7 +45,8 @@
         {
             "type": "3",
             "vertex": "vert_tex.glsl",
-            "fragment": "frag_tex.glsl"
+            "fragment": "frag_tex.glsl",
+            "texture": "resources/newa.png"
         }
     ]
 }
