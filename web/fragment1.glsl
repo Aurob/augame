@@ -19,27 +19,11 @@ uniform float amplitude;
 uniform float persistence;
 uniform float lacunarity;
 uniform int octaves;
+uniform float scale; // Add scale as a uniform to control zoom level
+uniform float seed; // Add seed as a uniform to influence noise generation
 
-float tempn;
-
-float getNormalizedTime(float _time) {
-    return mod(_time, time_divamt) / time_divamt;
-}
-
-vec3 getLightnessFactor(vec3 color, float _time) {
-    // Calculate lightness factor: simulate day and night light changes with an even fade
-    float lightnessFactor = 0.1 + (sin(getNormalizedTime(_time) * 3.14159 * 2.0 - 3.14159 / 2.0) + 1.0) * 0.45;
-    return vec3(lightnessFactor);
-}
-
-vec3 adjustLightness(vec3 color) {
-    // Adjust color lightness based on the time of day
-    return color * getLightnessFactor(color, time);
-}   
-
-vec3 makeLighter(vec3 color, float factor) {
-    return color + factor;
-}
+vec4 permute(in vec4 x) {return mod(((x * 34.0) + 1.0) * x, 289.0);}
+vec4 taylorInvSqrt(in vec4 r) {return 1.79284291400159 - 0.85373472095314 * r;}
 
 vec3 tile_color(vec2 _coord, float n) {
     vec3 color;
@@ -84,13 +68,6 @@ vec3 tile_color(vec2 _coord, float n) {
     return color;
 }
 // Improved GLSL implementation for smooth noise with scale parameter
-
-uniform float scale; // Add scale as a uniform to control zoom level
-uniform float seed; // Add seed as a uniform to influence noise generation
-
-
-vec4 permute(in vec4 x) {return mod(((x * 34.0) + 1.0) * x, 289.0);}
-vec4 taylorInvSqrt(in vec4 r) {return 1.79284291400159 - 0.85373472095314 * r;}
 
 float snoise3D(vec3 v) { 
 
@@ -161,11 +138,12 @@ float snoise3D(vec3 v) {
                                 dot(p2, x2), dot(p3, x3)));
 }
 
+
 #define OCTAVES 162
 float fBm(float x, float y, float z, float frequency, float amplitude, 
             float persistence, float lacunarity, float scale, int octaves) {
     float total = 0.0;
-    // float frequency = 1.0;
+    frequency = 1.0;
     // float amplitude = 1.0;
     float maxValue = 0.0; // Used for normalizing result to 0.0 - 1.0
     for (int i = 0; i < OCTAVES; i++) {
@@ -182,34 +160,16 @@ float fBm(float x, float y, float z, float frequency, float amplitude,
 }
 
 void main() {
-    float line_width = 1.0; // Line width in pixels
     vec2 coord1 = gl_FragCoord.xy;
     vec2 coord = (((coord1/grid_spacing) - toplefttile) * grid_spacing) - offset;
     vec2 _coord = coord / grid_spacing;
-
-    // subtract half the width and height of the screen to center the noise
     _coord -= resolution * 1.0 / grid_spacing;
     
+    // Create basic black/white tiles
+    // vec3 color = mod(floor(_coord.x) + floor(_coord.y), 2.0) > 0.5 ? vec3(1.0, 1.0, 1.0) : vec3(0.0, 0.0, 0.0);
+    
     float n = fBm(_coord.x, _coord.y, seed, frequency, amplitude, persistence, lacunarity, scale, octaves);
-
     vec3 color = tile_color(_coord, n);
 
-    // Add grid lines only if grid_spacing is < 8
-//    if (grid_spacing < 1024.0) {
-//        float grid_line_width = 0.02; // Width of the grid lines
-//        vec3 grid_color = vec3(0.0); // Color of the grid lines (black)
-//        vec2 grid_coord = fract(coord / grid_spacing);
-//        if (grid_coord.x < grid_line_width || grid_coord.y < grid_line_width) {
-//            color = vec3(1.0, 1.0, 1.0);
-//        }
-//    }
-
     gl_FragColor = vec4(color, 1.0);
-    
-    // if pixel in area around mouse scaled by grid_spacing, lighten the color to simulate a flashlight
-    //float scaledRadius = grid_spacing * .1;
-    //float distance = distance(vec2(coord1.x, resolution.y - coord1.y), cursorPos);
-    //if (distance < scaledRadius) {
-    //    gl_FragColor = vec4(makeLighter(gl_FragColor.rgb, 0.2), 1.0);
-    //}
 }

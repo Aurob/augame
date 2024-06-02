@@ -133,10 +133,9 @@ function loadInputs() {
     container.appendChild(div);
 
 
-    rangeInput.addEventListener('change', function () {
+    rangeInput.addEventListener('input', function () {
       labelVal.textContent = rangeInput.value;
     });
-
 
   });
 

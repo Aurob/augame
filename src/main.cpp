@@ -50,7 +50,7 @@ GLuint *shaderProgramTexture;
 GLfloat positions[1][2]; // Adjust the size as needed
 int numPositions = 0;
 
-GLfloat gridSpacingValue = 8.0f;
+GLfloat gridSpacingValue = 16.0f;
 GLfloat offsetValue[2] = {0.0f, 0.0f};
 int width = 1024;
 int height = 1024;
@@ -64,7 +64,7 @@ float grassMax;
 float stoneMax;
 float snowMax;
 int lastTime = 0;
-float frequency = -0.07243269;
+float frequency = -1.9243269;
 float amplitude = 1.0;
 float persistence = 0.5;
 float lacunarity = 2.0;
@@ -250,7 +250,6 @@ void updateFrame()
     playerPosition[0] -= deltaX * _moveSpeed;
     playerPosition[1] += deltaY * _moveSpeed;
 
-    
     // set view offset
     offsetValue[0] = (fmod(playerPosition[0], defaultGSV) * gridSpacingValue) / defaultGSV;
     offsetValue[1] = (fmod(playerPosition[1], defaultGSV) * gridSpacingValue) / defaultGSV;
@@ -317,26 +316,25 @@ void mainloop(void *arg)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Calculate the distance between the player and the test entity
-    float distanceX = abs(playerPosition[0] - _testEntity[0]);
-    float distanceY = abs(playerPosition[1] - _testEntity[1]);
+    // Incorporate default and current grid spacing in order to determine if the entity is visible
+    float distanceX = abs((playerPosition[0] - _testEntity[0]) * gridSpacingValue / defaultGSV);
+    float distanceY = abs((playerPosition[1] - _testEntity[1]) * gridSpacingValue / defaultGSV);
 
-    // Determine if the test entity is within the view frustum based on the grid spacing scale
-    if(distanceX <= width/gridSpacingValue/2 && distanceY <= height/gridSpacingValue/2) {
+    if (distanceX < width / 2 && distanceY < height / 2) {
+        
+        float posX = (playerPosition[0] - _testEntity[0]) * gridSpacingValue + centerX;
+        float posY = (playerPosition[1] - _testEntity[1]) * gridSpacingValue + centerY;
 
-        printf("Test entity is visible\n");
-        // The test entity is visible
-        // calculate the position of the test entity on the screen
-        float screenX = 2 * ((playerPosition[0] - _testEntity[0]) * gridSpacingValue + width/2) / width - 1;
-        float screenY = 2 * ((playerPosition[1] - _testEntity[1]) * gridSpacingValue + height/2) / height - 1;
-        // Render the test entity
+        // Normalize the screen coordinates for the shader
+        float screenX = (2 * posX / width - 1)/defaultGSV;
+        float screenY = (2 * posY / height - 1)/defaultGSV;
+        
         updateUniformsTexture(*shaderProgramTexture, textureID, screenX, screenY, 0.1f * gridSpacingValue/1000);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    } else {
-        // The test entity is not visible
     }
 
     // // Render the crosshair (third shader)
-    updateUniforms2(*shaderProgram2, width, height, gridSpacingValue);
+    updateUniforms2(*shaderProgram2, width, height, gridSpacingValue*4);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
     // Swap buffers

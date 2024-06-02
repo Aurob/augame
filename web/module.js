@@ -52,7 +52,7 @@ var Module = {
     switch (key) {
       case 'x':
       case 'y':
-        document.getElementById('position').innerHTML = `x: ${parseInt(Module.c_kv_data.x)}, y: ${parseInt(Module.c_kv_data.y)}`;
+        document.getElementById('position').innerHTML = `x: ${Module.c_kv_data.x}, y: ${Module.c_kv_data.y}`;
         break;
       case 'tilex':
       case 'tiley':
