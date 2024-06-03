@@ -170,6 +170,13 @@ void main() {
     
     float n = fBm(_coord.x, _coord.y, seed, frequency, amplitude, persistence, lacunarity, scale, octaves);
     vec3 color = tile_color(_coord, n);
+    
+    // Add gridlines
+    float gridLineThickness = 0.01; // Adjust thickness as needed
+    vec3 gridLineColor = vec3(1.0, 1.0, 1.0); // Set gridline color (white in this case)
+    if(mod(_coord.x, 1.0) < gridLineThickness || mod(_coord.y, 1.0) < gridLineThickness) {
+        color = gridLineColor;
+    }
 
     gl_FragColor = vec4(color, 1.0);
 }

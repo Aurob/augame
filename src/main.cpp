@@ -47,7 +47,7 @@ GLuint *shaderProgram;
 GLuint *shaderProgram2;
 GLuint *shaderProgramTexture;
 
-GLfloat positions[1][2]; // Adjust the size as needed
+float positions[100000][2]; // Adjust the size as needed
 int numPositions = 0;
 
 GLfloat gridSpacingValue = 16.0f;
@@ -74,7 +74,7 @@ bool windowResized = false;
 bool ready = false;
 
 // test entity for frustrum cull testing
-float _testEntity[2] = {0.0f, 500.0f};
+float _testEntity[2] = {20.0f, 500.0f};
 
 GLubyte pixelData[4];
 
@@ -158,12 +158,15 @@ int main(int argc, char *argv[])
     // Set random position
     // playerPosition[0] = static_cast<float>(playerPosition[0]);
     // playerPosition[1] = static_cast<float>(playerPosition[1]);
-    playerPosition[0] = rand() % 1000;
-    playerPosition[1] = rand() % 1000;
+    // playerPosition[0] = rand() % 1000;
+    // playerPosition[1] = rand() % 1000;
 
-    positions[0][0] = playerPosition[0];
-    positions[0][1] = playerPosition[1];
-    numPositions = 1;
+    numPositions = 10000;
+    for (int i = 0; i < numPositions; i++)
+    {
+        positions[i][0] = static_cast<float>(rand() % 100) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+        positions[i][1] = static_cast<float>(rand() % 100) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+    }
 
     // Assume total weight = 1.0; adjust weights as desired
     const float totalWeight = 1.0;
@@ -196,6 +199,8 @@ int main(int argc, char *argv[])
     _js__kvdata("scale", scale);
     _js__kvdata("octaves", octaves);
 
+
+    _js__fetch_configs();   
     _js__ready();
     
     // Set the main loop
@@ -257,6 +262,14 @@ void updateFrame()
     // set bounds
     toplefttile[0] = static_cast<int>(playerPosition[0] / defaultGSV) - (width / gridSpacingValue / 2);
     toplefttile[1] = static_cast<int>(playerPosition[1] / defaultGSV) - (height / gridSpacingValue / 2);
+
+    // random walk each position
+    for (int i = 0; i < numPositions; i++)
+    {
+        float time = SDL_GetTicks() / 1000.0f;
+        positions[i][0] += sin(time + i) * 0.1f;
+        positions[i][1] += cos(time + i) * 0.1f;
+    }
 }
 
 bool first_start = false;
@@ -278,9 +291,9 @@ void mainloop(void *arg)
     if(!ready) return;
     else if(!first_start) {
         first_start = true;
-        loadGL1(*shaderProgram);
-        loadGL2(*shaderProgram2);
-        textureID = loadGLTexture(*shaderProgramTexture);
+        loadGL1(shaderProgramMap["terrain"], "terrain");
+        loadGL1(shaderProgramMap["ui_layer"], "ui_layer");
+        textureID = loadGLTexture(shaderProgramMap["texture"]);
     }
 
     while (SDL_PollEvent(&ctx->event))
@@ -294,7 +307,8 @@ void mainloop(void *arg)
 
     // Render terrain (first shader)
     updateUniforms(
-        *shaderProgram,
+        // *shaderProgram,
+        shaderProgramMap["terrain"],
         gridSpacingValue, 
         offsetValue, 
         width, height, 
@@ -311,30 +325,35 @@ void mainloop(void *arg)
         frequency, amplitude, persistence, lacunarity, octaves);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     
-    // Render the test texture (second shader)
+    // // Render the test texture (second shader)
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    // Calculate the distance between the player and the test entity
-    // Incorporate default and current grid spacing in order to determine if the entity is visible
-    float distanceX = abs((playerPosition[0] - _testEntity[0]) * gridSpacingValue / defaultGSV);
-    float distanceY = abs((playerPosition[1] - _testEntity[1]) * gridSpacingValue / defaultGSV);
+    // // Calculate the distance between the player and the test entity
 
-    if (distanceX < width / 2 && distanceY < height / 2) {
-        
-        float posX = (playerPosition[0] - _testEntity[0]) * gridSpacingValue + centerX;
-        float posY = (playerPosition[1] - _testEntity[1]) * gridSpacingValue + centerY;
+    for(int i = 0; i < numPositions; i++) {
 
-        // Normalize the screen coordinates for the shader
-        float screenX = (2 * posX / width - 1)/defaultGSV;
-        float screenY = (2 * posY / height - 1)/defaultGSV;
-        
-        updateUniformsTexture(*shaderProgramTexture, textureID, screenX, screenY, 0.1f * gridSpacingValue/1000);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        float distanceX = abs((playerPosition[0] - positions[i][0]) * gridSpacingValue / defaultGSV);
+        float distanceY = abs((playerPosition[1] - positions[i][1]) * gridSpacingValue / defaultGSV);
+
+        if (distanceX < width / 2 && distanceY < height / 2) {
+            
+            float posX = (playerPosition[0] - positions[i][0]) * gridSpacingValue + centerX;
+            float posY = (playerPosition[1] - positions[i][1]) * gridSpacingValue + centerY;
+
+            // Normalize the screen coordinates for the shaderS
+            float screenX = (2 * posX / width - 1)/defaultGSV;
+            float screenY = (2 * posY / height - 1)/defaultGSV;
+            
+            updateUniformsTexture(shaderProgramMap["texture"], textureID, screenX, screenY, 0.1f * gridSpacingValue/10000);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+        }
     }
 
+
     // // Render the crosshair (third shader)
-    updateUniforms2(*shaderProgram2, width, height, gridSpacingValue*4);
+    updateUniforms2(shaderProgramMap["ui_layer"], width, height, gridSpacingValue*4);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
     // Swap buffers

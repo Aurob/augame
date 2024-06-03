@@ -2,6 +2,7 @@
 var Module = {
   initialized: false,
   c_kv_data: { x: 0, y: 0 },
+  shaders: [],
   canvas: (function () {
     const canvas = document.getElementById('canvas');
     return canvas;
@@ -23,6 +24,7 @@ var Module = {
     console.log("Ready");
     setEvents();
     loadInputs();
+
     // Set input values in c_kv_data
     const inputs = document.querySelectorAll('input');
     // console.log(inputs);
@@ -43,6 +45,7 @@ var Module = {
       });
     });
   },
+
   setkv: function (key, value) {
     Module.c_kv_data[key] = value;
     if (!Object.keys(Module.c_kv_data).includes(key)) {
@@ -74,4 +77,41 @@ var Module = {
     Module._load_json(strPtr);
     Module._free(strPtr);
   },
+
+  fetch_configs: function () {
+    let fetch_path = "demo-a";
+    fetch(`web/${fetch_path}.json?${Math.random()}`)
+      .then(res => res.json())
+      .then(json => {
+
+        if (json['shaders'] && Array.isArray(json['shaders'])) {
+          let totalShaders = json['shaders'].length;
+          let loadedShaders = 0;
+          json['shaders'].forEach(shader => {
+            ['vertex', 'fragment'].forEach(type => {
+              if (shader[type] && shader[type].includes('.glsl')) {
+                fetch(`web/${shader[type]}?${Math.random()}`)
+                  .then(res => res.text())
+                  .then(text => {
+                    shader[type] = text;
+                    if (type == 'fragment') {
+                      Module.js_to_c(JSON.stringify({
+                        shader: {
+                          name: shader['name'],
+                          vertex: shader['vertex'],
+                          fragment: shader['fragment']
+                        }
+                      }));
+                      loadedShaders++;
+                      if (loadedShaders === totalShaders) {
+                        Module.start();
+                      }
+                    }
+                  });
+              }
+            });
+          });
+        }
+      });
+  }
 }

@@ -2,7 +2,9 @@
 
 #include <SDL2/SDL.h>
 #include <SDL_opengles2.h>
-
+#include <vector>
+#include <unordered_map>
+#include <string>
 
 // Test Shaders:
 const GLchar *vertexSourceTest = R"glsl(
@@ -25,15 +27,22 @@ const GLchar *fragmentSourceTest = R"glsl(
 
 // Test Shaders that will be set when json config is loaded
 //  using the shaders passed from the json config
-const GLchar *vertexSource = nullptr;
-const GLchar *fragmentSource = nullptr;
+// const GLchar *vertexSource = nullptr;
+// const GLchar *fragmentSource = nullptr;
 
-const GLchar *vertexSource2 = nullptr;
-const GLchar *fragmentSource2 = nullptr;
+// const GLchar *vertexSource2 = nullptr;
+// const GLchar *fragmentSource2 = nullptr;
 
-// Texture shader
-const GLchar *vertexSourceTexture = nullptr;
-const GLchar *fragmentSourceTexture = nullptr;
+// // Texture shader
+// const GLchar *vertexSourceTexture = nullptr;
+// const GLchar *fragmentSourceTexture = nullptr;
 
 
 const char* texturePath = nullptr;
+
+// vector of shaders
+std::vector<GLuint> shaders;
+
+// map of shaders
+std::unordered_map<std::string, vector<const GLchar*>> shaderGLSLMap;
+std::unordered_map<std::string, GLuint> shaderProgramMap;

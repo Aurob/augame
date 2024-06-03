@@ -124,30 +124,27 @@ void updateUniforms2(GLuint &shaderProgram, float _width, float _height, float g
     glUniform1f(gridSpacingLocation, gridSpacingValue);
 }
 
-void loadGL1(GLuint &shaderProgram)
+void loadGL1(GLuint &shaderProgram, std::string program_name)
 {
-
-    printf("Vertex source 123: %s\n", vertexSource);
 
     // Create and compile vertex shader
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexSource, NULL);
+    glShaderSource(vertexShader, 1, &shaderGLSLMap[program_name][0], NULL);
     glCompileShader(vertexShader);
-
+    
     // Check for vertex shader compilation errors
     GLint success;
     GLchar infoLog[512];
     glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
     if (!success)
     {
-        printf("%s\n", vertexSource);
         glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
         printf("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n%s\n", infoLog);
     }
 
     // Create and compile fragment shader
     GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
+    glShaderSource(fragmentShader, 1, &shaderGLSLMap[program_name][1], NULL);
     glCompileShader(fragmentShader);
 
     // Check for fragment shader compilation errors
@@ -249,130 +246,12 @@ void loadGL1(GLuint &shaderProgram)
     // return shaderProgram;
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
+
+
+    shaderProgramMap[program_name] = shaderProgram;
 }
 
-void loadGL2(GLuint &shaderProgram)
-{
-    // Create and compile vertex shader
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexSource2, NULL);
-    glCompileShader(vertexShader);
-
-    // Check for vertex shader compilation errors
-    GLint success;
-    GLchar infoLog[512];
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        printf("%s\n", vertexSource2);
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        printf("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n%s\n", infoLog);
-    }
-
-    // Create and compile fragment shader
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentSource2, NULL);
-    glCompileShader(fragmentShader);
-
-    // Check for fragment shader compilation errors
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        printf("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n%s\n", infoLog);
-    }
-
-    shaderProgram = glCreateProgram();
-
-    printf("Attaching shaders...\n");
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-    printf("Linking shaders...\n");
-
-    // Check for linking errors
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if (!success)
-    {
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        printf("ERROR::SHADER::PROGRAM::LINKING_FAILED\n%s\n", infoLog);
-    }
-
-    GLuint vbo;
-    glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    GLfloat vertices[] =
-        {
-            -1.0f, 1.0f, 0.0f,  // Top Left
-            1.0f, 1.0f, 0.0f,   // Top Right
-            -1.0f, -1.0f, 0.0f, // Bottom Left
-            1.0f, -1.0f, 0.0f   // Bottom Right
-        };
-
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glUseProgram(shaderProgram);
-
-    // Specify the layout of the shader vertex data
-    GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
-    glEnableVertexAttribArray(posAttrib);
-    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-    // Don't forget to bind the VAO before you draw
-    GLuint ebo;
-    GLuint indices[] = {
-        0, 1, 2, // First Triangle
-        2, 1, 3  // Second Triangle
-    };
-
-    glGenBuffers(1, &ebo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    // // -------------------------------------------------------------
-    // Create texture
-    GLuint textureID;
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_2D, textureID);
-
-    // Set texture parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    // Allocate texture storage (but don't upload data yet)
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-
-    // Attach texture to framebuffer
-    GLuint fbo;
-    glGenFramebuffers(1, &fbo);
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureID, 0);
-
-    // Check framebuffer is complete
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        printf("Framebuffer not complete!\n");
-
-    // Render to texture (rtt)
-    glViewport(0, 0, width, height); // Match texture size
-    // Add your render code here: this will render to texture instead of screen
-    // Remember to clear the framebuffer using glClear if necessary
-
-    // Bind the default framebuffer to render to screen again
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, width, height); // Match window size
-
-    // In your render loop, use the generated texture
-    glBindTexture(GL_TEXTURE_2D, textureID);
-
-    // return shaderProgram;
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-}
-
-
-// Texture Stuff
+// // Texture Stuff
 
 GLuint compileShader(const char* shaderSource, GLenum shaderType) {
     GLuint shader = glCreateShader(shaderType);
@@ -431,12 +310,12 @@ void loadImageAndCreateTexture(const char* imagePath, GLuint &textureID) {
 
 GLuint loadGLTexture(GLuint &shaderProgram) {
     // Load shaders and create a program
-    shaderProgram = createProgram(vertexSourceTexture, fragmentSourceTexture);
+    shaderProgram = createProgram(shaderGLSLMap["texture"][0], shaderGLSLMap["texture"][1]);
     glUseProgram(shaderProgram);
 
     // Load an image and create a texture from it
     GLuint textureID;
-    loadImageAndCreateTexture(texturePath, textureID);
+    loadImageAndCreateTexture("resources/newa.png", textureID);
 
     // Define vertices for the texture
     // Each vertex has a position (x, y) and texture coordinates (s, t)
