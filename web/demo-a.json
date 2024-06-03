@@ -17,7 +17,7 @@
             "Player": true,
             "Position": {
                 "x": 0,
-                "y": 500
+                "y": 0
             },
             "Shape": {
                 "w":0.1,
@@ -33,17 +33,17 @@
     ],
     "shaders": [
         {
-            "type": "1",
+            "name": "terrain",
             "vertex": "attribute vec4 position; void main() { gl_Position = vec4(position.xyz, 1.0); }",
-            "fragment": "fragment1.glsl"
+            "fragment": "terrain.glsl"
         },
         {
-            "type": "2",
+            "name": "ui_layer",
             "vertex": "attribute vec4 position; void main() { gl_Position = vec4(position.xyz, 1.0); }",
-            "fragment": "fragment2.glsl"
+            "fragment": "ui_layer.glsl"
         },
         {
-            "type": "3",
+            "name": "texture",
             "vertex": "vert_tex.glsl",
             "fragment": "frag_tex.glsl",
             "texture": "resources/newa.png"
