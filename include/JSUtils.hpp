@@ -28,6 +28,7 @@ extern bool windowResized;
 extern GLfloat playerPosition[2];
 extern GLfloat gridSpacingValue;
 extern bool ready;
+
 // key, float value
 void _js__kvdata(string k, float v)
 {
@@ -116,6 +117,14 @@ extern "C"
                             vertexSource, 
                             fragmentSource
                         };
+
+                        // if shader has a texture key add to the map
+                        printf("has texture: %d\n", shader.contains("texture"));
+                        if(shader.contains("texture") && shader["texture"].is_string()) {
+                            printf("Texture: %s\n", shader["texture"].get<std::string>().c_str());
+                            const GLchar *textureSource = strdup(shader["texture"].get<std::string>().c_str());
+                            shaderGLSLMap[shader["name"]].push_back(textureSource);
+                        }
 
                         shaderProgramMap[shader["name"]] = 0;
 

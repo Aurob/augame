@@ -48,9 +48,18 @@ GLuint *shaderProgram2;
 GLuint *shaderProgramTexture;
 
 float positions[100000][2]; // Adjust the size as needed
-int numPositions = 0;
+// vector<float[2]> entities;
 
-GLfloat gridSpacingValue = 16.0f;
+int numPositions = 0;
+int numEntities = 0;
+unordered_map<int, vector<float>> entities;
+unordered_map<int, int> entity_validated;
+unordered_map<int, int[3]> entity_pos_rgb;
+unordered_map<int, float[2]> entity_pos_screen;
+unordered_map<int, bool> entity_visible;
+
+float defaultGSV = 16.0f;
+GLfloat gridSpacingValue = 2048.0f;
 GLfloat offsetValue[2] = {0.0f, 0.0f};
 int width = 1024;
 int height = 1024;
@@ -74,14 +83,17 @@ bool windowResized = false;
 bool ready = false;
 
 // test entity for frustrum cull testing
-float _testEntity[2] = {20.0f, 500.0f};
+float _testEntity[2] = {0.0f, 20.0f};
 
 GLubyte pixelData[4];
 
-float defaultGSV = gridSpacingValue;
 GLfloat tempPlayerPosition[2] = {0, 0};
 
 SDL_Surface *image = nullptr;
+
+// deltax
+int deltaX = 0;
+int deltaY = 0;
 
 GLuint textureID;
 GLint centerX;
@@ -161,11 +173,24 @@ int main(int argc, char *argv[])
     // playerPosition[0] = rand() % 1000;
     // playerPosition[1] = rand() % 1000;
 
-    numPositions = 10000;
-    for (int i = 0; i < numPositions; i++)
+    // numPositions = 1000;
+    // for (int i = 0; i < numPositions; i++)
+    // {
+    //     positions[i][0] = static_cast<float>(rand() % 100) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+    //     positions[i][1] = static_cast<float>(rand() % 100) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+    // }
+
+    numEntities = 10000;
+    for (int i = 0; i < numEntities; i++)
     {
-        positions[i][0] = static_cast<float>(rand() % 100) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-        positions[i][1] = static_cast<float>(rand() % 100) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+        entities[i] = {
+            static_cast<float>(rand() % 300) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX), 
+            static_cast<float>(rand() % 300) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX)
+        };
+        entity_validated[i] = false;
+        entity_pos_rgb[i][0] = -1;
+        entity_pos_rgb[i][1] = -1;
+        entity_pos_rgb[i][2] = -1;
     }
 
     // Assume total weight = 1.0; adjust weights as desired
@@ -244,8 +269,8 @@ void updateFrame()
     tempPlayerPosition[0] = playerPosition[0];
     tempPlayerPosition[1] = playerPosition[1];
 
-    float deltaX = (keys[SDLK_d] - keys[SDLK_a]);
-    float deltaY = (keys[SDLK_s] - keys[SDLK_w]);
+    deltaX = (keys[SDLK_d] - keys[SDLK_a]);
+    deltaY = (keys[SDLK_s] - keys[SDLK_w]);
     float normFactor = sqrt(deltaX * deltaX + deltaY * deltaY);
     if (normFactor != 0) {
         deltaX /= normFactor;
@@ -264,15 +289,52 @@ void updateFrame()
     toplefttile[1] = static_cast<int>(playerPosition[1] / defaultGSV) - (height / gridSpacingValue / 2);
 
     // random walk each position
-    for (int i = 0; i < numPositions; i++)
-    {
-        float time = SDL_GetTicks() / 1000.0f;
-        positions[i][0] += sin(time + i) * 0.1f;
-        positions[i][1] += cos(time + i) * 0.1f;
-    }
+    // for (int i = 0; i < numPositions; i++)
+    // {
+    //     float time = SDL_GetTicks() / 1000.0f;
+    //     positions[i][0] += sin(time + i) * 0.1f;
+    //     positions[i][1] += cos(time + i) * 0.1f;
+    // }
 }
 
+
+// Water RGB: (20.0 / 255.0, 24.0 / 255.0, 34.0 / 255.0)
+// Sand RGB: (0.95, 0.87, 0.70)
+// Dirt RGB: (164.0 / 255.0, 158.0 / 255.0, 130.0 / 255.0)
+// Grass RGB: (48.0 / 255.0, 71.0 / 255.0, 40.0 / 255.0)
+// Stone RGB: (144.0 / 255.0, 144.0 / 255.0, 144.0 / 255.0)
+// Snow RGB: (1.0, 1.0, 1.0)
+
+int simple_tile_color(float n) {
+    if (n < waterMax) {
+        // Water
+        return 0;
+    } else if (n < sandMax) {
+        // Sand 
+        return 1;
+    } else if (n < dirtMax) {
+        // Dirt
+        return 2;
+    } else if (n < grassMax) {
+        // Grass
+        return 3;
+    } else if (n < stoneMax) {
+        // Stone
+        return 4;
+    } else {
+        // Snow
+        return 5;
+    }
+    return -1;
+}
+
+float getTerrainAtPoint(float px, float py, float frequency, float amplitude) {
+    return simple_tile_color(smootherNoise({px * frequency, py * frequency}) * amplitude);
+}
+
+
 bool first_start = false;
+bool one_time = false;
 void mainloop(void *arg)
 {
     deltaTime = (SDL_GetTicks() - lastTime) / 1000.0f;
@@ -296,11 +358,12 @@ void mainloop(void *arg)
         textureID = loadGLTexture(shaderProgramMap["texture"]);
     }
 
+
     while (SDL_PollEvent(&ctx->event))
     {
         EventHandler(0, &ctx->event);
     }
-
+    
     updateFrame();
 
     glClear(GL_COLOR_BUFFER_BIT);
@@ -324,40 +387,89 @@ void mainloop(void *arg)
         lastTime,
         frequency, amplitude, persistence, lacunarity, octaves);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    
-    // // Render the test texture (second shader)
+
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    // // Calculate the distance between the player and the test entity
+    // // Render the crosshair (third shader)
+    updateUniforms2(shaderProgramMap["ui_layer"], width, height, gridSpacingValue);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-    for(int i = 0; i < numPositions; i++) {
-
-        float distanceX = abs((playerPosition[0] - positions[i][0]) * gridSpacingValue / defaultGSV);
-        float distanceY = abs((playerPosition[1] - positions[i][1]) * gridSpacingValue / defaultGSV);
-
-        if (distanceX < width / 2 && distanceY < height / 2) {
-            
-            float posX = (playerPosition[0] - positions[i][0]) * gridSpacingValue + centerX;
-            float posY = (playerPosition[1] - positions[i][1]) * gridSpacingValue + centerY;
-
-            // Normalize the screen coordinates for the shaderS
-            float screenX = (2 * posX / width - 1)/defaultGSV;
-            float screenY = (2 * posY / height - 1)/defaultGSV;
-            
-            updateUniformsTexture(shaderProgramMap["texture"], textureID, screenX, screenY, 0.1f * gridSpacingValue/10000);
+    // Render visible test entities
+    // render each valid entity
+    for(auto& entity : entities) {
+        if (entity_validated[entity.first]==1 && entity_visible[entity.first]) {
+            updateUniformsTexture(shaderProgramMap["texture"], 
+                textureID, entity_pos_screen[entity.first][0], entity_pos_screen[entity.first][1], 0.1f * gridSpacingValue/1000);
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
         }
     }
 
-
-    // // Render the crosshair (third shader)
-    updateUniforms2(shaderProgramMap["ui_layer"], width, height, gridSpacingValue*4);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
     // Swap buffers
     SDL_GL_SwapWindow(ctx->window);
+
+    
+    for(auto& entity : entities) {
+
+        if(entity_validated[entity.first] == 2) {
+            // refresh entity position
+            entity_validated[entity.first] = 0;
+            entity_pos_rgb[entity.first][0] = -1;
+            entity_pos_rgb[entity.first][1] = -1;
+            entity_pos_rgb[entity.first][2] = -1;
+
+            entities[entity.first] = {
+                static_cast<float>(rand() % 300) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX), 
+                static_cast<float>(rand() % 300) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX)
+            };
+        }
+        
+        float entity_player_diffX = (playerPosition[0] - entity.second[0]);
+        float entity_player_diffY = (playerPosition[1] - entity.second[1]);
+
+
+        float distanceX = abs(entity_player_diffX * gridSpacingValue / defaultGSV);
+        float distanceY = abs(entity_player_diffY * gridSpacingValue / defaultGSV);
+
+        if (distanceX < width / 2 && distanceY < height / 2) {
+
+            
+            float posX = (playerPosition[0] - entity.second[0]) * gridSpacingValue + centerX;
+            float posY = (playerPosition[1] - entity.second[1]) * gridSpacingValue + centerY;
+
+            entity_pos_screen[entity.first][0] = (2 * posX / width - 1)/defaultGSV;
+            entity_pos_screen[entity.first][1] = (2 * posY / height - 1)/defaultGSV;
+            
+            // check if entity has been validated
+            if (entity_validated[entity.first] == 0) {
+                // check if the entity is on the grass, if not remove it and skip
+                unsigned char pixel[4];
+                glReadPixels(entity_pos_screen[entity.first][0] * width / 2 + width / 2, entity_pos_screen[entity.first][1] * height / 2 + height / 2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+
+                // Water RGB: (20.0 / 255.0, 24.0 / 255.0, 34.0 / 255.0)
+                // Sand RGB: (0.95, 0.87, 0.70)
+                // Dirt RGB: (164.0 / 255.0, 158.0 / 255.0, 130.0 / 255.0)
+                // Grass RGB: (48.0 / 255.0, 71.0 / 255.0, 40.0 / 255.0)
+                // Stone RGB: (144.0 / 255.0, 144.0 / 255.0, 144.0 / 255.0)
+                // Snow RGB: (1.0, 1.0, 1.0)
+
+                if (pixel[0] == 48 && pixel[1] == 71 && pixel[2] == 40) {
+                    entity_validated[entity.first] = 1;
+                } 
+                else {
+                    entity_validated[entity.first] = 2;
+                }
+            }
+
+            // check if entity is visible
+            if (entity_validated[entity.first] == 1) {
+                entity_visible[entity.first] = true;
+            }
+        }
+        else if(entity_visible[entity.first]) {
+            entity_visible[entity.first] = false;
+        }
+    }
 
     // Update Info on front end
     // Player position x:y
