@@ -92,8 +92,8 @@ GLfloat tempPlayerPosition[2] = {0, 0};
 SDL_Surface *image = nullptr;
 
 // deltax
-int deltaX = 0;
-int deltaY = 0;
+float deltaX = 0;
+float deltaY = 0;
 
 GLuint textureID;
 GLint centerX;
