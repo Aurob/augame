@@ -16,7 +16,7 @@
         {
             "Player": true,
             "Position": {
-                "x": 0,
+                "x": 10000,
                 "y": 0
             },
             "Shape": {
@@ -46,7 +46,7 @@
             "name": "texture",
             "vertex": "vert_tex.glsl",
             "fragment": "frag_tex.glsl",
-            "texture": "resources/newa.png"
+            "texture": "resources/tree11.png"
         }
     ]
 }

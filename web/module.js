@@ -64,6 +64,14 @@ var Module = {
       case 'scale':
         document.getElementById('scale').innerHTML = `scale: ${Module.c_kv_data.scale}`;
         break;
+      case 'terrain_type':
+        document.getElementById('terrain-type').innerHTML = `tile: ${Module.c_kv_data.terrain_type}`;
+        break;
+      case 'r':
+      case 'g':
+      case 'b':
+        document.getElementById('color').innerHTML = `r: ${Module.c_kv_data.r}, g: ${Module.c_kv_data.g}, b: ${Module.c_kv_data.b}, a: ${Module.c_kv_data.a}`;
+        break;
     }
 
   },
@@ -99,7 +107,8 @@ var Module = {
                         shader: {
                           name: shader['name'],
                           vertex: shader['vertex'],
-                          fragment: shader['fragment']
+                          fragment: shader['fragment'],
+                          texture: shader['texture'] || null,
                         }
                       }));
                       loadedShaders++;
