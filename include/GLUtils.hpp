@@ -6,7 +6,8 @@
 
 extern int seed;
 extern GLfloat cursorPos[2];
-
+extern float dirtMax;
+extern float grassMax;
 void loadGl(SDL_Window *mpWindow)
 {
 
@@ -441,4 +442,13 @@ float smootherNoise(const std::array<float, 2>& p) {
     float nX0 = (1 - u[0]) * n00 + u[0] * n10;
     float nX1 = (1 - u[0]) * n01 + u[0] * n11;
     return (1 - u[1]) * nX0 + u[1] * nX1;
+}
+
+// Function to get a random position for a given noise value
+std::array<float, 2> getRandomPositionForNoise(float noiseValue) {
+    std::array<float, 2> position;
+    do {
+        position = {static_cast<float>(rand()) / RAND_MAX * 100.0f, static_cast<float>(rand()) / RAND_MAX * 100.0f};
+    } while (std::abs(smootherNoise(position) - noiseValue) > 0.01f);
+    return position;
 }
