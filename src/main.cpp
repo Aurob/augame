@@ -9,9 +9,11 @@
 #include "../include/events.hpp"
 #include "../include/GLUtils.hpp"
 #include "../include/JSUtils.hpp"
-
+#include "../include/entt.hpp"
 
 using namespace std;
+
+extern entt::registry registry;
 
 // External variables
 extern int width, height;
@@ -38,32 +40,16 @@ extern GLfloat playerPosition[2];
 extern GLfloat gridSpacingValue;
 extern bool ready;
 
+// General variables
+int width = 1024;
+int height = 1024;
 float deltaTime = 0;
 int seed = 0;
 unordered_map<int, bool> keys;
 GLfloat cursorPos[2] = {0, 0};
-
-GLuint *shaderProgram;
-GLuint *shaderProgram2;
-GLuint *shaderProgramTexture;
-
-float positions[100000][2]; // Adjust the size as needed
-// vector<float[2]> entities;
-
-int numPositions = 0;
-int numEntities = 0;
-unordered_map<int, vector<float>> entities;
-unordered_map<int, int> entity_validated;
-unordered_map<int, int[3]> entity_pos_rgb;
-unordered_map<int, float[2]> entity_pos_screen;
-unordered_map<int, bool> entity_visible;
-
-float defaultGSV = 16.0f;
+GLfloat playerPosition[2] = {0, 0};
 GLfloat gridSpacingValue = 2048.0f;
 GLfloat offsetValue[2] = {0.0f, 0.0f};
-int width = 1024;
-int height = 1024;
-GLfloat playerPosition[2] = {0, 0};
 GLfloat toplefttile[2] = {0.0f, 0.0f};
 int tileMinMax[4] = {0, 0, 0, 0};
 float waterMax;
@@ -72,7 +58,6 @@ float dirtMax;
 float grassMax;
 float stoneMax;
 float snowMax;
-int lastTime = 0;
 float frequency = -1.9243269;
 float amplitude = 1.0;
 float persistence = 0.5;
@@ -81,29 +66,30 @@ float scale = 1;
 int octaves = 12;
 bool windowResized = false;
 bool ready = false;
-
-// test entity for frustrum cull testing
-float _testEntity[2] = {0.0f, 20.0f};
-
-GLubyte pixelData[4];
-
-GLfloat tempPlayerPosition[2] = {0, 0};
-
-SDL_Surface *image = nullptr;
-
-// deltax
+float moveSpeed = 1;
+float defaultMoveSpeed = moveSpeed;
 float deltaX = 0;
 float deltaY = 0;
-
+int frameTime = 0;
+int lastTime = 0;
+int numEntities = 0;
 GLuint textureID;
 GLint centerX;
 GLint centerY;
-float moveSpeed = 1;
-float defaultMoveSpeed = moveSpeed;
-bool zooming = false;
-// General variables
-int frameTime = 0;
-// Set structs
+GLuint *shaderProgram;
+GLuint *shaderProgram2;
+GLuint *shaderProgramTexture;
+unordered_map<int, vector<float>> entities;
+unordered_map<int, int> entity_validated;
+unordered_map<int, int[3]> entity_pos_rgb;
+unordered_map<int, float[2]> entity_pos_screen;
+unordered_map<int, bool> entity_visible;
+float defaultGSV = 16.0f;
+SDL_Surface *image = nullptr;
+bool first_start = false;
+bool one_time = false;
+float _moveSpeed = 0;
+
 struct context
 {
     SDL_Event event;
@@ -111,18 +97,21 @@ struct context
     SDL_Window *window;
 };
 
+struct Position {
+    float x;
+    float y;
+};
+
 context ctx;
 
 void mainloop(void *arg);
 void EventHandler(int, SDL_Event *);
 void animations(context *ctx);
+int simple_tile_color(float);
+float getTerrainAtPoint(float, float, float, float);
 
 int main(int argc, char *argv[])
 {
-
-    // seed = time(0);
-    // srand(seed);
-    // seed = rand() % 100000;
     seed = 0;
     shaderProgram = new GLuint;
     shaderProgram2 = new GLuint;
@@ -131,18 +120,12 @@ int main(int argc, char *argv[])
 
     // Initialize SDL and SDL_Image
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-
         printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
-
         return -1;
-
     }
     if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
-
         printf("SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError());
-
         return -1;
-
     }
 
     SDL_Window *mpWindow = SDL_CreateWindow("Shader Terrain",
@@ -153,45 +136,15 @@ int main(int argc, char *argv[])
     if (!mpWindow) {
         printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
         return -1;
-
     }
-
-    // SDL_ShowCursor(SDL_DISABLE);
 
     ctx.window = mpWindow;
 
     // Link vertex and fragment shader into shader program and use it
     loadGl(mpWindow);
     
-    // --------------------------------
     centerX = width / 2;
     centerY = height / 2;
-
-    // Set random position
-    // playerPosition[0] = static_cast<float>(playerPosition[0]);
-    // playerPosition[1] = static_cast<float>(playerPosition[1]);
-    // playerPosition[0] = rand() % 1000;
-    // playerPosition[1] = rand() % 1000;
-
-    // numPositions = 1000;
-    // for (int i = 0; i < numPositions; i++)
-    // {
-    //     positions[i][0] = static_cast<float>(rand() % 100) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-    //     positions[i][1] = static_cast<float>(rand() % 100) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-    // }
-
-    numEntities = 10000;
-    for (int i = 0; i < numEntities; i++)
-    {
-        entities[i] = {
-            static_cast<float>(rand() % 300) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX), 
-            static_cast<float>(rand() % 300) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX)
-        };
-        entity_validated[i] = false;
-        entity_pos_rgb[i][0] = -1;
-        entity_pos_rgb[i][1] = -1;
-        entity_pos_rgb[i][2] = -1;
-    }
 
     // Assume total weight = 1.0; adjust weights as desired
     const float totalWeight = 1.0;
@@ -210,6 +163,20 @@ int main(int argc, char *argv[])
     stoneMax = weights[4] * totalWeight;
     snowMax = weights[5] * totalWeight; // This should naturally be totalWeight (1.0) if weights sum correctly
 
+    numEntities = 10000;
+    for (int i = numEntities; i > 0; i--)
+    {
+        float x = static_cast<float>(rand() % 300) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+        float y = static_cast<float>(rand() % 300) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+
+        entities[i] = {x, y};
+        entity_validated[i] = false;
+        entity_pos_rgb[i][0] = -1;
+        entity_pos_rgb[i][1] = -1;
+        entity_pos_rgb[i][2] = -1;
+        
+    }
+
     // Send variable defaults to JS with _js__kvdata(key, value)
     _js__kvdata("waterMax", waterMax);
     _js__kvdata("sandMax", sandMax);
@@ -223,7 +190,6 @@ int main(int argc, char *argv[])
     _js__kvdata("lacunarity", lacunarity);
     _js__kvdata("scale", scale);
     _js__kvdata("octaves", octaves);
-
 
     _js__fetch_configs();   
     _js__ready();
@@ -244,12 +210,14 @@ void updateFrame()
 {
     if (keys[ZOOM_IN])
     {
-        gridSpacingValue *= 2.0f;
+        // gridSpacingValue *= 2.0f;
+        gridSpacingValue *= 1.1f;
         keys[ZOOM_IN] = false;
     }
     else if (keys[ZOOM_OUT])
     {
-        gridSpacingValue /= 2.0f;
+        // gridSpacingValue /= 2.0f;
+        gridSpacingValue /= 1.1f;
         keys[ZOOM_OUT] = false;
     }
 
@@ -265,9 +233,7 @@ void updateFrame()
     }
 
     // Update player position
-    float _moveSpeed = moveSpeed * deltaTime;
-    tempPlayerPosition[0] = playerPosition[0];
-    tempPlayerPosition[1] = playerPosition[1];
+    _moveSpeed = moveSpeed * deltaTime;
 
     deltaX = (keys[SDLK_d] - keys[SDLK_a]);
     deltaY = (keys[SDLK_s] - keys[SDLK_w]);
@@ -287,23 +253,7 @@ void updateFrame()
     // set bounds
     toplefttile[0] = static_cast<int>(playerPosition[0] / defaultGSV) - (width / gridSpacingValue / 2);
     toplefttile[1] = static_cast<int>(playerPosition[1] / defaultGSV) - (height / gridSpacingValue / 2);
-
-    // random walk each position
-    // for (int i = 0; i < numPositions; i++)
-    // {
-    //     float time = SDL_GetTicks() / 1000.0f;
-    //     positions[i][0] += sin(time + i) * 0.1f;
-    //     positions[i][1] += cos(time + i) * 0.1f;
-    // }
 }
-
-
-// Water RGB: (20.0 / 255.0, 24.0 / 255.0, 34.0 / 255.0)
-// Sand RGB: (0.95, 0.87, 0.70)
-// Dirt RGB: (164.0 / 255.0, 158.0 / 255.0, 130.0 / 255.0)
-// Grass RGB: (48.0 / 255.0, 71.0 / 255.0, 40.0 / 255.0)
-// Stone RGB: (144.0 / 255.0, 144.0 / 255.0, 144.0 / 255.0)
-// Snow RGB: (1.0, 1.0, 1.0)
 
 int simple_tile_color(float n) {
     if (n < waterMax) {
@@ -332,9 +282,6 @@ float getTerrainAtPoint(float px, float py, float frequency, float amplitude) {
     return simple_tile_color(smootherNoise({px * frequency, py * frequency}) * amplitude);
 }
 
-
-bool first_start = false;
-bool one_time = false;
 void mainloop(void *arg)
 {
     deltaTime = (SDL_GetTicks() - lastTime) / 1000.0f;
@@ -358,19 +305,18 @@ void mainloop(void *arg)
         textureID = loadGLTexture(shaderProgramMap["texture"]);
     }
 
-
     while (SDL_PollEvent(&ctx->event))
     {
         EventHandler(0, &ctx->event);
     }
-    
-    updateFrame();
 
+
+    updateFrame();
+    
     glClear(GL_COLOR_BUFFER_BIT);
 
     // Render terrain (first shader)
     updateUniforms(
-        // *shaderProgram,
         shaderProgramMap["terrain"],
         gridSpacingValue, 
         offsetValue, 
@@ -391,37 +337,25 @@ void mainloop(void *arg)
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    // // Render the crosshair (third shader)
+    // Render the crosshair (third shader)
     updateUniforms2(shaderProgramMap["ui_layer"], width, height, gridSpacingValue);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-    // Render visible test entities
-    // render each valid entity
+
     for(auto& entity : entities) {
-        if (entity_validated[entity.first]==1 && entity_visible[entity.first]) {
-            updateUniformsTexture(shaderProgramMap["texture"], 
-                textureID, entity_pos_screen[entity.first][0], entity_pos_screen[entity.first][1], 0.1f * gridSpacingValue/1000);
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        }
-    }
-
-    // Swap buffers
-    SDL_GL_SwapWindow(ctx->window);
-
-    
-    for(auto& entity : entities) {
-
         if(entity_validated[entity.first] == 2) {
             // refresh entity position
-            entity_validated[entity.first] = 0;
-            entity_pos_rgb[entity.first][0] = -1;
-            entity_pos_rgb[entity.first][1] = -1;
-            entity_pos_rgb[entity.first][2] = -1;
+            // entity_validated[entity.first] = 0;
+            // entity_pos_rgb[entity.first][0] = -1;
+            // entity_pos_rgb[entity.first][1] = -1;
+            // entity_pos_rgb[entity.first][2] = -1;
 
-            entities[entity.first] = {
-                static_cast<float>(rand() % 300) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX), 
-                static_cast<float>(rand() % 300) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX)
-            };
+            // entities[entity.first] = {
+            //     static_cast<float>(rand() % 300) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX), 
+            //     static_cast<float>(rand() % 300) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX)
+            // };
+
+            continue;
         }
         
         float entity_player_diffX = (playerPosition[0] - entity.second[0]);
@@ -433,25 +367,20 @@ void mainloop(void *arg)
 
         if (distanceX < width / 2 && distanceY < height / 2) {
 
-            
             float posX = (playerPosition[0] - entity.second[0]) * gridSpacingValue + centerX;
             float posY = (playerPosition[1] - entity.second[1]) * gridSpacingValue + centerY;
 
             entity_pos_screen[entity.first][0] = (2 * posX / width - 1)/defaultGSV;
             entity_pos_screen[entity.first][1] = (2 * posY / height - 1)/defaultGSV;
-            
+
+            entity_pos_screen[entity.first][0] -= _moveSpeed/width;
+            entity_pos_screen[entity.first][1] += _moveSpeed/height;
+
             // check if entity has been validated
             if (entity_validated[entity.first] == 0) {
                 // check if the entity is on the grass, if not remove it and skip
                 unsigned char pixel[4];
                 glReadPixels(entity_pos_screen[entity.first][0] * width / 2 + width / 2, entity_pos_screen[entity.first][1] * height / 2 + height / 2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
-
-                // Water RGB: (20.0 / 255.0, 24.0 / 255.0, 34.0 / 255.0)
-                // Sand RGB: (0.95, 0.87, 0.70)
-                // Dirt RGB: (164.0 / 255.0, 158.0 / 255.0, 130.0 / 255.0)
-                // Grass RGB: (48.0 / 255.0, 71.0 / 255.0, 40.0 / 255.0)
-                // Stone RGB: (144.0 / 255.0, 144.0 / 255.0, 144.0 / 255.0)
-                // Snow RGB: (1.0, 1.0, 1.0)
 
                 if (pixel[0] == 48 && pixel[1] == 71 && pixel[2] == 40) {
                     entity_validated[entity.first] = 1;
@@ -461,7 +390,7 @@ void mainloop(void *arg)
                 }
             }
 
-            // check if entity is visible
+            // // check if entity is visible
             if (entity_validated[entity.first] == 1) {
                 entity_visible[entity.first] = true;
             }
@@ -471,18 +400,30 @@ void mainloop(void *arg)
         }
     }
 
+    // Render visible test entities
+    for(auto& entity : entities) {
+        if (entity_validated[entity.first] == 1 && entity_visible[entity.first]) {
+            updateUniformsTexture(shaderProgramMap["texture"], 
+                textureID, entity_pos_screen[entity.first][0], entity_pos_screen[entity.first][1], 0.1f * gridSpacingValue/1000);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        }
+    }
+
+    // Swap buffers
+    SDL_GL_SwapWindow(ctx->window);
+
+
     // Update Info on front end
-    // Player position x:y
     _js__kvdata("x", playerPosition[0]);
     _js__kvdata("y", playerPosition[1]);
-
-    // Current tile x:y
     _js__kvdata("tilex", static_cast<int>(playerPosition[0] / defaultGSV));
     _js__kvdata("tiley", static_cast<int>(playerPosition[1] / defaultGSV));
-
-    // Current scale from gridSpacingValue
     _js__kvdata("scale", gridSpacingValue);
 
-    ctx->iteration++;
+    float modifiedPosX = ((2 * playerPosition[0] / width - 1) / defaultGSV) - (_moveSpeed / width);
+    float modifiedPosY = ((2 * playerPosition[1] / height - 1) / defaultGSV) + (_moveSpeed / height);
     
+    _js__kvdata("player-terrain-noise", getTerrainAtPoint(modifiedPosX, modifiedPosY, frequency, amplitude));
+
+    ctx->iteration++;
 }

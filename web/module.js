@@ -72,6 +72,9 @@ var Module = {
       case 'b':
         document.getElementById('color').innerHTML = `r: ${Module.c_kv_data.r}, g: ${Module.c_kv_data.g}, b: ${Module.c_kv_data.b}, a: ${Module.c_kv_data.a}`;
         break;
+      case 'player-terrain-noise':
+        document.getElementById('player-terrain-noise').innerHTML = `player-terrain-noise: ${Module.c_kv_data['player-terrain-noise']}`;
+        break;
     }
 
   },
