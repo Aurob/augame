@@ -46,3 +46,9 @@ std::vector<GLuint> shaders;
 // map of shaders
 std::unordered_map<std::string, vector<const GLchar*>> shaderGLSLMap;
 std::unordered_map<std::string, GLuint> shaderProgramMap;
+
+// map of texture names and paths
+std::unordered_map<std::string, std::string> textureMap;
+
+// map of texture ids
+std::unordered_map<std::string, GLuint> textureIDMap;

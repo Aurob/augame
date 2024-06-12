@@ -98,7 +98,7 @@ extern "C"
         if (js_json.contains("shader") && js_json["shader"].is_object())
         { 
             // should contain "name", "vertex", "fragment"
-            auto &shader = js_json["shader"];
+            auto shader = js_json["shader"];
 
             if (shader.contains("name") && shader["name"].is_string()) {
 
@@ -111,63 +111,33 @@ extern "C"
 
                         
                         const GLchar *vertexSource = strdup(shader["vertex"].get<std::string>().c_str());
-                        const GLchar *fragmentSource = strdup(shader["fragment"].get<std::string>().c_str());                  std::string fragmentSourceStr = shader["fragment"].get<std::string>();
+                        const GLchar *fragmentSource = strdup(shader["fragment"].get<std::string>().c_str());                  
+                        std::string fragmentSourceStr = shader["fragment"].get<std::string>();
                         
                         shaderGLSLMap[shader["name"]] = {
                             vertexSource, 
                             fragmentSource
                         };
-
-                        // if shader has a texture key add to the map
-                        printf("has texture: %d\n", shader.contains("texture"));
-                        if(shader.contains("texture") && shader["texture"].is_string()) {
-                            printf("Texture: %s\n", shader["texture"].get<std::string>().c_str());
-                            const GLchar *textureSource = strdup(shader["texture"].get<std::string>().c_str());
-                            shaderGLSLMap[shader["name"]].push_back(textureSource);
-                        }
-
-                        shaderProgramMap[shader["name"]] = 0;
-
+                        
                         printf("Loaded shader: %s\n", shader["name"].get<std::string>().c_str());                        
                     }
                 }
             }
         }
 
-        // if (js_json.contains("shaders") && js_json["shaders"].is_array())
-        // {
-        //     // printf("Shaders: %s\n", js_json["shaders"].dump().c_str());
-        //     for (const auto& shader : js_json["shaders"])
-        //     {
-        //         // printf("Shader: %s\n", shader.dump().c_str());
-        //         if (shader.is_object() && shader.contains("vertex") && shader["vertex"].is_string() && shader.contains("fragment") && shader["fragment"].is_string())
-        //         {
+        if (js_json.contains("texture") && js_json["texture"].is_object()) {
+            auto texture = js_json["texture"];
+            if (texture.contains("name") && texture["name"].is_string()) {
+                bool texture_exists = textureMap.find(texture["name"]) != textureMap.end();
+                if(!texture_exists) {
+                    if(texture.contains("path") && texture["path"].is_string()) {
+                        textureMap[texture["name"]] = texture["path"];
+                        printf("Loaded texture: %s\n", texture["path"].get<std::string>().c_str());
+                    }
+                }
+            }
+        }
 
-        //             // printf("Shader: %s\n", shader.dump().c_str());
-        //             if(shader.contains("type") && shader["type"].is_string()) {
-        //                 if(shader["type"] == "1") {
-        //                     vertexSource = strdup(shader["vertex"].get<std::string>().c_str());
-        //                     fragmentSource = strdup(shader["fragment"].get<std::string>().c_str());
-        //                 }
-        //                 else if(shader["type"] == "2") {
-        //                     vertexSource2 = strdup(shader["vertex"].get<std::string>().c_str());
-        //                     fragmentSource2 = strdup(shader["fragment"].get<std::string>().c_str());
-        //                 }
-        //                 else if(shader["type"] == "3") {
-        //                     vertexSourceTexture = strdup(shader["vertex"].get<std::string>().c_str());
-        //                     fragmentSourceTexture = strdup(shader["fragment"].get<std::string>().c_str());
-
-        //                     // set texturePath if 'texture' key is present
-        //                     if(shader.contains("texture") && shader["texture"].is_string()) {
-        //                         texturePath = strdup(shader["texture"].get<std::string>().c_str());
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //         // printf("Shader: %s\n", shader.dump().c_str());
-        //     // }
-        //     }
-        // }
         if (js_json.contains("option") && js_json["option"].is_string() && js_json.contains("value"))
         {
             auto value = js_json["value"];

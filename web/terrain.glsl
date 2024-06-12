@@ -82,30 +82,35 @@ float configurableNoise(vec2 p, float frequency, float amplitude) {
 
 void main() {
     vec2 coord1 = gl_FragCoord.xy;
-    vec2 coord = (((coord1/grid_spacing) - toplefttile) * grid_spacing) - offset;
+    vec2 coord = (((coord1 / grid_spacing) - toplefttile) * grid_spacing) - offset;
     vec2 _coord = coord / grid_spacing;
     _coord -= resolution * 1.0 / grid_spacing;
-    
-    // Create basic black/white tiles
-    // vec3 color = mod(floor(_coord.x) + floor(_coord.y), 2.0) > 0.5 ? vec3(1.0, 1.0, 1.0) : vec3(0.0, 0.0, 0.0);
 
+    // Calculate distance from the center of the screen (player position)
+    vec2 screenCenter = resolution / 2.0;
+    float playerDistance = distance(screenCenter, gl_FragCoord.xy);
+
+    vec3 finalColor;
+    float scaledRadius = 0.5 * grid_spacing; // Scale the radius with grid spacing
     // Create noise-based terrain
     float n = configurableNoise(_coord, frequency, amplitude);
-    
-    // If cursorPos in 10 radius, disturb the noise
-    float distance = distance(vec2(cursorPos.x, resolution - cursorPos.y), gl_FragCoord.xy);
-    if (distance < 10.0) {
-        n += sin(distance) * 0.9;
+
+    // Calculate the gradient factor for the atmosphere based on the distance from the player
+    float atmosphereFactor = smoothstep(scaledRadius, scaledRadius * 2.0, playerDistance);
+
+    // Calculate terrain color
+    vec3 terrainColor = simple_tile_color(_coord, n);
+
+    // Calculate atmosphere color (light blue gradient)
+    vec3 atmosphereColor = mix(vec3(0.0), vec3(0.5, 0.7, 1.0), atmosphereFactor);
+
+    // Calculate space color (black with points of white and colored light)
+    vec3 spaceColor = vec3(0.0);
+    float starValue = sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233)) * 43758.5453);
+    if (fract(starValue) > 0.995) {
+        spaceColor = vec3(1.0); // White points
     }
-    vec3 color = simple_tile_color(_coord, n);
-
-    // Add gridlines
-    //float gridLineThickness = 0.01; // Adjust thickness as needed
-    //vec3 gridLineColor = vec3(1.0, 1.0, 1.0); // Set gridline color (white in this case)
-    //if(mod(_coord.x, 1.0) < gridLineThickness || mod(_coord.y, 1.0) < gridLineThickness) {
-    //    color = gridLineColor;
-    //}
-
-    
-    gl_FragColor = vec4(color, 1.0);
+    // Mix terrain, atmosphere, and space colors based on the gradient factor
+    finalColor = mix(spaceColor, mix(terrainColor, atmosphereColor, atmosphereFactor), 1.0 - atmosphereFactor);
+    gl_FragColor = vec4(finalColor, 1.0);
 }
