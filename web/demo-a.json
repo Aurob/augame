@@ -45,8 +45,22 @@
         {
             "name": "texture",
             "vertex": "vert_tex.glsl",
-            "fragment": "frag_tex.glsl",
-            "texture": "resources/tree11.png"
+            "fragment": "frag_tex.glsl"
+        },
+        {
+            "name": "debug_entity",
+            "vertex": "test_rgb_v.glsl",
+            "fragment": "test_rgb_f.glsl"
+        }
+    ],
+    "textures": [
+        {
+            "name": "tree",
+            "path": "resources/tree11.png"
+        },
+        {
+            "name": "door",
+            "path": "resources/door.jpg"
         }
     ]
 }

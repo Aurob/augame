@@ -10,6 +10,7 @@
 #include "../include/GLUtils.hpp"
 #include "../include/JSUtils.hpp"
 #include "../include/entt.hpp"
+#include "../include/structs.hpp"
 
 using namespace std;
 
@@ -40,6 +41,8 @@ extern GLfloat playerPosition[2];
 extern GLfloat gridSpacingValue;
 extern bool ready;
 
+entt::registry registry;
+
 // General variables
 int width = 1024;
 int height = 1024;
@@ -48,6 +51,7 @@ int seed = 0;
 unordered_map<int, bool> keys;
 GLfloat cursorPos[2] = {0, 0};
 GLfloat playerPosition[2] = {0, 0};
+GLfloat tempPlayerPosition[2] = {0, 0};
 GLfloat gridSpacingValue = 2048.0f;
 GLfloat offsetValue[2] = {0.0f, 0.0f};
 GLfloat toplefttile[2] = {0.0f, 0.0f};
@@ -79,28 +83,11 @@ GLint centerY;
 GLuint *shaderProgram;
 GLuint *shaderProgram2;
 GLuint *shaderProgramTexture;
-unordered_map<int, vector<float>> entities;
-unordered_map<int, int> entity_validated;
-unordered_map<int, int[3]> entity_pos_rgb;
-unordered_map<int, float[2]> entity_pos_screen;
-unordered_map<int, bool> entity_visible;
 float defaultGSV = 16.0f;
 SDL_Surface *image = nullptr;
 bool first_start = false;
 bool one_time = false;
 float _moveSpeed = 0;
-
-struct context
-{
-    SDL_Event event;
-    int iteration;
-    SDL_Window *window;
-};
-
-struct Position {
-    float x;
-    float y;
-};
 
 context ctx;
 
@@ -109,6 +96,7 @@ void EventHandler(int, SDL_Event *);
 void animations(context *ctx);
 int simple_tile_color(float);
 float getTerrainAtPoint(float, float, float, float);
+bool isPlayerCollidingWithEntity(float, float, float, float, float, float);
 
 int main(int argc, char *argv[])
 {
@@ -163,19 +151,55 @@ int main(int argc, char *argv[])
     stoneMax = weights[4] * totalWeight;
     snowMax = weights[5] * totalWeight; // This should naturally be totalWeight (1.0) if weights sum correctly
 
-    numEntities = 10000;
+    numEntities = 1000;
     for (int i = numEntities; i > 0; i--)
     {
-        float x = static_cast<float>(rand() % 300) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-        float y = static_cast<float>(rand() % 300) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+        float x = static_cast<float>(rand() % 10) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+        float y = static_cast<float>(rand() % 10) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 
-        entities[i] = {x, y};
-        entity_validated[i] = false;
-        entity_pos_rgb[i][0] = -1;
-        entity_pos_rgb[i][1] = -1;
-        entity_pos_rgb[i][2] = -1;
+        y += 100;
+
+        auto entity = registry.create();
+        registry.emplace<Position>(entity, Position{x, y});
+        registry.emplace<Validation>(entity);
         
     }
+
+    // debug entities
+    for(int i = 0; i < 100; i++) {
+        float x = static_cast<float>(rand() % 30) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+        float y = static_cast<float>(rand() % 30) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+
+        Color color = {static_cast<float>(rand() % 255),
+            static_cast<float>(rand() % 255),
+            static_cast<float>(rand() % 255),
+            1.0f};
+
+        // rand shape from .1 to 1
+        Shape shape = {static_cast<float>(rand() % 10) / 10.0f, static_cast<float>(rand() % 10) / 10.0f};
+
+        auto entity = registry.create();
+        registry.emplace<Position>(entity, Position{x, y});
+        registry.emplace<Debug>(entity);
+        registry.emplace<Color>(entity, color);
+        registry.emplace<Validation>(entity);
+        registry.emplace<Shape>(entity, shape);
+        registry.emplace<Collisions>(entity);
+    }
+
+    // Teleport entity test
+    auto entity = registry.create();
+    registry.emplace<Position>(entity, Position{0, 0});
+    registry.emplace<Teleport>(entity, Teleport{Position{0, 0}, Position{0, 102}});
+    registry.emplace<Validation>(entity);
+    registry.emplace<Debug>(entity);
+
+    // Teleport 2
+    auto entity2 = registry.create();
+    registry.emplace<Position>(entity2, Position{0, 100});
+    registry.emplace<Teleport>(entity2, Teleport{Position{0, 100}, Position{0, 2}});
+    registry.emplace<Validation>(entity2);
+    registry.emplace<Debug>(entity2);
 
     // Send variable defaults to JS with _js__kvdata(key, value)
     _js__kvdata("waterMax", waterMax);
@@ -232,6 +256,9 @@ void updateFrame()
         keys[SPEED_DIV] = false;
     }
 
+    tempPlayerPosition[0] = playerPosition[0];
+    tempPlayerPosition[1] = playerPosition[1];
+
     // Update player position
     _moveSpeed = moveSpeed * deltaTime;
 
@@ -253,6 +280,58 @@ void updateFrame()
     // set bounds
     toplefttile[0] = static_cast<int>(playerPosition[0] / defaultGSV) - (width / gridSpacingValue / 2);
     toplefttile[1] = static_cast<int>(playerPosition[1] / defaultGSV) - (height / gridSpacingValue / 2);
+
+    // do collisiong checks for teleport entities
+    auto teleport_entities = registry.view<Position, Teleport, Validation>();
+    for(auto& entity : teleport_entities) {
+        auto &position = teleport_entities.get<Position>(entity);
+        auto &teleport = teleport_entities.get<Teleport>(entity);
+        auto &validation = teleport_entities.get<Validation>(entity);
+
+        if(isPlayerCollidingWithEntity(playerPosition[0], playerPosition[1], position.x, position.y, 0.1f, 0.1f)) {
+            playerPosition[0] = teleport.destination.x;
+            playerPosition[1] = teleport.destination.y;
+        }
+    }
+
+    // Check if mouse is colliding with any Debug entities. use the screen position
+    auto debug_entities = registry.view<Position, Debug>();
+    for(auto& entity : debug_entities) {
+        auto &position = debug_entities.get<Position>(entity);
+
+        // Convert cursor position to normalized screen coordinates
+        float normalizedCursorX = (2.0f * cursorPos[0] / width) - 1.0f;
+        float normalizedCursorY = 1.0f - (2.0f * cursorPos[1] / height);
+
+        // Convert entity position to screen coordinates
+        float screenEntityX = (position.sx);
+        float screenEntityY = (position.sy);
+
+
+        // Check for collision
+        if (fabs(normalizedCursorX - screenEntityX) < 0.1f && fabs(normalizedCursorY - screenEntityY) < 0.1f) {
+            // Handle collision with debug entity, change color to red
+            if(registry.all_of<Color>(entity)) {
+                auto &color = registry.get<Color>(entity);
+                color.r = 255;
+                color.g = 0;
+                color.b = 0;
+            }
+        }
+    }
+
+    // Check if player is colliding with any entities with Collisions
+    // auto collision_entities = registry.view<Position, Shape, Collisions>();
+    // for(auto& entity : collision_entities) {
+    //     auto &position = collision_entities.get<Position>(entity);
+    //     auto &shape = collision_entities.get<Shape>(entity);
+
+    //     if(isPlayerCollidingWithEntity(playerPosition[0], playerPosition[1], position.x, position.y, shape.w, shape.h)) {
+    //         playerPosition[0] = tempPlayerPosition[0];
+    //         playerPosition[1] = tempPlayerPosition[1];
+    //     }
+    // }
+
 }
 
 int simple_tile_color(float n) {
@@ -282,6 +361,15 @@ float getTerrainAtPoint(float px, float py, float frequency, float amplitude) {
     return simple_tile_color(smootherNoise({px * frequency, py * frequency}) * amplitude);
 }
 
+bool isPlayerCollidingWithEntity(float playerX, float playerY, float entityX, float entityY, float entityWidth, float entityHeight) {
+    // Check if the player's position overlaps with the entity's position
+    bool collisionX = playerX < entityX + entityWidth && playerX + 1 > entityX; // Assuming player width is 1
+    bool collisionY = playerY < entityY + entityHeight && playerY + 1 > entityY; // Assuming player height is 1
+
+    return collisionX && collisionY;
+}
+
+
 void mainloop(void *arg)
 {
     deltaTime = (SDL_GetTicks() - lastTime) / 1000.0f;
@@ -302,7 +390,13 @@ void mainloop(void *arg)
         first_start = true;
         loadGL1(shaderProgramMap["terrain"], "terrain");
         loadGL1(shaderProgramMap["ui_layer"], "ui_layer");
-        textureID = loadGLTexture(shaderProgramMap["texture"]);
+        loadGL1(shaderProgramMap["debug_entity"], "debug_entity");
+        loadGL1(shaderProgramMap["texture"], "texture");
+        // load textures from textureMap
+        for(auto& [name, src] : textureMap) {
+            printf("Loading texture: %s\n", src.c_str());
+            textureIDMap[name] = loadGLTexture(shaderProgramMap["texture"], src.c_str());
+        }
     }
 
     while (SDL_PollEvent(&ctx->event))
@@ -341,25 +435,35 @@ void mainloop(void *arg)
     updateUniforms2(shaderProgramMap["ui_layer"], width, height, gridSpacingValue);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
+    // Render entities shape
+    auto entities = registry.view<Position, Validation>();
 
     for(auto& entity : entities) {
-        if(entity_validated[entity.first] == 2) {
-            // refresh entity position
-            // entity_validated[entity.first] = 0;
-            // entity_pos_rgb[entity.first][0] = -1;
-            // entity_pos_rgb[entity.first][1] = -1;
-            // entity_pos_rgb[entity.first][2] = -1;
 
-            // entities[entity.first] = {
-            //     static_cast<float>(rand() % 300) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX), 
-            //     static_cast<float>(rand() % 300) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX)
-            // };
-
+        auto &position = entities.get<Position>(entity);
+        auto &validation = entities.get<Validation>(entity);
+        if(validation.state == 2) {
             continue;
         }
+        bool has_visible = registry.all_of<Visible>(entity);
+
+        // if(validation.state == 2) {
+        //     // refresh entity position
+        //     // validation.state = 0;
+        //     // entity_pos_rgb[entity.first][0] = -1;
+        //     // entity_pos_rgb[entity.first][1] = -1;
+        //     // entity_pos_rgb[entity.first][2] = -1;
+
+        //     // entities[entity.first] = {
+        //     //     static_cast<float>(rand() % 300) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX), 
+        //     //     static_cast<float>(rand() % 300) + static_cast <float> (rand()) / static_cast <float> (RAND_MAX)
+        //     // };
+
+        //     continue;
+        // }
         
-        float entity_player_diffX = (playerPosition[0] - entity.second[0]);
-        float entity_player_diffY = (playerPosition[1] - entity.second[1]);
+        float entity_player_diffX = (playerPosition[0] - position.x);
+        float entity_player_diffY = (playerPosition[1] - position.y);
 
 
         float distanceX = abs(entity_player_diffX * gridSpacingValue / defaultGSV);
@@ -367,44 +471,78 @@ void mainloop(void *arg)
 
         if (distanceX < width / 2 && distanceY < height / 2) {
 
-            float posX = (playerPosition[0] - entity.second[0]) * gridSpacingValue + centerX;
-            float posY = (playerPosition[1] - entity.second[1]) * gridSpacingValue + centerY;
+            float posX = (playerPosition[0] - position.x) * gridSpacingValue + centerX;
+            float posY = (playerPosition[1] - position.y) * gridSpacingValue + centerY;
 
-            entity_pos_screen[entity.first][0] = (2 * posX / width - 1)/defaultGSV;
-            entity_pos_screen[entity.first][1] = (2 * posY / height - 1)/defaultGSV;
+            // position.sx = (2 * posX / width - 1)/defaultGSV;
+            //position.sy = (2 * posY / height - 1)/defaultGSV;
 
-            entity_pos_screen[entity.first][0] -= _moveSpeed/width;
-            entity_pos_screen[entity.first][1] += _moveSpeed/height;
-
+            position.sx = (2 * posX / width - 1)/defaultGSV;
+            position.sy = (2 * posY / height - 1)/defaultGSV;
+            position.sx -= _moveSpeed/width;
+            position.sy += _moveSpeed/height;
+            
+            bool isDebug = registry.all_of<Debug>(entity);
+            bool isTeleport = registry.all_of<Teleport>(entity);
+            if(isDebug || isTeleport) {
+                validation.state = 1;
+            }
             // check if entity has been validated
-            if (entity_validated[entity.first] == 0) {
+            else if (validation.state == 0) {
                 // check if the entity is on the grass, if not remove it and skip
                 unsigned char pixel[4];
-                glReadPixels(entity_pos_screen[entity.first][0] * width / 2 + width / 2, entity_pos_screen[entity.first][1] * height / 2 + height / 2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+                glReadPixels(position.sx * width / 2 + width / 2, 
+                    position.sy * height / 2 + height / 2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
 
                 if (pixel[0] == 48 && pixel[1] == 71 && pixel[2] == 40) {
-                    entity_validated[entity.first] = 1;
+                    validation.state = 1;
                 } 
                 else {
-                    entity_validated[entity.first] = 2;
+                    validation.state = 2;
                 }
             }
 
             // // check if entity is visible
-            if (entity_validated[entity.first] == 1) {
-                entity_visible[entity.first] = true;
+            if (validation.state == 1 && !has_visible) {
+                registry.emplace<Visible>(entity);
             }
         }
-        else if(entity_visible[entity.first]) {
-            entity_visible[entity.first] = false;
+        else if(has_visible) {
+            registry.remove<Visible>(entity);
         }
     }
 
     // Render visible test entities
-    for(auto& entity : entities) {
-        if (entity_validated[entity.first] == 1 && entity_visible[entity.first]) {
-            updateUniformsTexture(shaderProgramMap["texture"], 
-                textureID, entity_pos_screen[entity.first][0], entity_pos_screen[entity.first][1], 0.1f * gridSpacingValue/1000);
+    auto visible_entities = registry.view<Position, Validation, Visible>();
+
+    for(auto& entity : visible_entities) {
+        auto &position = entities.get<Position>(entity);
+        auto &validation = entities.get<Validation>(entity);
+        
+        if(validation.state == 1) {
+
+            bool isDebug = registry.all_of<Debug>(entity);
+            bool isTeleport = registry.all_of<Teleport>(entity);
+            if(isDebug && registry.all_of<Color>(entity)) {
+                auto &color = registry.get<Color>(entity);
+                auto &shape = registry.get<Shape>(entity);
+                updateUniformsDebug(shaderProgramMap["debug_entity"],
+                    color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a,
+                    position.sx, position.sy, (0.1f * gridSpacingValue / 1000.0f) * (shape.w + shape.h) / 2);
+            }
+            else if(isTeleport) {
+                auto &teleport = registry.get<Teleport>(entity);
+                updateUniformsTexture(shaderProgramMap["texture"], 
+                    textureIDMap["door"],
+                    position.sx,position.sy, 0.1f * gridSpacingValue/1000);
+            }
+            else {
+                // tree 
+                updateUniformsTexture(shaderProgramMap["texture"], 
+                    textureIDMap["tree"],
+                    position.sx,position.sy, 0.1f * gridSpacingValue/1000);
+            }
+
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         }
     }

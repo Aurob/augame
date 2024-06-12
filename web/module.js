@@ -88,13 +88,24 @@ var Module = {
     Module._load_json(strPtr);
     Module._free(strPtr);
   },
-
   fetch_configs: function () {
     let fetch_path = "demo-a";
     fetch(`web/${fetch_path}.json?${Math.random()}`)
       .then(res => res.json())
       .then(json => {
 
+        if (json['textures'] && Array.isArray(json['textures'])) {
+          json['textures'].forEach(texture => {
+            if (texture['path']) {
+              Module.js_to_c(JSON.stringify({
+                texture: {
+                  name: texture['name'],
+                  path: texture['path'],
+                }
+              }));
+            }
+          });
+        }
         if (json['shaders'] && Array.isArray(json['shaders'])) {
           let totalShaders = json['shaders'].length;
           let loadedShaders = 0;
@@ -124,6 +135,7 @@ var Module = {
             });
           });
         }
+
       });
+    }
   }
-}

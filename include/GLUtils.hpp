@@ -157,6 +157,29 @@ void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, float x, flo
     glUniform1f(instanceScaleLocation, scale);
 }
 
+// updateUniformsDebug(shaderProgramMap["debug"], color.r, color.g, color.b, color.a, position.sx, position.sy, 0.1f * gridSpacingValue/1000);
+
+void updateUniformsDebug(GLuint &shaderProgram, float r, float g, float b, float a, float x, float y, float scale) {
+    glUseProgram(shaderProgram);
+
+    GLint colorLocation = glGetUniformLocation(shaderProgram, "uColor");
+    glUniform4f(colorLocation, r, g, b, a);
+
+    GLint instancePositionLocation = glGetUniformLocation(shaderProgram, "instancePosition");
+    glUniform2f(instancePositionLocation, x, y);
+
+    GLint instanceScaleLocation = glGetUniformLocation(shaderProgram, "instanceScale");
+    glUniform1f(instanceScaleLocation, scale);
+
+    //res
+    GLint resolutionLocation = glGetUniformLocation(shaderProgram, "uResolution");
+    glUniform2f(resolutionLocation, 800, 600);
+
+    //uPos
+    GLint uPosLocation = glGetUniformLocation(shaderProgram, "uPosition");
+    glUniform2f(uPosLocation, 0, 0);
+}
+
 
 void loadGL1(GLuint &shaderProgram, std::string program_name)
 {
@@ -344,14 +367,14 @@ void loadImageAndCreateTexture(const char* imagePath, GLuint &textureID) {
     SDL_FreeSurface(image);
 }
 
-GLuint loadGLTexture(GLuint &shaderProgram) {
+GLuint loadGLTexture(GLuint &shaderProgram, std::string textureSrc) {
     // Load shaders and create a program
     shaderProgram = createProgram(shaderGLSLMap["texture"][0], shaderGLSLMap["texture"][1]);
     glUseProgram(shaderProgram);
 
     // Load an image and create a texture from it
     GLuint textureID;
-    loadImageAndCreateTexture(shaderGLSLMap["texture"][2], textureID);
+    loadImageAndCreateTexture(textureSrc.c_str(), textureID);
 
     // Define vertices for the texture
     // Each vertex has a position (x, y) and texture coordinates (s, t)
