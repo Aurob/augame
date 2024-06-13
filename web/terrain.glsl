@@ -102,15 +102,16 @@ void main() {
     vec3 terrainColor = simple_tile_color(_coord, n);
 
     // Calculate atmosphere color (light blue gradient)
-    vec3 atmosphereColor = mix(vec3(0.0), vec3(0.5, 0.7, 1.0), atmosphereFactor);
+    // vec3 atmosphereColor = mix(vec3(0.0), vec3(0.5, 0.7, 1.0), atmosphereFactor);
 
     // Calculate space color (black with points of white and colored light)
-    vec3 spaceColor = vec3(0.0);
-    float starValue = sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233)) * 43758.5453);
-    if (fract(starValue) > 0.995) {
-        spaceColor = vec3(1.0); // White points
-    }
+    // vec3 spaceColor = vec3(0.0);
+    // float starValue = sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233)) * 43758.5453);
+    // if (fract(starValue) > 0.995) {
+    //     spaceColor = vec3(1.0); // White points
+    // }
     // Mix terrain, atmosphere, and space colors based on the gradient factor
-    finalColor = mix(spaceColor, mix(terrainColor, atmosphereColor, atmosphereFactor), 1.0 - atmosphereFactor);
+    // finalColor = mix(spaceColor, mix(terrainColor, atmosphereColor, atmosphereFactor), 1.0 - atmosphereFactor);
+    finalColor = terrainColor;
     gl_FragColor = vec4(finalColor, 1.0);
 }

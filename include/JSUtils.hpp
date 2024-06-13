@@ -1,27 +1,11 @@
 #pragma once
 #include <emscripten.h>
 #include "../include/json.hpp"
-#include <map>
-#include <functional>
-#include <iostream>
-#include <sstream>
 #include <SDL_opengles2.h>
 #include "shaders.hpp"
 
 using namespace std;
 
-extern float waterMax;
-extern float sandMax;
-extern float dirtMax;
-extern float grassMax;
-extern float stoneMax;
-extern float snowMax;
-extern float frequency;
-extern float amplitude;
-extern float persistence;
-extern float lacunarity;
-extern float scale;
-extern int octaves;
 extern int width, height;
 extern int tileMinMax[4];
 extern bool windowResized;
@@ -137,61 +121,7 @@ extern "C"
                 }
             }
         }
-
-        if (js_json.contains("option") && js_json["option"].is_string() && js_json.contains("value"))
-        {
-            auto value = js_json["value"];
-            std::map<std::string, std::function<void()>> option_map = {
-                {"waterMax", [&]() { waterMax = value.get<float>(); }},
-                {"sandMax", [&]() { sandMax = value.get<float>(); }},
-                {"dirtMax", [&]() { dirtMax = value.get<float>(); }},
-                {"grassMax", [&]() { grassMax = value.get<float>(); }},
-                {"stoneMax", [&]() { stoneMax = value.get<float>(); }},
-                {"snowMax", [&]() { snowMax = value.get<float>(); }},
-                {"frequency", [&]() { frequency = value.get<float>(); }},
-                {"amplitude", [&]() { amplitude = value.get<float>(); }},
-                {"persistence", [&]() { persistence = value.get<float>(); }},
-                {"lacunarity", [&]() { lacunarity = value.get<float>(); }},
-                {"scale", [&]() { scale = value.get<float>(); }},
-                {"octaves", [&]() { octaves = static_cast<int>(value.get<float>()); }},
-                {"refresh", [&]() { _js__refresh(); }}
-            };
-
-            std::string option_name = js_json["option"];
-            
-            auto it = option_map.find(option_name);
-            if (it != option_map.end() && (option_name != "refresh" ? value.is_number() : true))
-            {
-                it->second();
-            }
-            else
-            {
-                printf("Unknown option: %s\n", option_name.c_str());
-            }
-        }
         
-        if (js_json.contains("World") && js_json["World"].is_object()) {
-            auto &world = js_json["World"];
-            if (world.contains("Window")) {
-                auto &window = world["Window"];
-                width = window.value("width", width);
-                height = window.value("height", height);
-                windowResized = window.contains("width") || window.contains("height");
-                if (windowResized) printf("Window: %d, %d\n", width, height);
-            }
-            if (world.contains("Tiles")) {
-                auto &tiles = world["Tiles"];
-                tileMinMax[0] = tiles.value("minx", tileMinMax[0]);
-                tileMinMax[1] = tiles.value("miny", tileMinMax[1]);
-                tileMinMax[2] = tiles.value("maxx", tileMinMax[2]);
-                tileMinMax[3] = tiles.value("maxy", tileMinMax[3]);
-            }
-            // Scale
-            if (world.contains("Scale")) {
-                auto &scale = world["Scale"];
-                gridSpacingValue = scale.value("scale", gridSpacingValue);
-            }
-        }
 
         if (js_json.contains("Entities") && js_json["Entities"].is_array())
         {
@@ -223,35 +153,6 @@ extern "C"
                                 playerPosition[0] = x;
                                 playerPosition[1] = y;
                             }
-                        }
-                    }
-
-                    // Check for Shape:w:h
-                    if (_el.contains("Shape") && _el["Shape"].is_object())
-                    {
-                        auto &shape = _el["Shape"];
-                        if (shape.contains("w") && shape["w"].is_number() && shape.contains("h") && shape["h"].is_number())
-                        {
-                            float w = shape["w"];
-                            float h = shape["h"];
-                            printf("Shape: %f, %f\n", w, h);
-                        }
-                    }
-
-                    // Check for Movement:speed:max_speed:friction:mass
-                    if (_el.contains("Movement") && _el["Movement"].is_object())
-                    {
-                        auto &movement = _el["Movement"];
-                        if (movement.contains("speed") && movement["speed"].is_number() 
-                        && movement.contains("max_speed") && movement["max_speed"].is_number() 
-                        && movement.contains("friction") && movement["friction"].is_number() 
-                        && movement.contains("mass") && movement["mass"].is_number())
-                        {
-                            float speed = movement["speed"];
-                            float max_speed = movement["max_speed"];
-                            float friction = movement["friction"];
-                            float mass = movement["mass"];
-                            printf("Movement: %f, %f, %f, %f\n", speed, max_speed, friction, mass);
                         }
                     }
                 }
