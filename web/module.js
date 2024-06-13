@@ -2,7 +2,6 @@
 var Module = {
   initialized: false,
   c_kv_data: { x: 0, y: 0 },
-  shaders: [],
   canvas: (function () {
     const canvas = document.getElementById('canvas');
     return canvas;
@@ -22,28 +21,6 @@ var Module = {
 
   ready() {
     console.log("Ready");
-    setEvents();
-    loadInputs();
-
-    // Set input values in c_kv_data
-    const inputs = document.querySelectorAll('input');
-    // console.log(inputs);
-    inputs.forEach(input => {
-      let name = input.getAttribute('name');
-      // console.log(name);
-      if (name in Module.c_kv_data) {
-        input.value = Module.c_kv_data[name];
-      }
-    });
-
-    // on slider change, normalize all values to fit a total of 1
-    // then send the values to the webassembly module
-    document.querySelectorAll('.param').forEach(function (el) {
-      el.addEventListener('input', function (e) {
-        // console.log(e.target.id, e.target.value);
-        Module.js_to_c({ option: e.target.id, value: parseFloat(e.target.value) });
-      });
-    });
   },
 
   setkv: function (key, value) {
@@ -51,32 +28,6 @@ var Module = {
     if (!Object.keys(Module.c_kv_data).includes(key)) {
       Module.c_kv_data[key] = value;
     }
-
-    switch (key) {
-      case 'x':
-      case 'y':
-        document.getElementById('position').innerHTML = `x: ${Module.c_kv_data.x}, y: ${Module.c_kv_data.y}`;
-        break;
-      case 'tilex':
-      case 'tiley':
-        document.getElementById('tile').innerHTML = `tilex: ${Module.c_kv_data.tilex}, tiley: ${Module.c_kv_data.tiley}`;
-        break;
-      case 'scale':
-        document.getElementById('scale').innerHTML = `scale: ${Module.c_kv_data.scale}`;
-        break;
-      case 'terrain_type':
-        document.getElementById('terrain-type').innerHTML = `tile: ${Module.c_kv_data.terrain_type}`;
-        break;
-      case 'r':
-      case 'g':
-      case 'b':
-        document.getElementById('color').innerHTML = `r: ${Module.c_kv_data.r}, g: ${Module.c_kv_data.g}, b: ${Module.c_kv_data.b}, a: ${Module.c_kv_data.a}`;
-        break;
-      case 'player-terrain-noise':
-        document.getElementById('player-terrain-noise').innerHTML = `player-terrain-noise: ${Module.c_kv_data['player-terrain-noise']}`;
-        break;
-    }
-
   },
 
   js_to_c: function (str) {
@@ -88,54 +39,58 @@ var Module = {
     Module._load_json(strPtr);
     Module._free(strPtr);
   },
+  
   fetch_configs: function () {
-    let fetch_path = "demo-a";
-    fetch(`web/${fetch_path}.json?${Math.random()}`)
-      .then(res => res.json())
-      .then(json => {
+    let json = CONFIG;
 
-        if (json['textures'] && Array.isArray(json['textures'])) {
-          json['textures'].forEach(texture => {
-            if (texture['path']) {
-              Module.js_to_c(JSON.stringify({
-                texture: {
-                  name: texture['name'],
-                  path: texture['path'],
-                }
-              }));
-            }
-          });
-        }
-        if (json['shaders'] && Array.isArray(json['shaders'])) {
-          let totalShaders = json['shaders'].length;
-          let loadedShaders = 0;
-          json['shaders'].forEach(shader => {
-            ['vertex', 'fragment'].forEach(type => {
-              if (shader[type] && shader[type].includes('.glsl')) {
-                fetch(`web/${shader[type]}?${Math.random()}`)
-                  .then(res => res.text())
-                  .then(text => {
-                    shader[type] = text;
-                    if (type == 'fragment') {
-                      Module.js_to_c(JSON.stringify({
-                        shader: {
-                          name: shader['name'],
-                          vertex: shader['vertex'],
-                          fragment: shader['fragment'],
-                          texture: shader['texture'] || null,
-                        }
-                      }));
-                      loadedShaders++;
-                      if (loadedShaders === totalShaders) {
-                        Module.start();
-                      }
-                    }
-                  });
+      if (json['textures'] && Array.isArray(json['textures'])) {
+        json['textures'].forEach(texture => {
+          if (texture['path']) {
+            Module.js_to_c(JSON.stringify({
+              texture: {
+                name: texture['name'],
+                path: texture['path'],
               }
-            });
-          });
-        }
+            }));
+          }
+        });
+      }
 
+      if (json['shaders'] && Array.isArray(json['shaders'])) {
+        let fetchPromises = json['shaders'].map(shader => {
+          let vertexPromise = shader['vertex'] && shader['vertex'].includes('.glsl') 
+            ? fetch(`web/${shader['vertex']}?${Math.random()}`).then(res => res.text())
+            : Promise.resolve(shader['vertex']);
+          
+          let fragmentPromise = shader['fragment'] && shader['fragment'].includes('.glsl') 
+            ? fetch(`web/${shader['fragment']}?${Math.random()}`).then(res => res.text())
+            : Promise.resolve(shader['fragment']);
+          
+          return Promise.all([vertexPromise, fragmentPromise]).then(([vertex, fragment]) => {
+            shader['vertex'] = vertex;
+            shader['fragment'] = fragment;
+            Module.js_to_c(JSON.stringify({
+              shader: {
+                name: shader['name'],
+                vertex: shader['vertex'],
+                fragment: shader['fragment'],
+                texture: shader['texture'] || null,
+              }
+            }));
+          });
+        });
+
+        Promise.all(fetchPromises).then(() => {
+          Module.start();
+        });
+      }
+
+      // Send all other keys other than textures and shaders
+      let keys = Object.keys(json);
+      keys.forEach(key => {
+        if (key !== 'textures' && key !== 'shaders') {
+          Module.js_to_c(JSON.stringify({ [key]: json[key] }));
+        }
       });
     }
   }

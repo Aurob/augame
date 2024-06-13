@@ -50,6 +50,7 @@ float deltaTime = 0;
 int seed = 0;
 unordered_map<int, bool> keys;
 GLfloat cursorPos[2] = {0, 0};
+GLfloat globalCursorPos[2] = {0, 0};
 GLfloat playerPosition[2] = {0, 0};
 GLfloat tempPlayerPosition[2] = {0, 0};
 GLfloat gridSpacingValue = 2048.0f;
@@ -180,11 +181,13 @@ int main(int argc, char *argv[])
 
         auto entity = registry.create();
         registry.emplace<Position>(entity, Position{x, y});
-        registry.emplace<Debug>(entity);
         registry.emplace<Color>(entity, color);
         registry.emplace<Validation>(entity);
         registry.emplace<Shape>(entity, shape);
         registry.emplace<Collisions>(entity);
+        registry.emplace<Debug>(entity, Debug{color});
+        registry.emplace<Hoverable>(entity);
+        registry.emplace<Interactable>(entity);
     }
 
     // Teleport entity test
@@ -281,7 +284,11 @@ void updateFrame()
     toplefttile[0] = static_cast<int>(playerPosition[0] / defaultGSV) - (width / gridSpacingValue / 2);
     toplefttile[1] = static_cast<int>(playerPosition[1] / defaultGSV) - (height / gridSpacingValue / 2);
 
-    // do collisiong checks for teleport entities
+    // Calculate cursor global position based on calculated player position, tile, and offset
+    globalCursorPos[0] = -(cursorPos[0] / width) * (width / gridSpacingValue) + playerPosition[0];
+    globalCursorPos[1] = (cursorPos[1] / height) * (height / gridSpacingValue) + playerPosition[1];
+    
+    // do collision checks for teleport entities
     auto teleport_entities = registry.view<Position, Teleport, Validation>();
     for(auto& entity : teleport_entities) {
         auto &position = teleport_entities.get<Position>(entity);
@@ -295,9 +302,10 @@ void updateFrame()
     }
 
     // Check if mouse is colliding with any Debug entities. use the screen position
-    auto debug_entities = registry.view<Position, Debug>();
+    auto debug_entities = registry.view<Position, Shape, Debug, Hoverable, Interactable, Color>();
     for(auto& entity : debug_entities) {
         auto &position = debug_entities.get<Position>(entity);
+        auto &debug = debug_entities.get<Debug>(entity);
 
         // Convert cursor position to normalized screen coordinates
         float normalizedCursorX = (2.0f * cursorPos[0] / width) - 1.0f;
@@ -309,14 +317,48 @@ void updateFrame()
 
 
         // Check for collision
-        if (fabs(normalizedCursorX - screenEntityX) < 0.1f && fabs(normalizedCursorY - screenEntityY) < 0.1f) {
-            // Handle collision with debug entity, change color to red
-            if(registry.all_of<Color>(entity)) {
-                auto &color = registry.get<Color>(entity);
+        bool is_hovered = registry.all_of<Hovered>(entity);
+        
+        auto &color = debug_entities.get<Color>(entity);
+
+        auto &shape = debug_entities.get<Shape>(entity);
+        float radiusX = shape.w * 0.05f;
+        float radiusY = shape.h * 0.05f;
+        if (fabs(normalizedCursorX - screenEntityX) < radiusX && fabs(normalizedCursorY - screenEntityY) < radiusY) {
+            // Handle collision with debug entity
+            if (!is_hovered) {
+                registry.emplace<Hovered>(entity);
+            }
+
+            if (keys[SDL_BUTTON_LEFT]) {
+                if (!registry.all_of<Interacted>(entity)) {
+                    registry.emplace<Interacted>(entity);
+                }
+                // Change color to blue when interacted and hovered
+                color.r = 0;
+                color.g = 0;
+                color.b = 255;
+
+                // update entity position based on globalCursorPos
+                position.x = globalCursorPos[0];
+                position.y = globalCursorPos[1];
+                
+            } else {
+                // Change color to red when only hovered
                 color.r = 255;
                 color.g = 0;
                 color.b = 0;
             }
+        } else if (is_hovered) {
+            registry.remove<Hovered>(entity);
+            if (registry.all_of<Interacted>(entity)) {
+                registry.remove<Interacted>(entity);
+            }
+
+            // Reset color to default
+            color.r = debug.defaultColor.r;
+            color.g = debug.defaultColor.g;
+            color.b = debug.defaultColor.b;
         }
     }
 
@@ -432,7 +474,14 @@ void mainloop(void *arg)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Render the crosshair (third shader)
-    updateUniforms2(shaderProgramMap["ui_layer"], width, height, gridSpacingValue);
+    // updateUniforms2(shaderProgramMap["ui_layer"], width, height, gridSpacingValue);
+    // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+    // Render player texture: 'smile'
+    updateUniformsTexture(shaderProgramMap["texture"], 
+        textureIDMap["smile"],
+        0.0f, 0.0f,
+        0.1f * gridSpacingValue/1000);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
     // Render entities shape

@@ -1,6 +1,6 @@
 #pragma once
+
 #include <vector>
-#include <SDL2/SDL.h>
 
 using namespace std;
 
@@ -36,7 +36,9 @@ struct Validation {
 
 struct Visible {};
 
-struct Debug {};
+struct Debug {
+    Color defaultColor;
+};
 
 struct Teleport {
     Position origin;
@@ -44,4 +46,9 @@ struct Teleport {
 };
 
 struct Hoverable {};
+struct Hovered {};
+
+struct Interactable {};
+struct Interacted {};
+
 struct Collisions {};

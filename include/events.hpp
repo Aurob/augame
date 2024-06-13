@@ -1,5 +1,5 @@
 #pragma once
-#include <emscripten.h>
+
 #include <SDL2/SDL.h>
 
 using namespace std;
@@ -7,6 +7,7 @@ using namespace std;
 extern int width, height;
 extern unordered_map<int, bool> keys;
 extern GLfloat cursorPos[2];
+
 enum CustomKeyInts {
     ZOOM_IN = -10000,
     ZOOM_OUT = -10001,
@@ -23,12 +24,10 @@ void EventHandler(int type, SDL_Event *event)
 
         if (event->wheel.y > 0)
         {
-            // gridSpacingValue *= 2.0f;
             keys[ZOOM_IN] = true;
         }
         else if (event->wheel.y < 0)
         {
-            // gridSpacingValue /= 2.0f;
             keys[ZOOM_OUT] = true;
         }
     }
@@ -90,5 +89,15 @@ void EventHandler(int type, SDL_Event *event)
     {
         cursorPos[0] = event->motion.x;
         cursorPos[1] = event->motion.y;
+    }
+
+    // Mouse Interactions
+    if (event->type == SDL_MOUSEBUTTONDOWN)
+    {
+        keys[SDL_BUTTON_LEFT] = true;
+    }
+    else if (event->type == SDL_MOUSEBUTTONUP)
+    {
+        keys[SDL_BUTTON_LEFT] = false;
     }
 }

@@ -1,36 +1,4 @@
-{
-    "World": {
-        "Window": {
-        },
-        "Tiles": {
-            "minx": -10,
-            "maxx": 10,
-            "miny": -1000,
-            "maxy": 1000
-        },
-        "Scale": {
-            "scale": 1024
-        }
-    },
-    "Entities": [  
-        {
-            "Player": true,
-            "Position": {
-                "x": 10000,
-                "y": 0
-            },
-            "Shape": {
-                "w":0.1,
-                "h":50.25
-            },
-            "Movement": {
-                "speed": 65.5,
-                "max_speed": 110,
-                "friction": 0.9,
-                "mass": 5
-            }
-        }
-    ],
+const CONFIG = {
     "shaders": [
         {
             "name": "terrain",
@@ -61,6 +29,10 @@
         {
             "name": "door",
             "path": "resources/door.jpg"
+        },
+        {
+            "name": "smile",
+            "path": "resources/smile1.png"
         }
     ]
-}
+};
