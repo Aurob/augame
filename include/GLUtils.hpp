@@ -31,10 +31,7 @@ void updateUniforms(GLuint &shaderProgram,
                     float _width, float _height,
                     float playerPosition[2],
                     float toplefttile[2],
-                    float scale,
-                    float waterMax, float sandMax, float dirtMax, float grassMax, float stoneMax, float snowMax,
-                    float lastTime,
-                    float frequency, float amplitude, float persistence, float lacunarity, int octaves)
+                    float scale)
 {
 
     glUseProgram(shaderProgram);
@@ -62,57 +59,12 @@ void updateUniforms(GLuint &shaderProgram,
     GLint scaleLocation = glGetUniformLocation(shaderProgram, "scale");
     glUniform1f(scaleLocation, scale);
 
-    // waterMax uniform
-    GLint waterMaxLocation = glGetUniformLocation(shaderProgram, "waterMax");
-    glUniform1f(waterMaxLocation, waterMax);
-
-    // sandMax uniform
-    GLint sandMaxLocation = glGetUniformLocation(shaderProgram, "sandMax");
-    glUniform1f(sandMaxLocation, sandMax);
-
-    // dirtMax uniform
-    GLint dirtMaxLocation = glGetUniformLocation(shaderProgram, "dirtMax");
-    glUniform1f(dirtMaxLocation, dirtMax);
-
-    // grassMax uniform
-    GLint grassMaxLocation = glGetUniformLocation(shaderProgram, "grassMax");
-    glUniform1f(grassMaxLocation, grassMax);
-
-    // stoneMax uniform
-    GLint stoneMaxLocation = glGetUniformLocation(shaderProgram, "stoneMax");
-    glUniform1f(stoneMaxLocation, stoneMax);
-
-    // snowMax uniform
-    GLint snowMaxLocation = glGetUniformLocation(shaderProgram, "snowMax");
-    glUniform1f(snowMaxLocation, snowMax);
-
-    // time uniform
-    GLint timeLocation = glGetUniformLocation(shaderProgram, "time");
-    glUniform1f(timeLocation, lastTime);
-
+  
     // cursorPos uniform
     GLint cursorPosLocation = glGetUniformLocation(shaderProgram, "cursorPos");
     glUniform2f(cursorPosLocation, cursorPos[0], cursorPos[1]);
 
-    // frequency uniform
-    GLint frequencyLocation = glGetUniformLocation(shaderProgram, "frequency");
-    glUniform1f(frequencyLocation, frequency);
-
-    // amplitude uniform
-    GLint amplitudeLocation = glGetUniformLocation(shaderProgram, "amplitude");
-    glUniform1f(amplitudeLocation, amplitude);
-
-    // persistence uniform
-    GLint persistenceLocation = glGetUniformLocation(shaderProgram, "persistence");
-    glUniform1f(persistenceLocation, persistence);
-
-    // lacunarity uniform
-    GLint lacunarityLocation = glGetUniformLocation(shaderProgram, "lacunarity");
-    glUniform1f(lacunarityLocation, lacunarity);
-
-    // octaves uniform
-    GLint octavesLocation = glGetUniformLocation(shaderProgram, "octaves");
-    glUniform1i(octavesLocation, octaves);
+   
 }
 
 void updateUniforms2(GLuint &shaderProgram, float _width, float _height, float gridSpacingValue)
@@ -146,7 +98,7 @@ void updateUniformsTree(GLuint &shaderProgram, float x, float y, float scale, fl
     glUniform1f(gridSpacingLocation, gridSpacingValue);
 }
 
-void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, float x, float y, float scale) {
+void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, float x, float y, float scalex, float scaley) {
     glUseProgram(shaderProgram);
     glBindTexture(GL_TEXTURE_2D, textureID);
 
@@ -154,12 +106,12 @@ void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, float x, flo
     glUniform2f(instancePositionLocation, x, y);
 
     GLint instanceScaleLocation = glGetUniformLocation(shaderProgram, "instanceScale");
-    glUniform1f(instanceScaleLocation, scale);
+    glUniform2f(instanceScaleLocation, scalex, scaley);
 }
 
 // updateUniformsDebug(shaderProgramMap["debug"], color.r, color.g, color.b, color.a, position.sx, position.sy, 0.1f * gridSpacingValue/1000);
 
-void updateUniformsDebug(GLuint &shaderProgram, float r, float g, float b, float a, float x, float y, float scale) {
+void updateUniformsDebug(GLuint &shaderProgram, float r, float g, float b, float a, float x, float y, float scalex, float scaley) {
     glUseProgram(shaderProgram);
 
     GLint colorLocation = glGetUniformLocation(shaderProgram, "uColor");
@@ -169,15 +121,7 @@ void updateUniformsDebug(GLuint &shaderProgram, float r, float g, float b, float
     glUniform2f(instancePositionLocation, x, y);
 
     GLint instanceScaleLocation = glGetUniformLocation(shaderProgram, "instanceScale");
-    glUniform1f(instanceScaleLocation, scale);
-
-    //res
-    GLint resolutionLocation = glGetUniformLocation(shaderProgram, "uResolution");
-    glUniform2f(resolutionLocation, 800, 600);
-
-    //uPos
-    GLint uPosLocation = glGetUniformLocation(shaderProgram, "uPosition");
-    glUniform2f(uPosLocation, 0, 0);
+    glUniform2f(instanceScaleLocation, scalex, scaley);
 }
 
 
