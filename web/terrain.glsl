@@ -6,19 +6,17 @@ uniform vec2 resolution;
 varying vec3 color;
 uniform vec2 playerPos;
 uniform vec2 toplefttile;
-uniform float waterMax;
-uniform float sandMax;
-uniform float dirtMax;
-uniform float grassMax;
-uniform float stoneMax;
-uniform float snowMax;
-uniform float time;
-uniform vec2 cursorPos;
-uniform float frequency;
-uniform float amplitude;
-uniform float persistence;
-uniform float lacunarity;
-uniform int octaves;
+const float waterMax = 0.2;
+const float sandMax = 0.4;
+const float dirtMax = 0.6;
+const float grassMax = 0.8;
+const float stoneMax = 0.9;
+const float snowMax = 1.0;
+const float frequency = 1.0;
+const float amplitude = 1.0;
+const float persistence = 0.5;
+const float lacunarity = 2.0;
+const int octaves = 4;
 uniform float scale; // Add scale as a uniform to control zoom level
 uniform float seed; // Add seed as a uniform to influence noise generation
 

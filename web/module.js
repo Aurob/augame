@@ -2,6 +2,7 @@
 var Module = {
   initialized: false,
   c_kv_data: { x: 0, y: 0 },
+  c_kv_elements: {},
   canvas: (function () {
     const canvas = document.getElementById('canvas');
     return canvas;
@@ -21,12 +22,30 @@ var Module = {
 
   ready() {
     console.log("Ready");
+
+    // add custom c-to-js output elements
+    // 1: position: x, y
+    let xpos = document.createElement('div');
+    xpos.id = 'xpos';
+    xpos.innerText = 'x: 0';
+    document.body.prepend(xpos);
+    Module.c_kv_elements['x'] = 'xpos';
+
+    let ypos = document.createElement('div');
+    ypos.id = 'ypos';
+    ypos.innerText = 'y: 0';
+    document.body.prepend(ypos);
+    Module.c_kv_elements['y'] = 'ypos';
   },
 
   setkv: function (key, value) {
     Module.c_kv_data[key] = value;
     if (!Object.keys(Module.c_kv_data).includes(key)) {
       Module.c_kv_data[key] = value;
+    }
+
+    if(key in Module.c_kv_elements) {
+      document.getElementById(Module.c_kv_elements[key]).innerText = `${key}: ${value}`;
     }
   },
 

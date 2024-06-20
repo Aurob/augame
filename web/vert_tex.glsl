@@ -3,7 +3,7 @@ attribute vec2 texCoord;
 varying vec2 vTexCoord;
 
 uniform vec2 instancePosition;
-uniform float instanceScale;
+uniform vec2 instanceScale;
 
 void main() {
     vec2 scaledPosition = position * instanceScale;

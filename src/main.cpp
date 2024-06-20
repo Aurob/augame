@@ -11,6 +11,7 @@
 #include "../include/JSUtils.hpp"
 #include "../include/entt.hpp"
 #include "../include/structs.hpp"
+#include "../include/Utils.hpp"
 
 using namespace std;
 
@@ -196,6 +197,7 @@ int main(int argc, char *argv[])
     registry.emplace<Teleport>(entity, Teleport{Position{0, 0}, Position{0, 102}});
     registry.emplace<Validation>(entity);
     registry.emplace<Debug>(entity);
+    registry.emplace<Shape>(entity, Shape{1, 1});
 
     // Teleport 2
     auto entity2 = registry.create();
@@ -203,6 +205,7 @@ int main(int argc, char *argv[])
     registry.emplace<Teleport>(entity2, Teleport{Position{0, 100}, Position{0, 2}});
     registry.emplace<Validation>(entity2);
     registry.emplace<Debug>(entity2);
+    registry.emplace<Shape>(entity2, Shape{1, 1});
 
     // Send variable defaults to JS with _js__kvdata(key, value)
     _js__kvdata("waterMax", waterMax);
@@ -285,17 +288,24 @@ void updateFrame()
     toplefttile[1] = static_cast<int>(playerPosition[1] / defaultGSV) - (height / gridSpacingValue / 2);
 
     // Calculate cursor global position based on calculated player position, tile, and offset
-    globalCursorPos[0] = -(cursorPos[0] / width) * (width / gridSpacingValue) + playerPosition[0];
-    globalCursorPos[1] = (cursorPos[1] / height) * (height / gridSpacingValue) + playerPosition[1];
+    globalCursorPos[0] = toplefttile[0]*defaultGSV + (cursorPos[0]/gridSpacingValue) + playerPosition[0];
+    globalCursorPos[1] = toplefttile[1]*defaultGSV + (cursorPos[1]/gridSpacingValue) + playerPosition[1];
     
     // do collision checks for teleport entities
-    auto teleport_entities = registry.view<Position, Teleport, Validation>();
+    auto teleport_entities = registry.view<Position, Shape, Teleport, Validation>();
     for(auto& entity : teleport_entities) {
         auto &position = teleport_entities.get<Position>(entity);
+        auto &shape = teleport_entities.get<Shape>(entity);
         auto &teleport = teleport_entities.get<Teleport>(entity);
         auto &validation = teleport_entities.get<Validation>(entity);
 
-        if(isPlayerCollidingWithEntity(playerPosition[0], playerPosition[1], position.x, position.y, 0.1f, 0.1f)) {
+        // if(isPlayerCollidingWithEntity(playerPosition[0], playerPosition[1], position.x, position.y, 0.1f, 0.1f)) {
+        //     playerPosition[0] = teleport.destination.x;
+        //     playerPosition[1] = teleport.destination.y;
+        // }
+
+        //Vector2f positionsCollide(float Ax, float Ay, float Aw, float Ah, float Bx, float By, float Bw, float Bh)
+        if(positionsCollide(playerPosition[0], playerPosition[1], 10, 10, position.x, position.y, shape.w, shape.h)) {
             playerPosition[0] = teleport.destination.x;
             playerPosition[1] = teleport.destination.y;
         }
