@@ -59,6 +59,7 @@ struct Debug {
 struct Teleport {
     Position origin;
     Position destination;
+    bool reverse{false};
 };
 
 struct Hoverable {};

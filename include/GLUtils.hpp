@@ -64,6 +64,11 @@ void updateUniforms(GLuint &shaderProgram,
     GLint cursorPosLocation = glGetUniformLocation(shaderProgram, "cursorPos");
     glUniform2f(cursorPosLocation, cursorPos[0], cursorPos[1]);
 
+    // time
+    GLint timeLocation = glGetUniformLocation(shaderProgram, "time");
+    glUniform1f(timeLocation, SDL_GetTicks() / 1000000.0f);
+
+
    
 }
 

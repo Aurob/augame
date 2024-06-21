@@ -6,19 +6,21 @@ uniform vec2 resolution;
 varying vec3 color;
 uniform vec2 playerPos;
 uniform vec2 toplefttile;
-const float waterMax = 0.2;
-const float sandMax = 0.4;
-const float dirtMax = 0.6;
-const float grassMax = 0.8;
-const float stoneMax = 0.9;
-const float snowMax = 1.0;
-const float frequency = 1.0;
+// Add a lot of grass with patches of dirt and a sandy shore around small seas, sparse stone and rare snow
+const float waterMax = 0.01;  // Less water
+const float sandMax = 0.10;   // Sandy shore around seas
+const float dirtMax = 0.15;   // Less dirt
+const float grassMax = 0.80;  // More grass
+const float stoneMax = 0.90;  // More stone
+const float snowMax = 1.0;    // Rare snow
+const float frequency = 0.25;
 const float amplitude = 1.0;
 const float persistence = 0.5;
 const float lacunarity = 2.0;
 const int octaves = 4;
 uniform float scale; // Add scale as a uniform to control zoom level
 uniform float seed; // Add seed as a uniform to influence noise generation
+uniform float time;
 
 vec4 permute(in vec4 x) {return mod(((x * 34.0) + 1.0) * x, 289.0);}
 vec4 taylorInvSqrt(in vec4 r) {return 1.79284291400159 - 0.85373472095314 * r;}
@@ -53,7 +55,6 @@ vec3 hash(vec3 p) {
              dot(p, vec3(113.5, 271.9, 101.5)));
     return -1.0 + 2.0 * fract(sin(p) * 43758.5453);
 }
-
 float smootherNoise(vec2 p) {
     vec2 i = floor(p);
     vec2 f = fract(p);
@@ -73,43 +74,40 @@ float smootherNoise(vec2 p) {
     float nX1 = mix(n01, n11, u.x);
     return mix(nX0, nX1, u.y);
 }
-
 float configurableNoise(vec2 p, float frequency, float amplitude) {
-    return smootherNoise(p * frequency) * amplitude;
+    return amplitude * smootherNoise(p * frequency);
 }
-
 void main() {
-    vec2 coord1 = gl_FragCoord.xy;
-    vec2 coord = (((coord1 / grid_spacing) - toplefttile) * grid_spacing) - offset;
-    vec2 _coord = coord / grid_spacing;
-    _coord -= resolution * 1.0 / grid_spacing;
+    vec2 coord = gl_FragCoord.xy;
 
-    // Calculate distance from the center of the screen (player position)
-    vec2 screenCenter = resolution / 2.0;
-    float playerDistance = distance(screenCenter, gl_FragCoord.xy);
+    // Invert the y-coordinate
+    coord.y = resolution.y - coord.y;
 
-    vec3 finalColor;
-    float scaledRadius = 0.5 * grid_spacing; // Scale the radius with grid spacing
-    // Create noise-based terrain
-    float n = configurableNoise(_coord, frequency, amplitude);
+    // Adjust the coordinates with grid spacing, toplefttile, and offset
+    vec2 adjustedCoord = (coord / grid_spacing) + toplefttile + (offset / grid_spacing);
 
-    // Calculate the gradient factor for the atmosphere based on the distance from the player
-    float atmosphereFactor = smoothstep(scaledRadius, scaledRadius * 2.0, playerDistance);
+    vec2 _coord = adjustedCoord;
 
+
+    float n = 0.0;
+    float layerFrequency = frequency;
+    float layerAmplitude = amplitude;
+    const int numLayers = 9; // Adjust as needed for desired complexity
+
+    for (int i = 0; i < numLayers; i++) {
+        vec2 z = _coord * layerFrequency;
+        n += configurableNoise(z, layerFrequency, layerAmplitude);
+        layerFrequency *= 1.25;
+        layerAmplitude *= 0.55;
+    }
+    
     // Calculate terrain color
     vec3 terrainColor = simple_tile_color(_coord, n);
-
-    // Calculate atmosphere color (light blue gradient)
-    // vec3 atmosphereColor = mix(vec3(0.0), vec3(0.5, 0.7, 1.0), atmosphereFactor);
-
-    // Calculate space color (black with points of white and colored light)
-    // vec3 spaceColor = vec3(0.0);
-    // float starValue = sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233)) * 43758.5453);
-    // if (fract(starValue) > 0.995) {
-    //     spaceColor = vec3(1.0); // White points
-    // }
-    // Mix terrain, atmosphere, and space colors based on the gradient factor
-    // finalColor = mix(spaceColor, mix(terrainColor, atmosphereColor, atmosphereFactor), 1.0 - atmosphereFactor);
-    finalColor = terrainColor;
+    vec3 finalColor = terrainColor;
+    if (grid_spacing <= 128.0) {
+        if(length(_coord) > resolution.y/2.0) {
+            finalColor = vec3(0.0, 0.0, 0.0);
+        }
+    }
     gl_FragColor = vec4(finalColor, 1.0);
 }

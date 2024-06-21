@@ -7,6 +7,9 @@ using namespace std;
 extern int width, height;
 extern unordered_map<int, bool> keys;
 extern GLfloat cursorPos[2];
+extern float moveSpeed;
+extern float defaultMoveSpeed;
+extern float gridSpacingValue;
 
 enum CustomKeyInts {
     ZOOM_IN = -10000,
@@ -18,6 +21,32 @@ enum CustomKeyInts {
 
 void EventHandler(int type, SDL_Event *event)
 {
+
+    
+    if (keys[ZOOM_IN])
+    {
+        // gridSpacingValue *= 2.0f;
+        gridSpacingValue *= 1.08f;
+        keys[ZOOM_IN] = false;
+    }
+    else if (keys[ZOOM_OUT])
+    {
+        // gridSpacingValue /= 2.0f;
+        gridSpacingValue /= 1.08f;
+        keys[ZOOM_OUT] = false;
+    }
+
+    if (keys[SPEED_MULTI])
+    {
+        moveSpeed = defaultMoveSpeed * 20.0f;
+        keys[SPEED_MULTI] = false;
+    }
+    else if (keys[SPEED_DIV])
+    {
+        moveSpeed = defaultMoveSpeed;
+        keys[SPEED_DIV] = false;
+    }
+
     // mousescroll updated gsvIncrement
     if (event->type == SDL_MOUSEWHEEL)
     {

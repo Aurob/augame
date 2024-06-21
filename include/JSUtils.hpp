@@ -3,6 +3,8 @@
 #include "../include/json.hpp"
 #include <SDL_opengles2.h>
 #include "shaders.hpp"
+#include "../include/entt.hpp"
+#include "../include/structs.hpp"
 
 using namespace std;
 
@@ -12,6 +14,8 @@ extern bool windowResized;
 extern GLfloat playerPosition[2];
 extern GLfloat gridSpacingValue;
 extern bool ready;
+extern entt::entity _player;
+extern entt::registry registry;
 
 // key, float value
 void _js__kvdata(string k, float v)
@@ -150,8 +154,9 @@ extern "C"
 
                             if (is_player)
                             {
-                                playerPosition[0] = x;
-                                playerPosition[1] = y;
+                                Position &playerPos = registry.get<Position>(_player);
+                                playerPos.x = x;
+                                playerPos.y = y;
                             }
                         }
                     }
