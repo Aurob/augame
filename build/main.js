@@ -735,7 +735,7 @@ class CppException extends EmscriptenEH {
 
 // end include: runtime_exceptions.js
 var wasmBinaryFile;
-  wasmBinaryFile = 'main2.wasm';
+  wasmBinaryFile = 'main.wasm';
   if (!isDataURI(wasmBinaryFile)) {
     wasmBinaryFile = locateFile(wasmBinaryFile);
   }
@@ -10711,7 +10711,7 @@ var dynCall_iij = Module["dynCall_iij"] = createExportWrapper("dynCall_iij");
 var dynCall_ji = Module["dynCall_ji"] = createExportWrapper("dynCall_ji");
 /** @type {function(...*):?} */
 var dynCall_jiji = Module["dynCall_jiji"] = createExportWrapper("dynCall_jiji");
-var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 947284;
+var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 947300;
 function invoke_iii(index,a1,a2) {
   var sp = stackSave();
   try {

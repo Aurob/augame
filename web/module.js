@@ -24,18 +24,44 @@ var Module = {
     console.log("Ready");
 
     // add custom c-to-js output elements
-    // 1: position: x, y
-    let xpos = document.createElement('div');
-    xpos.id = 'xpos';
-    xpos.innerText = 'x: 0';
-    document.body.prepend(xpos);
-    Module.c_kv_elements['x'] = 'xpos';
+    const elements = {
+      x: { id: 'xpos', hasInput: true },
+      y: { id: 'ypos', hasInput: true },
+      gridSpacingValue: { id: 'gridSpacingValue', hasInput: false }
+    };
 
-    let ypos = document.createElement('div');
-    ypos.id = 'ypos';
-    ypos.innerText = 'y: 0';
-    document.body.prepend(ypos);
-    Module.c_kv_elements['y'] = 'ypos';
+    for (const [key, { id, hasInput }] of Object.entries(elements)) {
+      let element = document.createElement('div');
+      element.id = id;
+      element.innerText = `${key}: 0`;
+      document.body.prepend(element);
+      Module.c_kv_elements[key] = id;
+
+      // Create input elements for keys that require them
+      if (hasInput) {
+        let inputElement = document.createElement('input');
+        inputElement.type = 'number';
+        inputElement.id = `${id}_input`;
+        inputElement.value = 0;
+        inputElement.addEventListener('input', (event) => {
+          const value = parseFloat(event.target.value);
+          Module.setkv(key, value);
+          if (key === 'x' || key === 'y') {
+            console.log("Teleporting...");
+            Module.js_to_c({
+              "Entities": [{
+                "Player": true,
+                "Position": {
+                  x: key === 'x' ? value : Module.c_kv_data.x,
+                  y: key === 'y' ? value : Module.c_kv_data.y
+                }
+              }]
+            });
+          }
+        });
+        document.body.prepend(inputElement);
+      }
+    }
   },
 
   setkv: function (key, value) {
