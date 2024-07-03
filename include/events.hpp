@@ -11,55 +11,9 @@ extern float moveSpeed;
 extern float defaultMoveSpeed;
 extern float gridSpacingValue;
 
-enum CustomKeyInts {
-    ZOOM_IN = -10000,
-    ZOOM_OUT = -10001,
-    SPEED_MULTI = -10002,
-    SPEED_DIV = -10003,
-};
-
 
 void EventHandler(int type, SDL_Event *event)
 {
-
-    
-    if (keys[ZOOM_IN])
-    {
-        // gridSpacingValue *= 2.0f;
-        gridSpacingValue *= 1.08f;
-        keys[ZOOM_IN] = false;
-    }
-    else if (keys[ZOOM_OUT])
-    {
-        // gridSpacingValue /= 2.0f;
-        gridSpacingValue /= 1.08f;
-        keys[ZOOM_OUT] = false;
-    }
-
-    if (keys[SPEED_MULTI])
-    {
-        moveSpeed = defaultMoveSpeed * 20.0f;
-        keys[SPEED_MULTI] = false;
-    }
-    else if (keys[SPEED_DIV])
-    {
-        moveSpeed = defaultMoveSpeed;
-        keys[SPEED_DIV] = false;
-    }
-
-    // mousescroll updated gsvIncrement
-    if (event->type == SDL_MOUSEWHEEL)
-    {
-
-        if (event->wheel.y > 0)
-        {
-            keys[ZOOM_IN] = true;
-        }
-        else if (event->wheel.y < 0)
-        {
-            keys[ZOOM_OUT] = true;
-        }
-    }
 
     // wasd for offset
     if (event->type == SDL_KEYDOWN)
@@ -71,47 +25,6 @@ void EventHandler(int type, SDL_Event *event)
         keys[event->key.keysym.sym] = false;
     }
 
-    // Shift for speed boost
-    if (event->type == SDL_KEYDOWN)
-    {
-        if (event->key.keysym.sym == SDLK_LSHIFT)
-        {
-            // moveSpeed *= 200.0f;
-            keys[SPEED_MULTI] = true;
-        }
-    }
-    else if (event->type == SDL_KEYUP)
-    {
-        if (event->key.keysym.sym == SDLK_LSHIFT)
-        {
-            // moveSpeed /= 200.0f;
-            keys[SPEED_DIV] = true;
-        }
-    }
-
-
-    // Mobile touch controls
-    if (event->type == SDL_FINGERDOWN || event->type == SDL_FINGERMOTION)
-    {
-        // Handle single finger movement
-        if (event->tfinger.touchId == 0)
-        {
-            float touchX = event->tfinger.x * width;  // Normalize touch position to screen coordinates
-            float touchY = event->tfinger.y * height; // Normalize touch position to screen coordinates
-            keys[SDLK_w] = touchY < height / 2;       // If touch is in the upper half of the screen, move up
-            keys[SDLK_s] = touchY >= height / 2;      // If touch is in the lower half of the screen, move down
-            keys[SDLK_a] = touchX < width / 2;        // If touch is in the left half of the screen, move left
-            keys[SDLK_d] = touchX >= width / 2;       // If touch is in the right half of the screen, move right
-        }
-    }
-    else if (event->type == SDL_FINGERUP)
-    {
-        // Reset movement keys
-        keys[SDLK_w] = false;
-        keys[SDLK_s] = false;
-        keys[SDLK_a] = false;
-        keys[SDLK_d] = false;
-    }
 
     // Mouse position
     if (event->type == SDL_MOUSEMOTION)
@@ -129,4 +42,18 @@ void EventHandler(int type, SDL_Event *event)
     {
         keys[SDL_BUTTON_LEFT] = false;
     }
+
+    // Zoom in and out
+    if (event->type == SDL_MOUSEWHEEL)
+    {
+        if (event->wheel.y > 0)
+        {
+            gridSpacingValue *= 1.08f;
+        }
+        else if (event->wheel.y < 0)
+        {
+            gridSpacingValue /= 1.08f;
+        }
+    }
+
 }

@@ -44,6 +44,7 @@ unordered_map<int, bool> keys;
 GLfloat cursorPos[2] = {0, 0};
 GLfloat globalCursorPos[2] = {0, 0};
 GLfloat playerPosition[2] = {0, 0};
+GLfloat playerScale[2] = {1, 1};
 GLfloat gridSpacingValue = 2048.0f;
 GLfloat offsetValue[2] = {0.0f, 0.0f};
 GLfloat toplefttile[2] = {0.0f, 0.0f};
@@ -54,10 +55,6 @@ bool ready = false;
 float moveSpeed = 1;
 float defaultMoveSpeed = moveSpeed;
 int lastTime = 0;
-GLuint textureID;
-GLuint *shaderProgram;
-GLuint *shaderProgram2;
-GLuint *shaderProgramTexture;
 float defaultGSV = 16.0f;
 SDL_Surface *image = nullptr;
 bool first_start = false;
@@ -74,12 +71,6 @@ void animations(context *ctx);
 
 int main(int argc, char *argv[])
 {
-    seed = 0;
-    shaderProgram = new GLuint;
-    shaderProgram2 = new GLuint;
-    shaderProgramTexture = new GLuint;
-    printf("Seed: %d\n", seed);
-
     // Initialize SDL and SDL_Image
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
@@ -100,38 +91,19 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    ctx.window = mpWindow;
+    loadGl(mpWindow);
+    runFactories(registry);
 
-    // Create OpenGLES 2 context on SDL window
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-    SDL_GL_SetSwapInterval(1);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-    SDL_GLContext glc = SDL_GL_CreateContext(mpWindow);
-
-    glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
-    
-    for(int i = 0; i < 10; i++) {
-        createDebugEntity(registry);
-    }
-    // create player entity
-    _player = createPlayerEntity(registry);
-
-    createDebugBuilding(registry);
-    createDebugTeleporter(registry);
-    makeBigThing(registry);
-
-    _js__kvdata("test", 1234);
+    // Trigger JS functions
     _js__fetch_configs();   
     _js__ready();
     
     // Set the main loop
+    ctx.window = mpWindow;
     emscripten_set_main_loop_arg(mainloop, &ctx, 0, 1);
     emscripten_set_main_loop_timing(EM_TIMING_RAF, 1);
 
     // Quit
-    glDeleteTextures(1, &textureID);
     SDL_Quit();
     IMG_Quit();
 
@@ -148,21 +120,16 @@ void updateFrame(context *ctx)
         windowResized = false;
     }
 
-    // Update entity movement and interactions
-    updateMovement(registry);
-    updateCollisions(registry);
-    updateTeleporters(registry);
-    updateInteractions(registry);
-    updateEntities(registry);
-    updateShapes(registry);
-
     // Update player-based calculations
     Position &playerPos = registry.get<Position>(_player);
     Shape &playerShape = registry.get<Shape>(_player);
 
+    playerScale[0] = 1;
+    playerScale[1] = 1;
+
     // Set view offset
-    offsetValue[0] = (fmod(playerPos.x, defaultGSV) * gridSpacingValue) / defaultGSV;
-    offsetValue[1] = (fmod(playerPos.y, defaultGSV) * gridSpacingValue) / defaultGSV;
+    offsetValue[0] = ((fmod(playerPos.x, defaultGSV) * gridSpacingValue) / defaultGSV) - (playerShape.size.x / 2);
+    offsetValue[1] = ((fmod(playerPos.y, defaultGSV) * gridSpacingValue) / defaultGSV) - (playerShape.size.y / 2);
 
     // Set bounds
     toplefttile[0] = static_cast<int>(playerPos.x / defaultGSV) - (width / gridSpacingValue / 2);
@@ -174,6 +141,15 @@ void updateFrame(context *ctx)
     
     // Scale moveSpeed with grid spacing
     moveSpeed = defaultMoveSpeed * (defaultGSV / gridSpacingValue) * 10;
+
+    // Update entity movement and interactions
+    updateCollisions(registry);
+    updateTeleporters(registry);
+    updateInteractions(registry);
+    updateShapes(registry);
+    updateMovement(registry);
+    updatePositions(registry);
+
 }
 
 bool js_loaded() {
@@ -227,45 +203,42 @@ void mainloop(void *arg)
         scale);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     
-    // Render player
+    // Render player at the center of the screen
     updateUniformsTexture(shaderProgramMap["texture"], 
         textureIDMap["smile"],
         playerPos.sx, playerPos.sy,
         playerShape.scaled_size.x, playerShape.scaled_size.y);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
+    
     // Render visible entities
-    auto visible_entities = registry.view<Position, Shape, Validation, Visible>();
+    auto visible_entities = registry.view<Position, Shape, Visible>();
 
     for(auto& entity : visible_entities) {
         auto &position = visible_entities.get<Position>(entity);
         auto &shape = visible_entities.get<Shape>(entity);
-        auto &validation = visible_entities.get<Validation>(entity);
         
-        if(validation.state == 1) {
-            bool isDebug = registry.all_of<Debug>(entity);
-            bool isTeleport = registry.all_of<Teleport>(entity);
-            if(isDebug && registry.all_of<Color>(entity)) {
-                auto &color = registry.get<Color>(entity);
-                updateUniformsDebug(shaderProgramMap["debug_entity"],
-                    color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a,
-                    position.sx, position.sy, 
-                    shape.scaled_size.x, shape.scaled_size.y);
-            }
-            else if(isTeleport) {
-                updateUniformsTexture(shaderProgramMap["texture"], 
-                    textureIDMap["door"],
-                    position.sx, position.sy,
-                    shape.scaled_size.x, shape.scaled_size.y);
-            }
-            else {
-                updateUniformsTexture(shaderProgramMap["texture"], 
-                    textureIDMap["tree"],
-                    position.sx, position.sy,
-                    shape.scaled_size.x, shape.scaled_size.y);
-            }
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        bool isDebug = registry.all_of<Debug>(entity);
+        bool isTeleport = registry.all_of<Teleport>(entity);
+        if(isDebug && registry.all_of<Color>(entity)) {
+            auto &color = registry.get<Color>(entity);
+            updateUniformsDebug(shaderProgramMap["debug_entity"],
+                color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a,
+                position.sx, position.sy, 
+                shape.scaled_size.x, shape.scaled_size.y, playerScale);
         }
+        else if(isTeleport) {
+            updateUniformsTexture(shaderProgramMap["texture"], 
+                textureIDMap["door"],
+                position.sx, position.sy,
+                shape.scaled_size.x, shape.scaled_size.y);
+        }
+        else {
+            updateUniformsTexture(shaderProgramMap["texture"], 
+                textureIDMap["tree"],
+                position.sx, position.sy,
+                shape.scaled_size.x, shape.scaled_size.y);
+        }
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     }
 
     // Swap buffers

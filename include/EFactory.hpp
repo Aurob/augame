@@ -4,6 +4,8 @@
 #include <vector>
 #include <type_traits>
 
+extern entt::entity _player;
+
 /*For creating entities*/
 enum struct ComponentType {
     Position,
@@ -98,41 +100,36 @@ void createDebugBuilding(entt::registry& registry, float xOffset = 0.0f, float y
     createRoom(registry, 0, 0, 11, 11, Color{255, 0, 0, 1.0f}, xOffset, yOffset);
 
     // Add 2 teleporter entities to the building
-    createDoor(registry, 5, 11, Position{5, 12}, Position{5, 8}, false, xOffset, yOffset);
-    createDoor(registry, 5, 9, Position{5, 8}, Position{5, 12}, false, xOffset, yOffset);
+    // createDoor(registry, 5, 11, Position{5, 12}, Position{5, 8}, false, xOffset, yOffset);
+    // createDoor(registry, 5, 9, Position{5, 8}, Position{5, 12}, false, xOffset, yOffset);
 }
 
 void createDebugTeleporter(entt::registry& registry, float xOffset = 0.0f, float yOffset = 0.0f) {
-    auto entity = registry.create();
-    registry.emplace<Position>(entity, Position{5 + xOffset, 11 + yOffset});
-    registry.emplace<Teleport>(entity, Teleport{Position{5, 12}, Position{5, 8}});
-    registry.emplace<Validation>(entity);
-    registry.emplace<Debug>(entity);
-    registry.emplace<Shape>(entity, Shape{1, 1});
+    struct TeleporterData {
+        float x;
+        float y;
+        Position dest1;
+        Position dest2;
+        bool bidirectional;
+    };
 
-    // // Teleport 2
-    auto entity2 = registry.create();
-    registry.emplace<Position>(entity2, Position{5 + xOffset, 9 + yOffset});
-    registry.emplace<Teleport>(entity2, Teleport{Position{5, 8}, Position{5, 12}});
-    registry.emplace<Validation>(entity2);
-    registry.emplace<Debug>(entity2);
-    registry.emplace<Shape>(entity2, Shape{1, 1});
+    std::vector<TeleporterData> teleporters = {
+        {1, 1, {1, 1}, {9, 1}, false},  // a->b
+        {9, 1, {9, 1}, {1, 9}, false},  // b->c
+        {1, 9, {1, 9}, {9, 9}, false},  // c->d
+        {9, 9, {9, 9}, {1, 1}, false},  // d->a
+        {5, 9, {5, 9}, {5, 12}, false},  // e->f
+        {5, 11, {5, 11}, {5, 8}, false}  // f->e
+    };
 
-    // // Teleport 3
-    auto entity3 = registry.create();
-    registry.emplace<Position>(entity3, Position{5 + xOffset, 1 + yOffset});
-    registry.emplace<Teleport>(entity3, Teleport{Position{5, 0}, Position{5, 12}, true});
-    registry.emplace<Validation>(entity3);
-    registry.emplace<Debug>(entity3);
-    registry.emplace<Shape>(entity3, Shape{1, 1});
-
-    // // Teleport 4
-    auto entity4 = registry.create();
-    registry.emplace<Position>(entity4, Position{5 + xOffset, 5 + yOffset});
-    registry.emplace<Teleport>(entity4, Teleport{Position{4, 5}, Position{5, 11}, true});
-    registry.emplace<Validation>(entity4);
-    registry.emplace<Debug>(entity4);
-    registry.emplace<Shape>(entity4, Shape{1, 1});
+    for (const auto& teleporter : teleporters) {
+        auto entity = registry.create();
+        registry.emplace<Position>(entity, Position{teleporter.x, teleporter.y});
+        registry.emplace<Teleport>(entity, Teleport{teleporter.dest1, teleporter.dest2, teleporter.bidirectional});
+        registry.emplace<Validation>(entity);
+        registry.emplace<Debug>(entity);
+        registry.emplace<Shape>(entity, Shape{1, 1});
+    }
 }
 
 void makeBigThing(entt::registry& registry, float xOffset = 0.0f, float yOffset = 0.0f) {
@@ -150,4 +147,19 @@ void makeBigThing(entt::registry& registry, float xOffset = 0.0f, float yOffset 
     registry.emplace<Shape>(entity, shape);
     registry.emplace<Debug>(entity, Debug{color});
     registry.emplace<Collidable>(entity);
+}
+
+
+void runFactories(entt::registry& registry) {
+
+    // create player entity
+    _player = createPlayerEntity(registry);
+    
+    for(int i = 0; i < 33; i++) {
+        createDebugEntity(registry);
+    }
+
+    createDebugBuilding(registry);
+    createDebugTeleporter(registry);
+    makeBigThing(registry);
 }
