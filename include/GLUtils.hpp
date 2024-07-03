@@ -10,7 +10,6 @@ extern float dirtMax;
 extern float grassMax;
 void loadGl(SDL_Window *mpWindow)
 {
-
     // Create OpenGLES 2 context on SDL window
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
@@ -19,10 +18,7 @@ void loadGl(SDL_Window *mpWindow)
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GLContext glc = SDL_GL_CreateContext(mpWindow);
 
-    // Set clear color to black
-    // glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-    // testing red
-    glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 void updateUniforms(GLuint &shaderProgram,
@@ -31,7 +27,7 @@ void updateUniforms(GLuint &shaderProgram,
                     float _width, float _height,
                     float playerPosition[2],
                     float toplefttile[2],
-                    float scale)
+                    float scale)   
 {
 
     glUseProgram(shaderProgram);
@@ -59,7 +55,6 @@ void updateUniforms(GLuint &shaderProgram,
     GLint scaleLocation = glGetUniformLocation(shaderProgram, "scale");
     glUniform1f(scaleLocation, scale);
 
-  
     // cursorPos uniform
     GLint cursorPosLocation = glGetUniformLocation(shaderProgram, "cursorPos");
     glUniform2f(cursorPosLocation, cursorPos[0], cursorPos[1]);
@@ -116,7 +111,9 @@ void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, float x, flo
 
 // updateUniformsDebug(shaderProgramMap["debug"], color.r, color.g, color.b, color.a, position.sx, position.sy, 0.1f * gridSpacingValue/1000);
 
-void updateUniformsDebug(GLuint &shaderProgram, float r, float g, float b, float a, float x, float y, float scalex, float scaley) {
+void updateUniformsDebug(GLuint &shaderProgram, 
+float r, float g, float b, float a, float x, float y, 
+float scalex, float scaley, float playerScale[2]) {
     glUseProgram(shaderProgram);
 
     GLint colorLocation = glGetUniformLocation(shaderProgram, "uColor");
@@ -125,8 +122,14 @@ void updateUniformsDebug(GLuint &shaderProgram, float r, float g, float b, float
     GLint instancePositionLocation = glGetUniformLocation(shaderProgram, "instancePosition");
     glUniform2f(instancePositionLocation, x, y);
 
-    GLint instanceScaleLocation = glGetUniformLocation(shaderProgram, "instanceScale");
-    glUniform2f(instanceScaleLocation, scalex, scaley);
+    GLint debugScaleLocation = glGetUniformLocation(shaderProgram, "entityScale");
+    glUniform2f(debugScaleLocation, scalex, scaley);
+
+    // player scale
+    GLint playerScaleLocation = glGetUniformLocation(shaderProgram, "playerScale");
+    glUniform2f(playerScaleLocation, playerScale[0], playerScale[1]);
+
+  
 }
 
 

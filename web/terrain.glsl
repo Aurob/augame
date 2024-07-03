@@ -86,8 +86,8 @@ void main() {
     // Adjust the coordinates with grid spacing, toplefttile, and offset
     vec2 adjustedCoord = (coord / grid_spacing) + toplefttile + (offset / grid_spacing);
 
-    vec2 _coord = adjustedCoord;
 
+    vec2 _coord = adjustedCoord;
 
     float n = 0.0;
     float layerFrequency = frequency;
@@ -111,3 +111,4 @@ void main() {
     }
     gl_FragColor = vec4(finalColor, 1.0);
 }
+
