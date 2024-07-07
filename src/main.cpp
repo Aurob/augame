@@ -206,7 +206,8 @@ void mainloop(void *arg)
     // Render player at the center of the screen
     updateUniformsTexture(shaderProgramMap["texture"], 
         textureIDMap["smile"],
-        playerPos.sx, playerPos.sy,
+        // playerPos.sx, playerPos.sy,
+        playerPos.sx + playerShape.scaled_size.x, playerPos.sy + playerShape.scaled_size.y,
         playerShape.scaled_size.x, playerShape.scaled_size.y);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     
@@ -221,9 +222,24 @@ void mainloop(void *arg)
         bool isTeleport = registry.all_of<Teleport>(entity);
         if(isDebug && registry.all_of<Color>(entity)) {
             auto &color = registry.get<Color>(entity);
+            auto debug_color = registry.get<Debug>(entity).defaultColor;
+
+            // If hovered over, change color
+            if(registry.all_of<Hovered>(entity)) {
+                color.r = 255;
+                color.g = 0;
+                color.b = 0;
+            }
+            else {
+                color.r = debug_color.r;
+                color.g = debug_color.g;
+                color.b = debug_color.b;
+            }
+
             updateUniformsDebug(shaderProgramMap["debug_entity"],
                 color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a,
-                position.sx, position.sy, 
+                // position.sx, position.sy, 
+                position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
                 shape.scaled_size.x, shape.scaled_size.y, playerScale);
         }
         else if(isTeleport) {
