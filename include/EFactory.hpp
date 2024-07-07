@@ -97,7 +97,7 @@ void createRoom(entt::registry& registry, float x, float y, float width, float h
 
 void createDebugBuilding(entt::registry& registry, float xOffset = 0.0f, float yOffset = 0.0f) {
     // Create a simple building consisting of 4 walls
-    createRoom(registry, 0, 0, 11, 11, Color{255, 0, 0, 1.0f}, xOffset, yOffset);
+    createRoom(registry, 0, 0, 11, 11, Color{77, 88, 99, 1.0f}, xOffset, yOffset);
 
     // Add 2 teleporter entities to the building
     // createDoor(registry, 5, 11, Position{5, 12}, Position{5, 8}, false, xOffset, yOffset);

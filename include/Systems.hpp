@@ -185,7 +185,49 @@ void updateTeleporters(entt::registry &registry)
 
 void updateInteractions(entt::registry &registry)
 {
-    // auto debug_entities = registry.view<Visible, Interactable>();
+    auto debug_entities = registry.view<Visible, Interactable, Hoverable, Position, Shape>();
+
+    for (auto entity : debug_entities)
+    {
+        auto &position = debug_entities.get<Position>(entity);
+        auto &shape = debug_entities.get<Shape>(entity);
+
+        // Normalize cursorPos to -1 to 1 range
+        float normalizedCursorX = (cursorPos[0] / width) * 2 - 1;
+        float normalizedCursorY = 1 - (cursorPos[1] / height) * 2;
+
+        // Convert entity position and size to normalized coordinates
+        float normalizedPosX = (position.sx / width) * 2 - 1;
+        float normalizedPosY = 1 - (position.sy / height) * 2;
+        float normalizedSizeX = (shape.scaled_size.x / width) * 2;
+        float normalizedSizeY = (shape.scaled_size.y / height) * 2;
+
+        // Check if the normalized cursorPos is within the bounds of the entity
+        if (normalizedCursorX > normalizedPosX && normalizedCursorX < normalizedPosX + normalizedSizeX &&
+            normalizedCursorY > normalizedPosY && normalizedCursorY < normalizedPosY + normalizedSizeY)
+        {
+            if (!registry.all_of<Hovered>(entity))
+            {
+                registry.emplace<Hovered>(entity);
+            }
+
+            if (keys[SDL_BUTTON_LEFT])
+            {
+                if (!registry.all_of<Interacted>(entity))
+                {
+                    registry.emplace<Interacted>(entity);
+                }
+            }
+        }
+        else
+        {
+            if (registry.all_of<Hovered>(entity))
+            {
+                registry.remove<Hovered>(entity);
+            }
+        }
+
+    }
 }
 
 void updatePositions(entt::registry &registry) {
