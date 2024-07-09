@@ -114,10 +114,10 @@ void createDebugTeleporter(entt::registry& registry, float xOffset = 0.0f, float
     };
 
     std::vector<TeleporterData> teleporters = {
-        {1, 1, {1, 1}, {9, 1}, false},  // a->b
-        {9, 1, {9, 1}, {1, 9}, false},  // b->c
-        {1, 9, {1, 9}, {9, 9}, false},  // c->d
-        {9, 9, {9, 9}, {1, 1}, false},  // d->a
+        // {1, 1, {1, 1}, {9, 1}, false},  // a->b
+        // {9, 1, {9, 1}, {1, 9}, false},  // b->c
+        // {1, 9, {1, 9}, {9, 9}, false},  // c->d
+        // {9, 9, {9, 9}, {1, 1}, false},  // d->a
         {5, 9, {5, 9}, {5, 12}, false},  // e->f
         {5, 11, {5, 11}, {5, 8}, false}  // f->e
     };
@@ -155,7 +155,7 @@ void runFactories(entt::registry& registry) {
     // create player entity
     _player = createPlayerEntity(registry);
     
-    for(int i = 0; i < 33; i++) {
+    for(int i = 0; i < 10; i++) {
         createDebugEntity(registry);
     }
 

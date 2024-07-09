@@ -67,7 +67,7 @@ void updateUniforms(GLuint &shaderProgram,
    
 }
 
-void updateUniforms2(GLuint &shaderProgram, float _width, float _height, float gridSpacingValue)
+void updateUniforms2(GLuint &shaderProgram, float _width, float _height, float gridSpacingValue, float toplefttile[2])
 {
     glUseProgram(shaderProgram);
 
@@ -78,9 +78,15 @@ void updateUniforms2(GLuint &shaderProgram, float _width, float _height, float g
     // grid_spacing uniform
     GLint gridSpacingLocation = glGetUniformLocation(shaderProgram, "grid_spacing");
     glUniform1f(gridSpacingLocation, gridSpacingValue);
+
+    // cursorPos uniform
+    GLint cursorPosLocation = glGetUniformLocation(shaderProgram, "cursorPos");
+    glUniform2f(cursorPosLocation, cursorPos[0], cursorPos[1]);
+
+    // toplefttile uniform
+    GLint toplefttileLocation = glGetUniformLocation(shaderProgram, "toplefttile");
+    glUniform2fv(toplefttileLocation, 1, toplefttile);
 }
-
-
 
 void updateUniformsTree(GLuint &shaderProgram, float x, float y, float scale, float _width, float _height, float gridSpacingValue) {
     glUseProgram(shaderProgram);
