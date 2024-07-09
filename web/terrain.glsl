@@ -6,6 +6,7 @@ uniform vec2 resolution;
 varying vec3 color;
 uniform vec2 playerPos;
 uniform vec2 toplefttile;
+uniform vec2 cursorPos; // Add cursorPos uniform
 // Add a lot of grass with patches of dirt and a sandy shore around small seas, sparse stone and rare snow
 const float waterMax = 0.01;  // Less water
 const float sandMax = 0.10;   // Sandy shore around seas
@@ -86,7 +87,6 @@ void main() {
     // Adjust the coordinates with grid spacing, toplefttile, and offset
     vec2 adjustedCoord = (coord / grid_spacing) + toplefttile + (offset / grid_spacing);
 
-
     vec2 _coord = adjustedCoord;
 
     float n = 0.0;
@@ -109,6 +109,7 @@ void main() {
             finalColor = vec3(0.0, 0.0, 0.0);
         }
     }
+
     gl_FragColor = vec4(finalColor, 1.0);
 }
 

@@ -33,6 +33,7 @@ extern bool ready;
 extern float moveSpeed;
 extern float defaultMoveSpeed;
 extern float defaultGSV;
+extern GLfloat toplefttile[2];
 extern entt::entity _player;
 
 // General variables
@@ -63,7 +64,7 @@ entt::entity _player;
 entt::registry registry;
 
 context ctx;
-
+// 
 // Function declarations
 void mainloop(void *arg);
 void EventHandler(int, SDL_Event *);
@@ -225,10 +226,17 @@ void mainloop(void *arg)
             auto debug_color = registry.get<Debug>(entity).defaultColor;
 
             // If hovered over, change color
-            if(registry.all_of<Hovered>(entity)) {
-                color.r = 255;
-                color.g = 0;
-                color.b = 0;
+            if(registry.all_of<Hovered>(entity) || registry.all_of<Interacted>(entity)) {
+                if(registry.all_of<Interacted>(entity)) {
+                    color.r = 255;
+                    color.g = 0;
+                    color.b = 0;
+                }
+                else {
+                    color.r = 0;
+                    color.g = 255;
+                    color.b = 0;
+                }
             }
             else {
                 color.r = debug_color.r;
@@ -245,18 +253,25 @@ void mainloop(void *arg)
         else if(isTeleport) {
             updateUniformsTexture(shaderProgramMap["texture"], 
                 textureIDMap["door"],
-                position.sx, position.sy,
+                position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
                 shape.scaled_size.x, shape.scaled_size.y);
         }
         else {
             updateUniformsTexture(shaderProgramMap["texture"], 
                 textureIDMap["tree"],
-                position.sx, position.sy,
+                position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
                 shape.scaled_size.x, shape.scaled_size.y);
         }
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     }
+    
+    // Render player at the center of the screen
+    updateUniforms2(shaderProgramMap["ui_layer"], 
+        width, height, gridSpacingValue,
+        toplefttile);
 
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    
     // Swap buffers
     SDL_GL_SwapWindow(ctx->window);
 

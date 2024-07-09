@@ -15,6 +15,7 @@ extern float defaultGSV;
 extern entt::entity _player;
 extern float moveSpeed;
 extern float defaultMoveSpeed;
+extern GLfloat toplefttile[2];
 
 
 void updateMovement(entt::registry &registry)
@@ -185,27 +186,29 @@ void updateTeleporters(entt::registry &registry)
 
 void updateInteractions(entt::registry &registry)
 {
-    auto debug_entities = registry.view<Visible, Interactable, Hoverable, Position, Shape>();
+    auto playerPos = registry.get<Position>(_player);
+    auto playerShape = registry.get<Shape>(_player);
 
+    auto debug_entities = registry.view<Visible, Interactable, Hoverable, Position, Shape>();
     for (auto entity : debug_entities)
     {
         auto &position = debug_entities.get<Position>(entity);
         auto &shape = debug_entities.get<Shape>(entity);
+        bool mouseCollides = false;
 
-        // Normalize cursorPos to -1 to 1 range
-        float normalizedCursorX = (cursorPos[0] / width) * 2 - 1;
-        float normalizedCursorY = 1 - (cursorPos[1] / height) * 2;
+        // Calculate cursor position in shader coordinates
+        float normalizedCursorX = -((cursorPos[0] / width) * 2.0f - 1.0f) - playerShape.scaled_size.x;
+        float normalizedCursorY = (1.0f - (cursorPos[1] / height) * 2.0f) - playerShape.scaled_size.y;
 
-        // Convert entity position and size to normalized coordinates
-        float normalizedPosX = (position.sx / width) * 2 - 1;
-        float normalizedPosY = 1 - (position.sy / height) * 2;
-        float normalizedSizeX = (shape.scaled_size.x / width) * 2;
-        float normalizedSizeY = (shape.scaled_size.y / height) * 2;
+        // Check for exact boundary collision
+        if (normalizedCursorX >= position.sx - shape.scaled_size.x &&
+            normalizedCursorX <= position.sx + shape.scaled_size.x &&
+            normalizedCursorY >= position.sy - shape.scaled_size.y &&
+            normalizedCursorY <= position.sy + shape.scaled_size.y ) {
+            mouseCollides = true;
+        }
 
-        // Check if the normalized cursorPos is within the bounds of the entity
-        if (normalizedCursorX > normalizedPosX && normalizedCursorX < normalizedPosX + normalizedSizeX &&
-            normalizedCursorY > normalizedPosY && normalizedCursorY < normalizedPosY + normalizedSizeY)
-        {
+        if(mouseCollides) {
             if (!registry.all_of<Hovered>(entity))
             {
                 registry.emplace<Hovered>(entity);
@@ -218,6 +221,13 @@ void updateInteractions(entt::registry &registry)
                     registry.emplace<Interacted>(entity);
                 }
             }
+            else
+            {
+                if (registry.all_of<Interacted>(entity))
+                {
+                    registry.remove<Interacted>(entity);
+                }
+            }
         }
         else
         {
@@ -225,8 +235,11 @@ void updateInteractions(entt::registry &registry)
             {
                 registry.remove<Hovered>(entity);
             }
+            if (registry.all_of<Interacted>(entity))
+            {
+                registry.remove<Interacted>(entity);
+            }
         }
-
     }
 }
 
