@@ -9,14 +9,13 @@
 <!-- Add a demo image or gif here -->
 ![AuGame Demo](path/to/demo.gif)
 
-AuGame is a flexible framework for creating 2D games that run directly in web browsers. It combines the performance of C++ with the accessibility of web technologies.
-
+AuGame is an early prototype for a future unnamed game. It's a 2D game engine that runs directly in web browsers, combining the performance of C++ with the accessibility of web technologies.
 ## Features
 
 - 🚀 C++ core for high performance
 - 🌐 [WebAssembly](https://webassembly.org/) compilation for browser deployment
 - 🎮 [SDL2](https://www.libsdl.org/) for cross-platform compatibility
-- 🖼️ [OpenGL ES 2.0](https://www.khronos.org/opengles/) for efficient rendering
+- 🖼️ [WebGL](https://www.khronos.org/webgl/) for efficient rendering
 - 🧩 Entity-Component-System (ECS) architecture using [EnTT](https://github.com/skypjack/entt)
 - 🎨 Custom shader support
 - 🖼️ Texture loading and rendering
@@ -24,6 +23,7 @@ AuGame is a flexible framework for creating 2D games that run directly in web br
 - 🕹️ Player movement and interactions
 - 🌍 Tile-based world generation
 - 🎭 Dynamic entity creation and management
+
 ## Key Components
 
 - `main.cpp`: Core game loop and initialization
