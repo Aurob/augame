@@ -16,6 +16,7 @@ extern GLfloat gridSpacingValue;
 extern bool ready;
 extern entt::entity _player;
 extern entt::registry registry;
+extern unordered_map<int, bool> keys;
 
 // key, float value
 void _js__kvdata(string k, float v)
@@ -157,6 +158,28 @@ extern "C"
                                 Position &playerPos = registry.get<Position>(_player);
                                 playerPos.x = x;
                                 playerPos.y = y;
+                            }
+                        }
+                    }
+
+                    // Check for MobileMovement:w:a:s:d
+                    if (_el.contains("MobileMovement") && _el["MobileMovement"].is_object())
+                    {
+                        auto &mobileMovement = _el["MobileMovement"];
+                        if (mobileMovement.contains("w") && mobileMovement["w"].is_number() && mobileMovement.contains("a") && mobileMovement["a"].is_number() && mobileMovement.contains("s") && mobileMovement["s"].is_number() && mobileMovement.contains("d") && mobileMovement["d"].is_number())
+                        {
+                            float w = mobileMovement["w"];
+                            float a = mobileMovement["a"];
+                            float s = mobileMovement["s"];
+                            float d = mobileMovement["d"];
+
+                            if (is_player)
+                            {
+                                printf("MobileMovement: %f, %f, %f, %f\n", w, a, s, d);
+                                keys[SDLK_a] = a;
+                                keys[SDLK_w] = w;
+                                keys[SDLK_s] = s;
+                                keys[SDLK_d] = d;
                             }
                         }
                     }
