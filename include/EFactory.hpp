@@ -21,24 +21,31 @@ enum struct ComponentType {
     Interacted,
     Collisions
 };
+entt::entity createBasicEntity(entt::registry& registry, float x, float y, float w, float h) {
+    auto entity = registry.create();
+    registry.emplace<Position>(entity, Position{x, y});
+    registry.emplace<Shape>(entity, Shape{w, h});
+    return entity;
+}
+entt::entity createDebugEntity(entt::registry& registry, float x = 0.0f, float y = 0.0f, float w = 0.0f, float h = 0.0f, bool random = false) {
 
-entt::entity createDebugEntity(entt::registry& registry, float xOffset = 0.0f, float yOffset = 0.0f) {
-    float x = static_cast<float>(rand() % 10) + static_cast<float>(rand()) / static_cast<float>(RAND_MAX) + xOffset;
-    float y = static_cast<float>(rand() % 10) + static_cast<float>(rand()) / static_cast<float>(RAND_MAX) + yOffset;
+    if (random) {
+        x = static_cast<float>(rand() % 10) + static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+        y = static_cast<float>(rand() % 10) + static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+        w = 0.2f + static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 0.5f;
+        h = 0.2f + static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 0.5f;
+    }
+
+    auto entity = createBasicEntity(registry, x, y, w, h);
 
     Color color = {static_cast<float>(rand() % 255), static_cast<float>(rand() % 255), static_cast<float>(rand() % 255), 1.0f};
 
-    Shape shape = {0.2f + static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 0.5f, 
-                   0.2f + static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 0.5f};
-
-    auto entity = registry.create();
-    registry.emplace<Position>(entity, Position{x, y});
     registry.emplace<Color>(entity, color);
     registry.emplace<Validation>(entity);
-    registry.emplace<Shape>(entity, shape);
     registry.emplace<Debug>(entity, Debug{color});
     registry.emplace<Hoverable>(entity);
     registry.emplace<Interactable>(entity);
+    registry.emplace<Linkable>(entity);
 
     registry.emplace<Movement>(entity, Movement{
         static_cast<float>(rand() % 10) + 1, 
@@ -63,7 +70,7 @@ entt::entity createPlayerEntity(entt::registry& registry, float xOffset = 0.0f, 
     registry.emplace<Collisions>(entity);
     registry.emplace<Player>(entity);
     registry.emplace<Visible>(entity);
-    registry.emplace<Movement>(entity, Movement{10, 110, Vector2f{0, 0}, Vector2f{0, 0}, .5, .1});
+    registry.emplace<Movement>(entity, Movement{25, 110, Vector2f{0, 0}, Vector2f{0, 0}, 4, .1});
     registry.emplace<Debug>(entity, Debug{Color{0, 0, 255, 0.0f}});
     registry.emplace<Collidable>(entity);
     return entity;
@@ -88,78 +95,111 @@ void createDoor(entt::registry& registry, float x, float y, Position destination
     registry.emplace<Shape>(door, Shape{1, 1});
 }
 
-void createRoom(entt::registry& registry, float x, float y, float width, float height, Color wallColor, float xOffset = 0.0f, float yOffset = 0.0f) {
-    createWall(registry, x, y, width, 1, wallColor, xOffset, yOffset); // Top wall
-    createWall(registry, x + width - 1, y, 1, height, wallColor, xOffset, yOffset); // Right wall
-    createWall(registry, x, y + height - 1, width, 1, wallColor, xOffset, yOffset); // Bottom wall
-    createWall(registry, x, y, 1, height, wallColor, xOffset, yOffset); // Left wall
-}
+void createDynamicBuilding(entt::registry& registry, 
+                           const std::vector<std::tuple<float, float, float, float>>& walls,
+                           const std::vector<std::tuple<float, float, float, float, Position, Position, bool>>& teleporters,
+                           Color wallColor = Color{77, 88, 99, 1.0f},
+                           float xOffset = 0.0f, float yOffset = 0.0f) {
+    
+    // Create walls
+    for (const auto& [x, y, width, height] : walls) {
+        createWall(registry, x, y, width, height, wallColor, xOffset, yOffset);
+    }
 
-void createDebugBuilding(entt::registry& registry, float xOffset = 0.0f, float yOffset = 0.0f) {
-    // Create a simple building consisting of 4 walls
-    createRoom(registry, 0, 0, 11, 11, Color{77, 88, 99, 1.0f}, xOffset, yOffset);
-
-    // Add 2 teleporter entities to the building
-    // createDoor(registry, 5, 11, Position{5, 12}, Position{5, 8}, false, xOffset, yOffset);
-    // createDoor(registry, 5, 9, Position{5, 8}, Position{5, 12}, false, xOffset, yOffset);
-}
-
-void createDebugTeleporter(entt::registry& registry, float xOffset = 0.0f, float yOffset = 0.0f) {
-    struct TeleporterData {
-        float x;
-        float y;
-        Position dest1;
-        Position dest2;
-        bool bidirectional;
-    };
-
-    std::vector<TeleporterData> teleporters = {
-        // {1, 1, {1, 1}, {9, 1}, false},  // a->b
-        // {9, 1, {9, 1}, {1, 9}, false},  // b->c
-        // {1, 9, {1, 9}, {9, 9}, false},  // c->d
-        // {9, 9, {9, 9}, {1, 1}, false},  // d->a
-        {5, 9, {5, 9}, {5, 12}, false},  // e->f
-        {5, 11, {5, 11}, {5, 8}, false}  // f->e
-    };
-
-    for (const auto& teleporter : teleporters) {
-        auto entity = registry.create();
-        registry.emplace<Position>(entity, Position{teleporter.x, teleporter.y});
-        registry.emplace<Teleport>(entity, Teleport{teleporter.dest1, teleporter.dest2, teleporter.bidirectional});
-        registry.emplace<Validation>(entity);
-        registry.emplace<Debug>(entity);
-        registry.emplace<Shape>(entity, Shape{1, 1});
+    // Create teleporters
+    for (const auto& [x, y, width, height, dest1, dest2, bidirectional] : teleporters) {
+        auto door = registry.create();
+        registry.emplace<Position>(door, Position{x + xOffset, y + yOffset});
+        registry.emplace<Teleport>(door, Teleport{dest1, dest2, bidirectional});
+        registry.emplace<Validation>(door);
+        registry.emplace<Debug>(door);
+        registry.emplace<Shape>(door, Shape{width, height});
     }
 }
 
-void makeBigThing(entt::registry& registry, float xOffset = 0.0f, float yOffset = 0.0f) {
-    float x = 15000;
-    float y = 15000;
+void createDebugBuilding(entt::registry& registry, float xOffset = 0.0f, float yOffset = 0.0f) {
+    std::vector<std::tuple<float, float, float, float>> walls = {
+        {0, 0, 11, 1},    // Top wall
+        {10, 0, 1, 11},   // Right wall
+        {0, 10, 11, 1},   // Bottom wall
+        {0, 0, 1, 11}     // Left wall
+    };
 
-    Color color = {static_cast<float>(rand() % 255), static_cast<float>(rand() % 255), static_cast<float>(rand() % 255), 1.0f};
+    std::vector<std::tuple<float, float, float, float, Position, Position, bool>> teleporters = {
+        {5, 11, 1, 1, Position{5, 12}, Position{5, 8}, false},
+        {5, 9, 1, 1, Position{5, 8}, Position{5, 12}, false}
+    };
 
-    Shape shape = {1000, 1000};
+    createDynamicBuilding(registry, walls, teleporters, Color{77, 88, 99, 1.0f}, xOffset, yOffset);
 
-    auto entity = registry.create();
-    registry.emplace<Position>(entity, Position{x, y});
-    registry.emplace<Color>(entity, color);
-    registry.emplace<Validation>(entity);
-    registry.emplace<Shape>(entity, shape);
-    registry.emplace<Debug>(entity, Debug{color});
-    registry.emplace<Collidable>(entity);
+    // Make another building next to the first one
+    std::vector<std::tuple<float, float, float, float>> walls2 = {
+        {11, 0, 11, 1},  // Top wall
+        {21, 0, 1, 13},  // Right wall
+        {11, 0, 1, 11},  // Left wall
+        {10, 11, 1, 1}, 
+        {12, 12, 10, 1}, 
+        {13, 10, 9, 1}, 
+        {12, 13, .1, .6},
+        {14, 13, .1, .6},
+        {12, 13.6, 2, .1}
+
+        
+    };
+
+    createDynamicBuilding(registry, walls2, {}, Color{77, 88, 99, 1.0f}, xOffset, yOffset);
+
+
+    // Create 2 debug entities and add the Linked component and link them    
+    float x1 = 11;
+    float y1 = 11;
+    float w1 = 6;
+    float h1 = 1;
+    auto entity1 = createDebugEntity(registry, x1, y1, w1, h1);
+    registry.remove<Moveable>(entity1);
+    registry.remove<Linkable>(entity1);
+    registry.remove<Interactable>(entity1);
+    registry.remove<Color>(entity1);
+    registry.emplace<Color>(entity1, Color{55, 66, 77, 1.0f});
+    auto &movement = registry.get<Movement>(entity1);
+    movement.friction = 10;
+
+    float x2 = 12.1;
+    float y2 = 13;
+    float w2 = 1;
+    float h2 = .5;
+    auto entity2 = createDebugEntity(registry, x2, y2, w2, h2);
+
+    registry.emplace<Linked>(entity1, Linked{entity2, .1});
+    // remove color and re-add with 66, 77, 88
+    registry.remove<Color>(entity2);
+    auto &color2 = registry.emplace<Color>(entity2, Color{100, 22, 33, 1.0f});
+    auto movement2 = registry.get<Movement>(entity2);
+    movement2.friction = 10;
+
 }
+
+void createDebugTeleporter(entt::registry& registry, float xOffset = 0.0f, float yOffset = 0.0f) {
+    std::vector<std::tuple<float, float, float, float, Position, Position, bool>> teleporters = {
+        {5, 9, 1, 1, Position{5, 9}, Position{5, 12}, false},
+        {5, 11, 1, 1, Position{5, 11}, Position{5, 8}, false}
+    };
+
+    createDynamicBuilding(registry, {}, teleporters, Color{}, xOffset, yOffset);
+}
+
 
 
 void runFactories(entt::registry& registry) {
 
     // create player entity
     _player = createPlayerEntity(registry);
+
     
     for(int i = 0; i < 10; i++) {
-        createDebugEntity(registry);
+        createDebugEntity(registry, 0, 0, 0, 0, true);
     }
 
     createDebugBuilding(registry);
     createDebugTeleporter(registry);
-    makeBigThing(registry);
 }
