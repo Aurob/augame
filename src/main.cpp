@@ -149,6 +149,7 @@ void updateFrame(context *ctx)
     updateInteractions(registry);
     updateShapes(registry);
     updateMovement(registry);
+    updateLinkedEntities(registry);
     updatePositions(registry);
 
 }
@@ -204,14 +205,6 @@ void mainloop(void *arg)
         scale);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     
-    // Render player at the center of the screen
-    updateUniformsTexture(shaderProgramMap["texture"], 
-        textureIDMap["smile"],
-        // playerPos.sx, playerPos.sy,
-        playerPos.sx + playerShape.scaled_size.x, playerPos.sy + playerShape.scaled_size.y,
-        playerShape.scaled_size.x, playerShape.scaled_size.y);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    
     // Render visible entities
     auto visible_entities = registry.view<Position, Shape, Visible>();
 
@@ -239,9 +232,9 @@ void mainloop(void *arg)
                 }
             }
             else {
-                color.r = debug_color.r;
-                color.g = debug_color.g;
-                color.b = debug_color.b;
+                color.r = color.defaultR;
+                color.g = color.defaultG;
+                color.b = color.defaultB;
             }
 
             updateUniformsDebug(shaderProgramMap["debug_entity"],
@@ -264,6 +257,15 @@ void mainloop(void *arg)
         }
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     }
+
+    // Render player at the center of the screen
+    updateUniformsTexture(shaderProgramMap["texture"], 
+        textureIDMap["smile"],
+        // playerPos.sx, playerPos.sy,
+        playerPos.sx + playerShape.scaled_size.x, playerPos.sy + playerShape.scaled_size.y,
+        playerShape.scaled_size.x, playerShape.scaled_size.y);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    
     
     // Render player at the center of the screen
     updateUniforms2(shaderProgramMap["ui_layer"], 

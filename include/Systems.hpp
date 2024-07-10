@@ -75,17 +75,35 @@ void updateCollisions(entt::registry &registry)
         if (!registry.all_of<Movement>(entity))
             continue;
 
+        bool hasLink = registry.all_of<Linked>(entity);
+        // Linked link = (hasLink) ? registry.get<Linked>(entity) : Linked{};
+        // if(hasLink) {
+        //     if(!link.keepCollisions) continue;
+        // }
+
         bool colliding = false;
         std::vector<entt::entity> _collidables;
         std::vector<Vector2f> overlaps;
 
         Shape &entityShape = registry.get<Shape>(entity);
         Position &entityPosition = registry.get<Position>(entity);
-
+        
         for (auto _entity : collidables)
         {
             if (_entity == entity)
                 continue; // skip self
+            // if(hasLink) {
+            //     if(_entity == link.parent) {
+            //         continue;
+            //     }
+            // }
+            if(registry.all_of<Linked>(_entity)) {
+                auto _link = registry.get<Linked>(_entity);
+                if(_link.parent == entity) {
+                    // continue;
+                }
+            }
+            
 
             Position &_entityPosition = registry.get<Position>(_entity);
             Shape &_entityShape = registry.get<Shape>(_entity);
@@ -194,6 +212,7 @@ void updateInteractions(entt::registry &registry)
     {
         auto &position = debug_entities.get<Position>(entity);
         auto &shape = debug_entities.get<Shape>(entity);
+        auto &interactable = debug_entities.get<Interactable>(entity);
         bool mouseCollides = false;
 
         // Calculate cursor position in shader coordinates
@@ -218,8 +237,14 @@ void updateInteractions(entt::registry &registry)
             {
                 if (!registry.all_of<Interacted>(entity))
                 {
-                    registry.emplace<Interacted>(entity);
+                    registry.emplace<Interacted>(entity, _player);
                 }
+                else {
+                    interactable.interactions++;
+                    interactable.toggle = !interactable.toggle;
+                }
+
+                keys[SDL_BUTTON_LEFT] = false;
             }
             else
             {
@@ -297,5 +322,60 @@ void updateShapes(entt::registry &registry) {
         auto &shape = entities.get<Shape>(entity);
         shape.scaled_size.x = (shape.size.x / defaultGSV) * gridSpacingValue / width;
         shape.scaled_size.y = (shape.size.y / defaultGSV) * gridSpacingValue / height;
+    }
+}
+
+void updateLinkedEntities(entt::registry &registry) {
+
+    // Check for new links
+    auto _entities = registry.view<Visible, Interactable, Linkable>();
+    for(auto& entity : _entities) {
+        
+        auto &interactable = _entities.get<Interactable>(entity);
+
+        if(registry.all_of<Interacted>(entity)) {
+            if(!registry.all_of<Linked>(entity)) {
+                auto interact = registry.get<Interacted>(entity); 
+                registry.emplace<Linked>(entity, Linked{interact.interactor, 1});
+            }
+            else {
+                registry.remove<Linked>(entity);
+            }
+        }
+
+
+    }
+
+
+    auto entities = registry.view<Position, Shape, Linked>();
+    for(auto& entity : entities) {
+        auto &position = entities.get<Position>(entity);
+        auto &shape = entities.get<Shape>(entity);
+        auto &linked = entities.get<Linked>(entity);
+
+        auto parentPos = registry.get<Position>(linked.parent);
+        auto parentShape = registry.get<Shape>(linked.parent);
+
+        // Update Movement to follow parent
+        // if(registry.all_of<Movement>(entity)) {
+        //     auto &movement = registry.get<Movement>(entity);
+        //     float dx = parentPos.x - position.x;
+        //     float dy = parentPos.y - position.y;
+        //     float followSpeed = 0.1f; // Adjust this value to control the following speed
+        //     movement.velocity.x = dx * followSpeed;
+        //     movement.velocity.y = dy * followSpeed;
+        // }
+
+        // If the link distance is > 0 ensure the entity is within the link distance
+        if(linked.distance > 0) {
+            float distance = std::sqrt(std::pow(position.x - parentPos.x, 2) + std::pow(position.y - parentPos.y, 2));
+            if(distance > linked.distance) {
+                float angle = std::atan2(parentPos.y - position.y, parentPos.x - position.x);
+                float adjustmentSpeed = 0.05f; // Adjust this value to control the adjustment speed
+                position.x += (parentPos.x - cos(angle) * linked.distance - position.x) * adjustmentSpeed;
+                position.y += (parentPos.y - sin(angle) * linked.distance - position.y) * adjustmentSpeed;
+            }
+        }
+        
     }
 }

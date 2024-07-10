@@ -44,8 +44,14 @@ struct Color {
     float g;
     float b;
     float a;
-};
+    float defaultR;
+    float defaultG;
+    float defaultB;
+    float defaultA;
 
+    Color(float r = 0.0f, float g = 0.0f, float b = 0.0f, float a = 1.0f)
+        : r(r), g(g), b(b), a(a), defaultR(r), defaultG(g), defaultB(b), defaultA(a) {}
+};
 struct Validation {
     int state{0};
 };
@@ -65,15 +71,23 @@ struct Teleport {
 struct Hoverable {};
 struct Hovered {};
 
-struct Interactable {};
-struct Interacted {};
+struct Interactable {
+    int interactions;
+    bool toggle;
+};
+struct Interacted {
+    entt::entity interactor;
+};
 
-struct Collisions {};
+struct Collisions {
+};
+
 struct Colliding{
     std::vector<entt::entity> colliding_entities;
 };
 struct Collidable {
     std::vector<entt::entity> colliding_with;
+    bool ignorePlayer;
 };
 
 struct Movement {
@@ -86,3 +100,10 @@ struct Movement {
 };
 struct Moveable {};
 
+
+struct Linkable {};
+struct Linked {
+    entt::entity parent;
+    float distance;
+    bool keepCollisions{false};
+};
