@@ -40,7 +40,7 @@ AuGame is an early prototype for a future unnamed game. It's a 2D game engine th
 2. Clone this repository:
    ```
    git clone https://github.com/Aurob/augame.git
-   cd AuGame-engine
+   cd augame
    ```
 3. Compile the project:
    ```
