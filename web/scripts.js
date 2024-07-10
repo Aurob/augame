@@ -8,3 +8,16 @@ function teleport(x, y) {
       }
     }]});
 }
+
+function move(w=0, a=0, s=0, d=0) {
+  Module.js_to_c(
+    {"Entities": [  {
+      "Player": true,
+      "MobileMovement": {
+          "w": w,
+          "a": a,
+          "s": s,
+          "d": d
+      }
+    }]});
+}

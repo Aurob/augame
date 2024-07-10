@@ -1,43 +1,424 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <title>Tilesh - Explore Your World</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="shortcut icon" href="favicon.ico">
     <style>
-        html, body {
+        html,
+        body {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
             overflow: hidden;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            color: #333;
         }
+
         #content {
             position: absolute;
             width: 100%;
             height: 100%;
             display: flex;
             justify-content: center;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+
+        #main {
+            position: relative;
+            width: 80%;
+            height: 80%;
+            display: flex;
+            justify-content: center;
             align-items: center;
+            background-color: #e0e0e0;
+            border-radius: 8px;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 8px;
+        }
+
+        #data {
+            top: 10px;
+            left: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        input[type="number"] {
+            width: 60px;
+            padding: 5px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
         }
     </style>
 </head>
 
 <body>
 
-    <div id="data"></div>
-    <div id="content" style="position: relative;">
+    <div id="content">
+        <div id="data"></div>
         <div id="main">
-            <canvas id="canvas" oncontextmenu="event.preventDefault()"  tabindex="-1"></canvas>
+            <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
         </div>
     </div>
 </body>
 <script>
+    function loadInputs() {
+
+        // add custom c-to-js output elements
+        const elements = {
+            x: { id: 'xpos', hasInput: true },
+            y: { id: 'ypos', hasInput: true },
+            gridSpacingValue: { id: 'gridSpacingValue', hasInput: false }
+        };
+
+        for (const [key, { id, hasInput }] of Object.entries(elements)) {
+            let element = document.createElement('div');
+            element.id = id;
+            element.innerText = `${key}: 0`;
+            document.querySelector('#data').appendChild(element);
+            Module.c_kv_elements[key] = id;
+
+            // Create input elements for keys that require them
+            if (hasInput) {
+                let inputElement = document.createElement('input');
+                inputElement.type = 'number';
+                inputElement.id = `${id}_input`;
+                inputElement.value = 0;
+                inputElement.addEventListener('input', (event) => {
+                    const value = parseFloat(event.target.value);
+                    Module.setkv(key, value);
+                    if (key === 'x' || key === 'y') {
+                        console.log("Teleporting...");
+                        Module.js_to_c({
+                            "Entities": [{
+                                "Player": true,
+                                "Position": {
+                                    x: key === 'x' ? value : Module.c_kv_data.x,
+                                    y: key === 'y' ? value : Module.c_kv_data.y
+                                }
+                            }]
+                        });
+                    }
+                });
+                document.querySelector('#data').appendChild(inputElement);
+            }
+        }
+    }
 </script>
 <script src="web/config.js"></script>
 <script src="web/scripts.js"></script>
 <script src="web/module.js"></script>
 <script src="build/main.js"></script>
+
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Tilesh - Explore Your World</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="shortcut icon" href="favicon.ico">
+    <style>
+        :root {
+            --bg-color: #2c2c2c;
+            --text-color: #e0e0e0;
+            --header-bg: #1a1a1a;
+            --content-bg: #3a3a3a;
+            --input-bg: #4a4a4a;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        #header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background-color: var(--header-bg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 10px;
+            z-index: 1000;
+            flex-wrap: wrap;
+        }
+
+        .toggle-btn {
+            background-color: var(--input-bg);
+            border: none;
+            color: var(--text-color);
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin: 2px;
+        }
+
+        #content {
+            position: absolute;
+            top: 50px;
+            width: 100%;
+            height: calc(100% - 50px);
+            background-color: var(--content-bg);
+        }
+
+        #main {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #canvas {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        #data,
+        #readme {
+            position: fixed;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        #data {
+            top: 60px;
+            right: 10px;
+        }
+
+        #readme {
+            top: 60px;
+            left: 10px;
+            max-width: 50%;
+            max-height: 80%;
+            overflow-y: auto;
+        }
+
+        .mobile-btn {
+            width: clamp(40px, 12vw, 60px);
+            height: clamp(40px, 12vw, 60px);
+            padding: 5px;
+            margin: 3px;
+            border: 1px solid var(--input-bg);
+            border-radius: 8px;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            font-size: clamp(14px, 3vw, 20px);
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .mobile-controls {
+            width: 100%;
+            position: fixed;
+            bottom: 10px;
+            display: none;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 5px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-controls {
+                display: flex;
+            }
+
+            #header {
+                height: auto;
+                padding: 5px;
+            }
+
+            .toggle-btn {
+                font-size: 0.8em;
+                padding: 3px 6px;
+            }
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="header">
+        <button id="toggleReadme" class="toggle-btn">Toggle README</button>
+        <div>
+            <button id="toggleData" class="toggle-btn">Toggle Data</button>
+            <button id="palette1" class="toggle-btn">Palette 1</button>
+            <button id="palette2" class="toggle-btn">Palette 2</button>
+            <button id="palette3" class="toggle-btn">Palette 3</button>
+        </div>
+    </div>
+    <div id="content">
+        <div id="data"></div>
+        <div id="readme"></div>
+        <div id="main">
+            <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+        </div>
+    </div>
+
+    <div class="mobile-controls">
+        <button class="mobile-btn" id="btnW">&#8593;</button>
+        <button class="mobile-btn" id="btnA">&#8592;</button>
+        <button class="mobile-btn" id="btnS">&#8595;</button>
+        <button class="mobile-btn" id="btnD">&#8594;</button>
+    </div>
+    </div>
+
+    <script>
+        function loadInputs() {
+            // add custom c-to-js output elements
+            const elements = {
+                x: { id: 'xpos', hasInput: false },
+                y: { id: 'ypos', hasInput: false },
+                gridSpacingValue: { id: 'gridSpacingValue', hasInput: false }
+            };
+
+            for (const [key, { id, hasInput }] of Object.entries(elements)) {
+                let element = document.createElement('div');
+                element.id = id;
+                element.innerText = `${key}: 0`;
+                document.querySelector('#data').appendChild(element);
+                Module.c_kv_elements[key] = id;
+
+                // Create input elements for keys that require them
+                if (hasInput) {
+                    let inputElement = document.createElement('input');
+                    inputElement.type = 'number';
+                    inputElement.id = `${id}_input`;
+                    inputElement.value = 0;
+                    inputElement.addEventListener('input', (event) => {
+                        const value = parseFloat(event.target.value);
+                        Module.setkv(key, value);
+                        if (key === 'x' || key === 'y') {
+                            console.log("Teleporting...");
+                            Module.js_to_c({
+                                "Entities": [{
+                                    "Player": true,
+                                    "Position": {
+                                        x: key === 'x' ? parseFloat(value.toFixed(2)) : Module.c_kv_data.x,
+                                        y: key === 'y' ? parseFloat(value.toFixed(2)) : Module.c_kv_data.y
+                                    }
+                                }]
+                            });
+                        }
+                    });
+                    document.querySelector('#data').appendChild(inputElement);
+                }
+            }
+        }
+
+        // Fetch README
+        fetch('https://raw.githubusercontent.com/Aurob/augame/main/README.md')
+            .then(response => response.text())
+            .then(text => {
+                document.getElementById('readme').innerHTML = `<pre>${text}</pre>`;
+            });
+
+        // Toggle functions
+        document.getElementById('toggleReadme').addEventListener('click', () => {
+            const readme = document.getElementById('readme');
+            console.log(readme.style.display);
+            readme.style.display = readme.style.display === 'none' || readme.style.display === '' ? 'block' : 'none';
+        });
+
+        document.getElementById('toggleData').addEventListener('click', () => {
+            const data = document.getElementById('data');
+            data.style.display = data.style.display === 'none' || data.style.display === '' ? 'block' : 'none';
+        });
+
+        // Palette functions
+        const palettes = {
+            1: { '--bg-color': '#2c2c2c', '--text-color': '#e0e0e0', '--header-bg': '#1a1a1a', '--content-bg': '#3a3a3a', '--input-bg': '#4a4a4a' },
+            2: { '--bg-color': '#f0f0f0', '--text-color': '#333333', '--header-bg': '#e0e0e0', '--content-bg': '#ffffff', '--input-bg': '#d0d0d0' },
+            3: { '--bg-color': '#264653', '--text-color': '#e9c46a', '--header-bg': '#2a9d8f', '--content-bg': '#e76f51', '--input-bg': '#f4a261' }
+        };
+
+        function setPalette(paletteNumber) {
+            const root = document.documentElement;
+            const palette = palettes[paletteNumber];
+            for (const [property, value] of Object.entries(palette)) {
+                root.style.setProperty(property, value);
+            }
+        }
+
+        document.getElementById('palette1').addEventListener('click', () => setPalette(1));
+        document.getElementById('palette2').addEventListener('click', () => setPalette(2));
+        document.getElementById('palette3').addEventListener('click', () => setPalette(3));
+
+        const mobileButtons = ['W', 'A', 'S', 'D'];
+        let pressedKeys = { W: 0, A: 0, S: 0, D: 0 };
+
+        mobileButtons.forEach(key => {
+            const button = document.getElementById(`btn${key}`);
+
+            button.addEventListener('mousedown', () => {
+                pressedKeys[key] = 1;
+                updateMovement();
+            });
+
+            button.addEventListener('mouseup', () => {
+                pressedKeys[key] = 0;
+                updateMovement();
+            });
+
+            // For touch devices
+            button.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // Prevent default touch behavior
+                pressedKeys[key] = 1;
+                updateMovement();
+            });
+
+            button.addEventListener('touchend', (e) => {
+                e.preventDefault(); // Prevent default touch behavior
+                pressedKeys[key] = 0;
+                updateMovement();
+            });
+        });
+
+        function updateMovement() {
+            console.log(pressedKeys.W, pressedKeys.A, pressedKeys.S, pressedKeys.D);
+            move(pressedKeys.W, pressedKeys.A, pressedKeys.S, pressedKeys.D);
+        }
+    </script>
+    </script>
+    <script src="web/config.js"></script>
+    <script src="web/scripts.js"></script>
+    <script src="web/module.js"></script>
+    <script src="build/main.js"></script>
+</body>
 
 </html>
