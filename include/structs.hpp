@@ -107,3 +107,9 @@ struct Linked {
     float distance;
     bool keepCollisions{false};
 };
+
+// Interiors
+struct Interior {}; // consider making this a var on Shape{} instead
+struct Inside {
+    entt::entity interior;
+};
