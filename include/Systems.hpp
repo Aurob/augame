@@ -81,6 +81,8 @@ void updateCollisions(entt::registry &registry)
         //     if(!link.keepCollisions) continue;
         // }
 
+        bool isInterior = registry.all_of<Interior>(entity);
+
         bool colliding = false;
         std::vector<entt::entity> _collidables;
         std::vector<Vector2f> overlaps;
@@ -103,6 +105,8 @@ void updateCollisions(entt::registry &registry)
                     // continue;
                 }
             }
+
+            bool _isInterior = registry.all_of<Interior>(_entity);
             
 
             Position &_entityPosition = registry.get<Position>(_entity);
@@ -111,9 +115,32 @@ void updateCollisions(entt::registry &registry)
             Vector2f overlap = positionsCollide(entityPosition, entityShape, _entityPosition, _entityShape);
             if (overlap.x != 0 || overlap.y != 0)
             {
-                colliding = true;
-                _collidables.push_back(_entity);
-                overlaps.push_back(overlap);
+
+                if(isInterior) {
+                    if(!registry.all_of<Inside>(_entity)) {
+                        registry.emplace<Inside>(_entity, Inside{entity});
+                        printf("Inside2\n");
+                    }
+                }
+                else if(_isInterior) {
+                    if(!registry.all_of<Inside>(entity)) {
+                        registry.emplace<Inside>(entity, Inside{_entity});
+                        printf("Inside1\n");
+                    }
+                }
+                else {
+                    colliding = true;
+                    _collidables.push_back(_entity);
+                    overlaps.push_back(overlap);
+                }
+            }
+            else if((isInterior && registry.all_of<Inside>(_entity)) || (_isInterior && registry.all_of<Inside>(entity))) {
+                if(isInterior) {
+                    registry.remove<Inside>(_entity);
+                } else {
+                    registry.remove<Inside>(entity);
+                }
+                printf("Leaving\n");
             }
         }
 
@@ -132,6 +159,12 @@ void updateCollisions(entt::registry &registry)
 
             for (auto _entity : _collidables)
             {
+
+                // If is Interior disable parent entity collisions
+                if(registry.all_of<Interior>(_entity)) {
+                    continue;
+                }
+
                 if (registry.all_of<Movement>(_entity) && registry.all_of<Moveable>(_entity))
                 {
                     Movement &_entityMovement = registry.get<Movement>(_entity);
@@ -153,6 +186,7 @@ void updateCollisions(entt::registry &registry)
                 }
             }
 
+            // TODO
             for (const auto &overlap : overlaps)
             {
                 overlapx += overlap.x;

@@ -202,4 +202,9 @@ void runFactories(entt::registry& registry) {
 
     createDebugBuilding(registry);
     createDebugTeleporter(registry);
+
+    auto test_building = createDebugEntity(registry, -10, -10, 10, 10);
+    registry.remove<Moveable>(test_building);
+    registry.remove<Linkable>(test_building);
+    registry.emplace<Interior>(test_building);
 }

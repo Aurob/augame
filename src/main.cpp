@@ -194,21 +194,42 @@ void mainloop(void *arg)
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    // Render terrain
-    updateUniforms(
-        shaderProgramMap["terrain"],
-        gridSpacingValue, 
-        offsetValue, 
-        width, height, 
-        playerPosition, 
-        toplefttile, 
-        scale);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    bool playerIsInside = registry.all_of<Inside>(_player);
+    Inside playerInside = (playerIsInside) ? registry.get<Inside>(_player) : Inside{};
+
+    if(!playerIsInside) {
+        // Render terrain
+        updateUniforms(
+            shaderProgramMap["terrain"],
+            gridSpacingValue, 
+            offsetValue, 
+            width, height, 
+            playerPosition, 
+            toplefttile, 
+            scale);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    }
     
     // Render visible entities
     auto visible_entities = registry.view<Position, Shape, Visible>();
 
     for(auto& entity : visible_entities) {
+
+        // Check if the player is inside an interior
+        if (playerIsInside) {
+            // If the entity is not the same as the player's interior
+            if (entity != playerInside.interior) {
+                // Check if the entity is not inside the same interior as the player
+                if (!registry.all_of<Inside>(entity) || registry.get<Inside>(entity).interior != playerInside.interior) {
+                    // Skip rendering this entity
+                    continue;
+                }
+            }
+        } else if (registry.all_of<Inside>(entity)) {
+            // If the player is not inside but the entity is inside an interior, skip rendering this entity
+            continue;
+        }
+
         auto &position = visible_entities.get<Position>(entity);
         auto &shape = visible_entities.get<Shape>(entity);
         
