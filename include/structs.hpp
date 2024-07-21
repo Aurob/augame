@@ -109,7 +109,18 @@ struct Linked {
 };
 
 // Interiors
-struct Interior {}; // consider making this a var on Shape{} instead
+struct Interior {
+    Vector2f entryPoint;
+}; // consider making this a var on Shape{} instead
+struct InteriorColliding {};
 struct Inside {
     entt::entity interior;
 };
+struct InteriorPortal {
+    entt::entity A;
+    entt::entity B;
+};
+struct OnInteriorPortal {
+    entt::entity portal;
+};
+

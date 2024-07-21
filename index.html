@@ -1,140 +1,17 @@
-<!-- <!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <title>Tilesh - Explore Your World</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="shortcut icon" href="favicon.ico">
-    <style>
-        html,
-        body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
-            color: #333;
-        }
-
-        #content {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            background-color: #fff;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-        }
-
-        #main {
-            position: relative;
-            width: 80%;
-            height: 80%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: #e0e0e0;
-            border-radius: 8px;
-        }
-
-        #canvas {
-            width: 100%;
-            height: 100%;
-            border: none;
-            border-radius: 8px;
-        }
-
-        #data {
-            top: 10px;
-            left: 10px;
-            background-color: rgba(255, 255, 255, 0.8);
-            padding: 10px;
-            border-radius: 4px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        input[type="number"] {
-            width: 60px;
-            padding: 5px;
-            margin: 5px 0;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-    </style>
-</head>
-
-<body>
-
-    <div id="content">
-        <div id="data"></div>
-        <div id="main">
-            <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
-        </div>
-    </div>
-</body>
-<script>
-    function loadInputs() {
-
-        // add custom c-to-js output elements
-        const elements = {
-            x: { id: 'xpos', hasInput: true },
-            y: { id: 'ypos', hasInput: true },
-            gridSpacingValue: { id: 'gridSpacingValue', hasInput: false }
-        };
-
-        for (const [key, { id, hasInput }] of Object.entries(elements)) {
-            let element = document.createElement('div');
-            element.id = id;
-            element.innerText = `${key}: 0`;
-            document.querySelector('#data').appendChild(element);
-            Module.c_kv_elements[key] = id;
-
-            // Create input elements for keys that require them
-            if (hasInput) {
-                let inputElement = document.createElement('input');
-                inputElement.type = 'number';
-                inputElement.id = `${id}_input`;
-                inputElement.value = 0;
-                inputElement.addEventListener('input', (event) => {
-                    const value = parseFloat(event.target.value);
-                    Module.setkv(key, value);
-                    if (key === 'x' || key === 'y') {
-                        console.log("Teleporting...");
-                        Module.js_to_c({
-                            "Entities": [{
-                                "Player": true,
-                                "Position": {
-                                    x: key === 'x' ? value : Module.c_kv_data.x,
-                                    y: key === 'y' ? value : Module.c_kv_data.y
-                                }
-                            }]
-                        });
-                    }
-                });
-                document.querySelector('#data').appendChild(inputElement);
-            }
-        }
-    }
-</script>
-<script src="web/config.js"></script>
-<script src="web/scripts.js"></script>
-<script src="web/module.js"></script>
-<script src="build/main.js"></script>
-
-</html> -->
 
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
-    <title>Tilesh - Explore Your World</title>
+    <title>AuGame - Prototype</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Tilesh - Explore your world with interactive maps and tiles">
+    <meta property="og:title" content="Tilesh - Explore Your World">
+    <meta property="og:description" content="Discover and interact with your world using Tilesh's innovative map system">
+    <meta property="og:image" content="https://tilesh.com/og-image.jpg">
     <link rel="shortcut icon" href="favicon.ico">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/2.0.3/marked.min.js"></script>
     <style>
         :root {
             --bg-color: #2c2c2c;
@@ -342,10 +219,10 @@
         }
 
         // Fetch README
-        fetch('https://raw.githubusercontent.com/Aurob/augame/main/README.md')
+        fetch('README.md')
             .then(response => response.text())
             .then(text => {
-                document.getElementById('readme').innerHTML = `<pre>${text}</pre>`;
+                document.getElementById('readme').innerHTML = marked(text);
             });
 
         // Toggle functions

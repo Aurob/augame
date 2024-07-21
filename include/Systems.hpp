@@ -76,11 +76,6 @@ void updateCollisions(entt::registry &registry)
             continue;
 
         bool hasLink = registry.all_of<Linked>(entity);
-        // Linked link = (hasLink) ? registry.get<Linked>(entity) : Linked{};
-        // if(hasLink) {
-        //     if(!link.keepCollisions) continue;
-        // }
-
         bool isInterior = registry.all_of<Interior>(entity);
 
         bool colliding = false;
@@ -94,53 +89,90 @@ void updateCollisions(entt::registry &registry)
         {
             if (_entity == entity)
                 continue; // skip self
-            // if(hasLink) {
-            //     if(_entity == link.parent) {
-            //         continue;
-            //     }
-            // }
+
             if(registry.all_of<Linked>(_entity)) {
                 auto _link = registry.get<Linked>(_entity);
-                if(_link.parent == entity) {
-                    // continue;
-                }
             }
-
-            bool _isInterior = registry.all_of<Interior>(_entity);
-            
 
             Position &_entityPosition = registry.get<Position>(_entity);
             Shape &_entityShape = registry.get<Shape>(_entity);
+            bool skipCollide = false;
+            
+            bool invert = false;
+            if(registry.all_of<Inside>(entity) && !registry.all_of<OnInteriorPortal>(entity)) {
+                auto interior = registry.get<Inside>(entity).interior;
+                if(interior == _entity) {
+                    invert = true;
+                }
+            }
 
-            Vector2f overlap = positionsCollide(entityPosition, entityShape, _entityPosition, _entityShape);
+            Vector2f overlap = positionsCollide(entityPosition, entityShape, _entityPosition, _entityShape, invert);
+
             if (overlap.x != 0 || overlap.y != 0)
             {
+                if(registry.all_of<Interior>(_entity)) {
+                    if(!registry.all_of<InteriorColliding>(entity)) {
+                        registry.emplace<InteriorColliding>(entity);
+                    }
+                    if(registry.all_of<Inside>(entity)) {
+                        auto interior = registry.get<Inside>(entity).interior;
+                        if(interior == _entity) {
+                            if(!registry.all_of<OnInteriorPortal>(entity)) {
+                                colliding = true;
+                                _collidables.push_back(_entity);
+                                overlaps.push_back(overlap);
+                            } else {
+                                skipCollide = true;
+                            }
+                        }
+                    } else {
+                        if(registry.all_of<OnInteriorPortal>(entity)) {
+                            auto portal = registry.get<OnInteriorPortal>(entity).portal;
+                            auto portalInterior = registry.get<InteriorPortal>(portal).A;
+                            if(portalInterior == _entity) {
+                                printf("Entering InteriorPortal\n");
+                                skipCollide = true;
+                            }
+                        }
+                    }
+                }
+                
+                if(registry.all_of<InteriorPortal>(_entity)) {
+                    if(!registry.all_of<OnInteriorPortal>(entity)) {
+                        registry.emplace_or_replace<OnInteriorPortal>(entity, OnInteriorPortal{_entity});
+                        printf("Entering InteriorPortal\n");
 
-                if(isInterior) {
-                    if(!registry.all_of<Inside>(_entity)) {
-                        registry.emplace<Inside>(_entity, Inside{entity});
-                        printf("Inside2\n");
+                        if(!registry.all_of<Inside>(entity)) {
+                            auto portalInterior = registry.get<InteriorPortal>(_entity).A;
+                            registry.emplace<Inside>(entity, Inside{portalInterior});
+                        }
                     }
+                    skipCollide = true;
                 }
-                else if(_isInterior) {
-                    if(!registry.all_of<Inside>(entity)) {
-                        registry.emplace<Inside>(entity, Inside{_entity});
-                        printf("Inside1\n");
-                    }
-                }
-                else {
+                
+                if(!skipCollide) {
                     colliding = true;
                     _collidables.push_back(_entity);
                     overlaps.push_back(overlap);
                 }
             }
-            else if((isInterior && registry.all_of<Inside>(_entity)) || (_isInterior && registry.all_of<Inside>(entity))) {
-                if(isInterior) {
-                    registry.remove<Inside>(_entity);
-                } else {
-                    registry.remove<Inside>(entity);
+            else {
+
+                if(registry.all_of<Interior>(_entity) && registry.all_of<InteriorColliding>(entity)) {
+                    registry.remove<InteriorColliding>(entity);
                 }
-                printf("Leaving\n");
+
+                if(registry.all_of<InteriorPortal>(_entity) && registry.all_of<OnInteriorPortal>(entity)) {
+                    auto portal = registry.get<OnInteriorPortal>(entity);
+                    if(portal.portal == _entity) {
+                        registry.remove<OnInteriorPortal>(entity);
+                        printf("Exiting InteriorPortal\n");
+
+                        if(!registry.all_of<InteriorColliding>(entity)) {
+                            registry.remove<Inside>(entity);
+                        }
+                    }
+                }
             }
         }
 
@@ -161,9 +193,9 @@ void updateCollisions(entt::registry &registry)
             {
 
                 // If is Interior disable parent entity collisions
-                if(registry.all_of<Interior>(_entity)) {
-                    continue;
-                }
+                // if(registry.all_of<Interior>(_entity)) {
+                //     continue;
+                // }
 
                 if (registry.all_of<Movement>(_entity) && registry.all_of<Moveable>(_entity))
                 {
@@ -218,7 +250,7 @@ void updateTeleporters(entt::registry &registry)
             auto &tshape = teleport_entities.get<Shape>(tentity);
             auto &teleport = teleport_entities.get<Teleport>(tentity);
 
-            Vector2f collides = positionsCollide(position, shape, tposition, tshape);
+            Vector2f collides = positionsCollide(position, shape, tposition, tshape, false);
             if (collides.x != 0 || collides.y != 0)
             {
                 position.x = teleport.destination.x;
