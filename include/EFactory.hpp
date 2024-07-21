@@ -63,7 +63,7 @@ entt::entity createDebugEntity(entt::registry& registry, float x = 0.0f, float y
 
 entt::entity createPlayerEntity(entt::registry& registry, float xOffset = 0.0f, float yOffset = 0.0f) {
     auto entity = registry.create();
-    registry.emplace<Position>(entity, Position{5 + xOffset, 5 + yOffset});
+    registry.emplace<Position>(entity, Position{xOffset, yOffset});
     registry.emplace<Color>(entity, Color{0, 0, 255, 0.0f});
     registry.emplace<Validation>(entity);
     registry.emplace<Shape>(entity, Shape{1, 1});
@@ -193,7 +193,7 @@ void createDebugTeleporter(entt::registry& registry, float xOffset = 0.0f, float
 void runFactories(entt::registry& registry) {
 
     // create player entity
-    _player = createPlayerEntity(registry);
+    _player = createPlayerEntity(registry, 5, 2);
 
     
     for(int i = 0; i < 10; i++) {
@@ -203,8 +203,18 @@ void runFactories(entt::registry& registry) {
     createDebugBuilding(registry);
     createDebugTeleporter(registry);
 
-    auto test_building = createDebugEntity(registry, -10, -10, 10, 10);
+    auto test_building = createDebugEntity(registry, -10, 0, 10, 10);
     registry.remove<Moveable>(test_building);
+    registry.remove<Movement>(test_building);
     registry.remove<Linkable>(test_building);
-    registry.emplace<Interior>(test_building);
+    registry.remove<Hoverable>(test_building);
+    registry.emplace<Interior>(test_building, Interior{Vector2f{0, 0}});
+
+    auto buildingDoor = createBasicEntity(registry, -5, 9.5, 1, 1);
+    registry.remove<Moveable>(buildingDoor);
+    registry.remove<Movement>(buildingDoor);
+    registry.emplace<InteriorPortal>(buildingDoor, InteriorPortal{test_building});
+    registry.emplace<Collidable>(buildingDoor);
+    registry.emplace<Color>(buildingDoor, Color{0, 255, 0, 1.0f});
+    registry.emplace<Debug>(buildingDoor, Debug{Color{0, 255, 0, 1.0f}});
 }

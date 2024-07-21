@@ -221,8 +221,13 @@ void mainloop(void *arg)
             if (entity != playerInside.interior) {
                 // Check if the entity is not inside the same interior as the player
                 if (!registry.all_of<Inside>(entity) || registry.get<Inside>(entity).interior != playerInside.interior) {
-                    // Skip rendering this entity
-                    continue;
+                    // Check if the entity is an InteriorPortal connected to the player's interior
+                    if (!registry.all_of<InteriorPortal>(entity) || 
+                        (registry.get<InteriorPortal>(entity).A != playerInside.interior && 
+                         registry.get<InteriorPortal>(entity).B != playerInside.interior)) {
+                        // Skip rendering this entity
+                        continue;
+                    }
                 }
             }
         } else if (registry.all_of<Inside>(entity)) {
@@ -263,6 +268,7 @@ void mainloop(void *arg)
                 // position.sx, position.sy, 
                 position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
                 shape.scaled_size.x, shape.scaled_size.y, playerScale);
+
         }
         else if(isTeleport) {
             updateUniformsTexture(shaderProgramMap["texture"], 

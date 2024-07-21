@@ -37,8 +37,8 @@ Vector2f calculateMoveDirection(float xOverlapAmount, float yOverlapAmount, floa
     }
     return moveDirection;
 }
-
-Vector2f positionsCollide(const Position &pos1, const Shape &shape1, const Position &pos2, const Shape &shape2)
+Vector2f positionsCollide(const Position &pos1, const Shape &shape1, 
+                          const Position &pos2, const Shape &shape2, bool invert)
 {
     Vector2f moveDirection{0.f, 0.f};
     float Ax = pos1.x, Ay = pos1.y;
@@ -50,34 +50,43 @@ Vector2f positionsCollide(const Position &pos1, const Shape &shape1, const Posit
     float AxB = Ax + Aw, AxT = Ax, AyT = Ay, AyB = Ay + Ah;
     float BxB = Bx + Bw, BxT = Bx, ByT = By, ByB = By + Bh;
 
-    bool xOverlap = (AxT < BxB && AxB > BxT) || (AxB > BxT && AxT < BxB);
-    bool yOverlap = (AyT < ByB && AyB > ByT) || (AyB > ByT && AyT < ByB);
+    if (invert) {
+        // For inverted collisions (inside the interior)
+        if (AxT <= BxT) moveDirection.x = BxT - AxT;
+        else if (AxB >= BxB) moveDirection.x = BxB - AxB;
 
-    if (xOverlap && yOverlap)
-    {
-        Vector2f overlap = calculateOverlap(AxT, AxB, BxT, BxB, AyT, AyB, ByT, ByB);
-        moveDirection = calculateMoveDirection(overlap.x, overlap.y, AxB, BxT, BxB, AxT, AyB, ByT, ByB, AyT);
+        if (AyT <= ByT) moveDirection.y = ByT - AyT;
+        else if (AyB >= ByB) moveDirection.y = ByB - AyB;
+    } else {
+        // For regular collisions (outside the interior)
+        bool xOverlap = (AxT < BxB && AxB > BxT);
+        bool yOverlap = (AyT < ByB && AyB > ByT);
+
+        if (xOverlap && yOverlap) {
+            Vector2f overlap = calculateOverlap(AxT, AxB, BxT, BxB, AyT, AyB, ByT, ByB);
+            moveDirection = calculateMoveDirection(overlap.x, overlap.y, AxB, BxT, BxB, AxT, AyB, ByT, ByB, AyT);
+        }
     }
 
     return moveDirection;
 }
 
-bool positionsCollide(float Ax, float Ay, float Aw, float Ah, float Bx, float By, float Bw, float Bh)
-{
-    float AxB = Ax + Aw, AxT = Ax, AyT = Ay, AyB = Ay + Ah;
-    float BxB = Bx + Bw, BxT = Bx, ByT = By, ByB = By + Bh;
+// bool positionsCollide(float Ax, float Ay, float Aw, float Ah, float Bx, float By, float Bw, float Bh)
+// {
+//     float AxB = Ax + Aw, AxT = Ax, AyT = Ay, AyB = Ay + Ah;
+//     float BxB = Bx + Bw, BxT = Bx, ByT = By, ByB = By + Bh;
 
-    bool xOverlap = (AxT < BxB && AxB > BxT) || (AxB > BxT && AxT < BxB);
-    bool yOverlap = (AyT < ByB && AyB > ByT) || (AyB > ByT && AyT < ByB);
+//     bool xOverlap = (AxT < BxB && AxB > BxT) || (AxB > BxT && AxT < BxB);
+//     bool yOverlap = (AyT < ByB && AyB > ByT) || (AyB > ByT && AyT < ByB);
 
-    if (xOverlap && yOverlap)
-    {
-        return true;
-    }
+//     if (xOverlap && yOverlap)
+//     {
+//         return true;
+//     }
 
-    return false;
+//     return false;
 
-}
+// }
 
 float frand()
 {
