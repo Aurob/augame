@@ -53,7 +53,7 @@ float scale = 1;
 int tileMinMax[4] = {0, 0, 0, 0};
 bool windowResized = false;
 bool ready = false;
-float moveSpeed = 1;
+float moveSpeed = 1.15f;
 float defaultMoveSpeed = moveSpeed;
 int lastTime = 0;
 float defaultGSV = 16.0f;
@@ -141,15 +141,15 @@ void updateFrame(context *ctx)
     globalCursorPos[1] = toplefttile[1] * defaultGSV + (cursorPos[1] / gridSpacingValue) + playerPos.y;
     
     // Scale moveSpeed with grid spacing
-    moveSpeed = defaultMoveSpeed * (defaultGSV / gridSpacingValue) * 10;
+    moveSpeed = defaultMoveSpeed;// * (defaultGSV / gridSpacingValue) * 10;
 
     // Update entity movement and interactions
-    updateCollisions(registry);
     updateTeleporters(registry);
     updateInteractions(registry);
     updateShapes(registry);
-    updateMovement(registry);
     updateLinkedEntities(registry);
+    updateMovement(registry);
+    updateCollisions(registry);
     updatePositions(registry);
 
 }
