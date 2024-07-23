@@ -11,10 +11,8 @@ extern float moveSpeed;
 extern float defaultMoveSpeed;
 extern float gridSpacingValue;
 
-
 void EventHandler(int type, SDL_Event *event)
 {
-
     // wasd for offset
     if (event->type == SDL_KEYDOWN)
     {
@@ -25,25 +23,32 @@ void EventHandler(int type, SDL_Event *event)
         keys[event->key.keysym.sym] = false;
     }
 
-
-    // Mouse position
-    if (event->type == SDL_MOUSEMOTION)
+    // Mouse/Touch position
+    if (event->type == SDL_MOUSEMOTION || event->type == SDL_FINGERMOTION)
     {
-        cursorPos[0] = event->motion.x;
-        cursorPos[1] = event->motion.y;
+        if (event->type == SDL_MOUSEMOTION)
+        {
+            cursorPos[0] = event->motion.x;
+            cursorPos[1] = event->motion.y;
+        }
+        else
+        {
+            cursorPos[0] = event->tfinger.x * width;
+            cursorPos[1] = event->tfinger.y * height;
+        }
     }
 
-    // Mouse Interactions
-    if (event->type == SDL_MOUSEBUTTONDOWN)
+    // Mouse/Touch Interactions
+    if (event->type == SDL_MOUSEBUTTONDOWN || event->type == SDL_FINGERDOWN)
     {
         keys[SDL_BUTTON_LEFT] = true;
     }
-    else if (event->type == SDL_MOUSEBUTTONUP)
+    else if (event->type == SDL_MOUSEBUTTONUP || event->type == SDL_FINGERUP)
     {
         keys[SDL_BUTTON_LEFT] = false;
     }
 
-    // Zoom in and out
+    // Zoom in and out (Mouse wheel and pinch)
     if (event->type == SDL_MOUSEWHEEL)
     {
         if (event->wheel.y > 0)
@@ -55,5 +60,18 @@ void EventHandler(int type, SDL_Event *event)
             gridSpacingValue /= 1.08f;
         }
     }
-
+    else if (event->type == SDL_MULTIGESTURE)
+    {
+        if (event->mgesture.numFingers == 2)
+        {
+            if (event->mgesture.dDist > 0)
+            {
+                gridSpacingValue *= (1.0f + event->mgesture.dDist);
+            }
+            else if (event->mgesture.dDist < 0)
+            {
+                gridSpacingValue /= (1.0f - event->mgesture.dDist);
+            }
+        }
+    }
 }

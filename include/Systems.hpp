@@ -324,10 +324,24 @@ void updateInteractions(entt::registry &registry)
 {
     auto playerPos = registry.get<Position>(_player);
     auto playerShape = registry.get<Shape>(_player);
+    bool playerInside = registry.all_of<Inside>(_player);
+    entt::entity playerInterior = entt::null;
+    if (playerInside) {
+        playerInterior = registry.get<Inside>(_player).interior;
+    }
 
     auto debug_entities = registry.view<Visible, Interactable, Hoverable, Position, Shape>();
     for (auto entity : debug_entities)
     {
+        // Skip entities that are not in the same interior as the player
+        if (playerInside) {
+            if (!registry.all_of<Inside>(entity) || registry.get<Inside>(entity).interior != playerInterior) {
+                continue;
+            }
+        } else if (registry.all_of<Inside>(entity)) {
+            continue;
+        }
+
         auto &position = debug_entities.get<Position>(entity);
         auto &shape = debug_entities.get<Shape>(entity);
         auto &interactable = debug_entities.get<Interactable>(entity);
