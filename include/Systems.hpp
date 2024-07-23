@@ -26,6 +26,7 @@ void updateMovement(entt::registry &registry)
     {
         auto &movement = movement_entities.get<Movement>(entity);
         auto &position = movement_entities.get<Position>(entity);
+        auto &shape = movement_entities.get<Shape>(entity);
         bool isPlayer = registry.all_of<Player>(entity);
 
         if (isPlayer)
@@ -39,8 +40,8 @@ void updateMovement(entt::registry &registry)
 
         if (movement.acceleration.x != 0 || movement.acceleration.y != 0)
         {
-            movement.velocity.x = movement.acceleration.x * deltaTime;
-            movement.velocity.y = movement.acceleration.y * deltaTime;
+            movement.velocity.x += movement.acceleration.x * deltaTime;
+            movement.velocity.y += movement.acceleration.y * deltaTime;
             movement.acceleration.x = 0;
             movement.acceleration.y = 0;
         }
@@ -57,10 +58,20 @@ void updateMovement(entt::registry &registry)
             movement.velocity.y = std::clamp(movement.velocity.y, -movement.max_speed, movement.max_speed);
         }
 
-        position.x += movement.velocity.x;
-        position.y += movement.velocity.y;
+        // Calculate the movement step
+        float stepX = movement.velocity.x * deltaTime;
+        float stepY = movement.velocity.y * deltaTime;
+
+        // Move in smaller increments to prevent tunneling
+        const int substeps = 10;
+        for (int i = 0; i < substeps; ++i)
+        {
+            position.x += stepX / substeps;
+            position.y += stepY / substeps;
+        }
     }
 }
+
 
 void updateCollisions(entt::registry &registry)
 {
@@ -175,7 +186,6 @@ void updateCollisions(entt::registry &registry)
                 }
             }
         }
-
         if (colliding)
         {
             Movement &entityMovement = registry.get<Movement>(entity);
@@ -189,14 +199,23 @@ void updateCollisions(entt::registry &registry)
                 registry.emplace<Colliding>(entity);
             }
 
+            // Calculate the maximum allowed movement per frame to prevent tunneling
+            float maxMovement = std::min(entityShape.size.x, entityShape.size.y) / 2.0f;
+            float currentMovement = std::sqrt(xv1 * xv1 + yv1 * yv1) * deltaTime;
+
+            if (currentMovement > maxMovement)
+            {
+                float scale = maxMovement / currentMovement;
+                entityMovement.velocity.x *= scale;
+                entityMovement.velocity.y *= scale;
+                xv1 = entityMovement.velocity.x;
+                yv1 = entityMovement.velocity.y;
+            }
+
+            const float defaultRestitution = 0.5f;
+
             for (auto _entity : _collidables)
             {
-
-                // If is Interior disable parent entity collisions
-                // if(registry.all_of<Interior>(_entity)) {
-                //     continue;
-                // }
-
                 if (registry.all_of<Movement>(_entity) && registry.all_of<Moveable>(_entity))
                 {
                     Movement &_entityMovement = registry.get<Movement>(_entity);
@@ -204,28 +223,61 @@ void updateCollisions(entt::registry &registry)
                     float xv2 = _entityMovement.velocity.x;
                     float yv2 = _entityMovement.velocity.y;
 
+                    // Apply friction
+                    float frictionCoeff = (entityMovement.friction + _entityMovement.friction) / 2.0f;
+                    xv1 *= (1.0f - frictionCoeff * deltaTime);
+                    yv1 *= (1.0f - frictionCoeff * deltaTime);
+                    xv2 *= (1.0f - frictionCoeff * deltaTime);
+                    yv2 *= (1.0f - frictionCoeff * deltaTime);
+
                     float xv1f = ((m1 - m2) / (m1 + m2)) * xv1 + ((2 * m2) / (m1 + m2)) * xv2;
                     float xv2f = ((2 * m1) / (m1 + m2)) * xv1 + ((m2 - m1) / (m1 + m2)) * xv2;
 
                     float yv1f = ((m1 - m2) / (m1 + m2)) * yv1 + ((2 * m2) / (m1 + m2)) * yv2;
                     float yv2f = ((2 * m1) / (m1 + m2)) * yv1 + ((m2 - m1) / (m1 + m2)) * yv2;
 
-                    entityMovement.velocity.x = xv1f;
-                    entityMovement.velocity.y = yv1f;
+                    // Apply restitution
+                    entityMovement.velocity.x = xv1f * defaultRestitution;
+                    entityMovement.velocity.y = yv1f * defaultRestitution;
 
-                    _entityMovement.velocity.x = xv2f;
-                    _entityMovement.velocity.y = yv2f;
+                    _entityMovement.velocity.x = xv2f * defaultRestitution;
+                    _entityMovement.velocity.y = yv2f * defaultRestitution;
                 }
             }
 
-            // TODO
             for (const auto &overlap : overlaps)
             {
                 overlapx += overlap.x;
                 overlapy += overlap.y;
             }
+            
+            // Apply separation to resolve overlap
             entityPosition.x += overlapx;
             entityPosition.y += overlapy;
+
+            // Adjust velocity based on the collision normal
+            if (overlapx != 0 || overlapy != 0)
+            {
+                Vector2f normal{overlapx, overlapy};
+                float length = std::sqrt(normal.x * normal.x + normal.y * normal.y);
+                if (length != 0) {
+                    normal.x /= length;
+                    normal.y /= length;
+                }
+                float dotProduct = entityMovement.velocity.x * normal.x + entityMovement.velocity.y * normal.y;
+                entityMovement.velocity.x -= (1.0f + defaultRestitution) * dotProduct * normal.x;
+                entityMovement.velocity.y -= (1.0f + defaultRestitution) * dotProduct * normal.y;
+            }
+
+            // Apply additional anti-tunneling measure
+            float speed = std::sqrt(entityMovement.velocity.x * entityMovement.velocity.x + 
+                                    entityMovement.velocity.y * entityMovement.velocity.y);
+            if (speed > maxMovement / deltaTime)
+            {
+                float scaleFactor = (maxMovement / deltaTime) / speed;
+                entityMovement.velocity.x *= scaleFactor;
+                entityMovement.velocity.y *= scaleFactor;
+            }
         }
         else if (registry.all_of<Colliding>(entity))
         {

@@ -70,7 +70,7 @@ entt::entity createPlayerEntity(entt::registry& registry, float xOffset = 0.0f, 
     registry.emplace<Collisions>(entity);
     registry.emplace<Player>(entity);
     registry.emplace<Visible>(entity);
-    registry.emplace<Movement>(entity, Movement{25, 110, Vector2f{0, 0}, Vector2f{0, 0}, 4, .1});
+    registry.emplace<Movement>(entity, Movement{25, 110, Vector2f{0, 0}, Vector2f{0, 0}, 10, 20});
     registry.emplace<Debug>(entity, Debug{Color{0, 0, 255, 0.0f}});
     registry.emplace<Collidable>(entity);
     return entity;
