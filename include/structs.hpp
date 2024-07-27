@@ -11,10 +11,6 @@ struct context
     SDL_Window *window;
 };
 
-struct Vector2 {
-    int x, y;
-};
-
 struct Vector2f {
     float x, y;
 };
@@ -24,8 +20,6 @@ struct Vector3f {
 };
 
 // Entity Components
-
-
 struct Player {};
 struct Position {
     float x;
@@ -52,11 +46,9 @@ struct Color {
     Color(float r = 0.0f, float g = 0.0f, float b = 0.0f, float a = 1.0f)
         : r(r), g(g), b(b), a(a), defaultR(r), defaultG(g), defaultB(b), defaultA(a) {}
 };
-struct Validation {
-    int state{0};
-};
 
 struct Visible {};
+struct InView {};
 
 struct Debug {
     Color defaultColor;
@@ -77,9 +69,6 @@ struct Interactable {
 };
 struct Interacted {
     entt::entity interactor;
-};
-
-struct Collisions {
 };
 
 struct Colliding{

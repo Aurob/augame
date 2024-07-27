@@ -7,8 +7,6 @@ using namespace std;
 extern int width, height;
 extern unordered_map<int, bool> keys;
 extern GLfloat cursorPos[2];
-extern float moveSpeed;
-extern float defaultMoveSpeed;
 extern float gridSpacingValue;
 
 void EventHandler(int type, SDL_Event *event)

@@ -9,10 +9,6 @@
 using namespace std;
 
 extern int width, height;
-extern int tileMinMax[4];
-extern bool windowResized;
-extern GLfloat playerPosition[2];
-extern GLfloat gridSpacingValue;
 extern bool ready;
 extern entt::entity _player;
 extern entt::registry registry;

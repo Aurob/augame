@@ -1,13 +1,10 @@
 #include <SDL_opengles2.h>
-#include <functional>
 #include <cmath>
 #include <array>
 #include "../include/shaders.hpp"
 
-extern int seed;
 extern GLfloat cursorPos[2];
-extern float dirtMax;
-extern float grassMax;
+
 void loadGl(SDL_Window *mpWindow)
 {
     // Create OpenGLES 2 context on SDL window
@@ -25,9 +22,7 @@ void updateUniforms(GLuint &shaderProgram,
                     float gridSpacingValue,
                     float offsetValue[2],
                     float _width, float _height,
-                    float playerPosition[2],
-                    float toplefttile[2],
-                    float scale)   
+                    float toplefttile[2])   
 {
 
     glUseProgram(shaderProgram);
@@ -43,17 +38,9 @@ void updateUniforms(GLuint &shaderProgram,
     GLint resolutionLocation = glGetUniformLocation(shaderProgram, "resolution");
     glUniform2f(resolutionLocation, _width, _height);
 
-    // playerPos uniform
-    GLint playerPosLocation = glGetUniformLocation(shaderProgram, "playerPos");
-    glUniform2f(playerPosLocation, playerPosition[0], playerPosition[1]);
-
     // bounds uniform
     GLint boundsLocation = glGetUniformLocation(shaderProgram, "toplefttile");
     glUniform2fv(boundsLocation, 1, toplefttile);
-
-    // scale uniform
-    GLint scaleLocation = glGetUniformLocation(shaderProgram, "scale");
-    glUniform1f(scaleLocation, scale);
 
     // cursorPos uniform
     GLint cursorPosLocation = glGetUniformLocation(shaderProgram, "cursorPos");
@@ -88,22 +75,6 @@ void updateUniforms2(GLuint &shaderProgram, float _width, float _height, float g
     glUniform2fv(toplefttileLocation, 1, toplefttile);
 }
 
-void updateUniformsTree(GLuint &shaderProgram, float x, float y, float scale, float _width, float _height, float gridSpacingValue) {
-    glUseProgram(shaderProgram);
-
-    GLint instancePositionLocation = glGetUniformLocation(shaderProgram, "u_position");
-    glUniform2f(instancePositionLocation, x, y);
-
-    GLint instanceScaleLocation = glGetUniformLocation(shaderProgram, "u_scale");
-    glUniform1f(instanceScaleLocation, scale);
-
-    GLint resolutionLocation = glGetUniformLocation(shaderProgram, "u_resolution");
-    glUniform2f(resolutionLocation, _width, _height);
-
-    GLint gridSpacingLocation = glGetUniformLocation(shaderProgram, "u_grid_spacing");
-    glUniform1f(gridSpacingLocation, gridSpacingValue);
-}
-
 void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, float x, float y, float scalex, float scaley) {
     glUseProgram(shaderProgram);
     glBindTexture(GL_TEXTURE_2D, textureID);
@@ -119,7 +90,7 @@ void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, float x, flo
 
 void updateUniformsDebug(GLuint &shaderProgram, 
 float r, float g, float b, float a, float x, float y, 
-float scalex, float scaley, float playerScale[2]) {
+float scalex, float scaley) {
     glUseProgram(shaderProgram);
 
     GLint colorLocation = glGetUniformLocation(shaderProgram, "uColor");
@@ -130,12 +101,6 @@ float scalex, float scaley, float playerScale[2]) {
 
     GLint debugScaleLocation = glGetUniformLocation(shaderProgram, "entityScale");
     glUniform2f(debugScaleLocation, scalex, scaley);
-
-    // player scale
-    GLint playerScaleLocation = glGetUniformLocation(shaderProgram, "playerScale");
-    glUniform2f(playerScaleLocation, playerScale[0], playerScale[1]);
-
-  
 }
 
 
@@ -207,10 +172,6 @@ void loadGL1(GLuint &shaderProgram, std::string program_name)
     GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
     glEnableVertexAttribArray(posAttrib);
     glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-    // seed uniform
-    GLint seedLocation = glGetUniformLocation(shaderProgram, "seed");
-    glUniform1f(seedLocation, static_cast<float>(seed));
 
     // Don't forget to bind the VAO before you draw
     GLuint ebo;
@@ -392,44 +353,4 @@ std::array<float, 3> customHash(const std::array<float, 3>& p) {
     auto s = [](float x) { return std::sin(x) * 43758.5453f; };
     auto f = fract({s(p1[0]), s(p1[1]), s(p1[2])});
     return {-1.0f + 2.0f * f[0], -1.0f + 2.0f * f[1], -1.0f + 2.0f * f[2]};
-}
-
-// Smoother noise function
-
-float smootherNoise(const std::array<float, 2>& p) {
-    auto i = std::array<float, 2>{std::floor(p[0]), std::floor(p[1])};
-    auto f = std::array<float, 2>{p[0] - i[0], p[1] - i[1]};
-    auto u = std::array<float, 2>{f[0] * f[0] * (3.0f - 2.0f * f[0]), 
-                                  f[1] * f[1] * (3.0f - 2.0f * f[1])};
-
-    auto g = [i](float x, float y){
-        return customHash({i[0] + x, i[1] + y, 0.0f});
-    };
-
-    auto g00 = g(0.0f, 0.0f);
-    auto g10 = g(1.0f, 0.0f);
-    auto g01 = g(0.0f, 1.0f);
-    auto g11 = g(1.0f, 1.0f);
-
-    auto n = [f](const std::array<float, 3>& g, float dx, float dy) {
-        return g[0] * (f[0] - dx) + g[1] * (f[1] - dy);
-    };
-
-    float n00 = n(g00, 0.0f, 0.0f);
-    float n10 = n(g10, 1.0f, 0.0f);
-    float n01 = n(g01, 0.0f, 1.0f);
-    float n11 = n(g11, 1.0f, 1.0f);
-
-    float nX0 = (1 - u[0]) * n00 + u[0] * n10;
-    float nX1 = (1 - u[0]) * n01 + u[0] * n11;
-    return (1 - u[1]) * nX0 + u[1] * nX1;
-}
-
-// Function to get a random position for a given noise value
-std::array<float, 2> getRandomPositionForNoise(float noiseValue) {
-    std::array<float, 2> position;
-    do {
-        position = {static_cast<float>(rand()) / RAND_MAX * 100.0f, static_cast<float>(rand()) / RAND_MAX * 100.0f};
-    } while (std::abs(smootherNoise(position) - noiseValue) > 0.01f);
-    return position;
 }

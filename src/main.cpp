@@ -4,7 +4,6 @@
 #include <SDL_opengles2.h>
 #include <unordered_map>
 #include <cmath>
-#include <ctime>
 
 #include "../include/events.hpp"
 #include "../include/GLUtils.hpp"
@@ -21,13 +20,10 @@ using namespace std;
 extern entt::registry registry;
 extern int width, height;
 extern float deltaTime;
-extern int seed;
 extern unordered_map<int, bool> keys;
 extern GLfloat cursorPos[2];
 extern GLfloat globalCursorPos[2];
-extern int tileMinMax[4];
 extern bool windowResized;
-extern GLfloat playerPosition[2];
 extern GLfloat gridSpacingValue;
 extern bool ready;
 extern float moveSpeed;
@@ -40,24 +36,18 @@ extern entt::entity _player;
 int width = 1024;
 int height = 1024;
 float deltaTime = 0;
-int seed = 0;
 unordered_map<int, bool> keys;
 GLfloat cursorPos[2] = {0, 0};
 GLfloat globalCursorPos[2] = {0, 0};
-GLfloat playerPosition[2] = {0, 0};
-GLfloat playerScale[2] = {1, 1};
 GLfloat gridSpacingValue = 2048.0f;
 GLfloat offsetValue[2] = {0.0f, 0.0f};
 GLfloat toplefttile[2] = {0.0f, 0.0f};
-float scale = 1;
-int tileMinMax[4] = {0, 0, 0, 0};
 bool windowResized = false;
 bool ready = false;
 float moveSpeed = 1.15f;
 float defaultMoveSpeed = moveSpeed;
 int lastTime = 0;
 float defaultGSV = 16.0f;
-SDL_Surface *image = nullptr;
 bool first_start = false;
 
 entt::entity _player;
@@ -68,7 +58,6 @@ context ctx;
 // Function declarations
 void mainloop(void *arg);
 void EventHandler(int, SDL_Event *);
-void animations(context *ctx);
 
 int main(int argc, char *argv[])
 {
@@ -125,9 +114,6 @@ void updateFrame(context *ctx)
     Position &playerPos = registry.get<Position>(_player);
     Shape &playerShape = registry.get<Shape>(_player);
 
-    playerScale[0] = 1;
-    playerScale[1] = 1;
-
     // Set view offset
     offsetValue[0] = ((fmod(playerPos.x, defaultGSV) * gridSpacingValue) / defaultGSV) - (playerShape.size.x / 2);
     offsetValue[1] = ((fmod(playerPos.y, defaultGSV) * gridSpacingValue) / defaultGSV) - (playerShape.size.y / 2);
@@ -151,6 +137,7 @@ void updateFrame(context *ctx)
     updateMovement(registry);
     updateCollisions(registry);
     updatePositions(registry);
+    updateOther(registry);
 
 }
 
@@ -204,70 +191,33 @@ void mainloop(void *arg)
             gridSpacingValue, 
             offsetValue, 
             width, height, 
-            playerPosition, 
-            toplefttile, 
-            scale);
+            toplefttile);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     }
     
+    // Sort visible entities so that Interiors and InteriorPortals are rendered first
+    registry.sort<Visible>([&](const entt::entity lhs, const entt::entity rhs) {
+        bool lhs_priority = registry.any_of<Interior, InteriorPortal>(lhs);
+        bool rhs_priority = registry.any_of<Interior, InteriorPortal>(rhs);
+        return lhs_priority && !rhs_priority;
+    });
+
     // Render visible entities
     auto visible_entities = registry.view<Position, Shape, Visible>();
 
     for(auto& entity : visible_entities) {
-
-        // Check if the player is inside an interior
-        if (playerIsInside) {
-            // If the entity is not the same as the player's interior
-            if (entity != playerInside.interior) {
-                // Check if the entity is not inside the same interior as the player
-                if (!registry.all_of<Inside>(entity) || registry.get<Inside>(entity).interior != playerInside.interior) {
-                    // Check if the entity is an InteriorPortal connected to the player's interior
-                    if (!registry.all_of<InteriorPortal>(entity) || 
-                        (registry.get<InteriorPortal>(entity).A != playerInside.interior && 
-                         registry.get<InteriorPortal>(entity).B != playerInside.interior)) {
-                        // Skip rendering this entity
-                        continue;
-                    }
-                }
-            }
-        } else if (registry.all_of<Inside>(entity)) {
-            // If the player is not inside but the entity is inside an interior, skip rendering this entity
-            continue;
-        }
-
         auto &position = visible_entities.get<Position>(entity);
         auto &shape = visible_entities.get<Shape>(entity);
         
         bool isDebug = registry.all_of<Debug>(entity);
         bool isTeleport = registry.all_of<Teleport>(entity);
         if(isDebug && registry.all_of<Color>(entity)) {
-            auto &color = registry.get<Color>(entity);
-            auto debug_color = registry.get<Debug>(entity).defaultColor;
-
-            // If hovered over, change color
-            if(registry.all_of<Hovered>(entity) || registry.all_of<Interacted>(entity)) {
-                if(registry.all_of<Interacted>(entity)) {
-                    color.r = 255;
-                    color.g = 0;
-                    color.b = 0;
-                }
-                else {
-                    color.r = 0;
-                    color.g = 255;
-                    color.b = 0;
-                }
-            }
-            else {
-                color.r = color.defaultR;
-                color.g = color.defaultG;
-                color.b = color.defaultB;
-            }
+            auto color = registry.get<Color>(entity);
 
             updateUniformsDebug(shaderProgramMap["debug_entity"],
                 color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a,
-                // position.sx, position.sy, 
                 position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
-                shape.scaled_size.x, shape.scaled_size.y, playerScale);
+                shape.scaled_size.x, shape.scaled_size.y);
 
         }
         else if(isTeleport) {
@@ -288,7 +238,6 @@ void mainloop(void *arg)
     // Render player at the center of the screen
     updateUniformsTexture(shaderProgramMap["texture"], 
         textureIDMap["smile"],
-        // playerPos.sx, playerPos.sy,
         playerPos.sx + playerShape.scaled_size.x, playerPos.sy + playerShape.scaled_size.y,
         playerShape.scaled_size.x, playerShape.scaled_size.y);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
