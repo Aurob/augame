@@ -9,18 +9,15 @@ extern unordered_map<int, bool> keys;
 extern float deltaTime;
 extern int width, height;
 extern GLfloat cursorPos[2];
-extern GLfloat globalCursorPos[2];
 extern float gridSpacingValue;
 extern float defaultGSV;
 extern entt::entity _player;
 extern float moveSpeed;
-extern float defaultMoveSpeed;
-extern GLfloat toplefttile[2];
 
 
 void updateMovement(entt::registry &registry)
 {
-    auto movement_entities = registry.view<Visible, Movement, Position, Shape>();
+    auto movement_entities = registry.view<InView, Movement, Position, Shape>();
 
     for (auto entity : movement_entities)
     {
@@ -79,7 +76,7 @@ void updateCollisions(entt::registry &registry)
     registry.sort<Collidable>([&](const entt::entity lhs, const entt::entity rhs)
                               { return registry.all_of<Player>(lhs) && !registry.all_of<Player>(rhs); });
 
-    auto collidables = registry.view<Collidable, Position, Shape, Visible>();
+    auto collidables = registry.view<Collidable, Position, Shape, InView>();
 
     for (auto entity : collidables)
     {
@@ -103,6 +100,9 @@ void updateCollisions(entt::registry &registry)
 
             if(registry.all_of<Linked>(_entity)) {
                 auto _link = registry.get<Linked>(_entity);
+                if(_link.parent == entity) {
+                    continue;
+                }
             }
 
             Position &_entityPosition = registry.get<Position>(_entity);
@@ -289,13 +289,13 @@ void updateCollisions(entt::registry &registry)
 void updateTeleporters(entt::registry &registry)
 {
     // do collision checks for teleport entities
-    auto collidable_entities = registry.view<Position, Shape, Collidable, Visible>();
+    auto collidable_entities = registry.view<Position, Shape, Collidable, InView>();
     for (auto &entity : collidable_entities)
     {
         auto &position = collidable_entities.get<Position>(entity);
         auto &shape = collidable_entities.get<Shape>(entity);
 
-        auto teleport_entities = registry.view<Position, Shape, Teleport, Visible>();
+        auto teleport_entities = registry.view<Position, Shape, Teleport, InView>();
         for (auto &tentity : teleport_entities)
         {
             auto &tposition = teleport_entities.get<Position>(tentity);
@@ -330,7 +330,7 @@ void updateInteractions(entt::registry &registry)
         playerInterior = registry.get<Inside>(_player).interior;
     }
 
-    auto debug_entities = registry.view<Visible, Interactable, Hoverable, Position, Shape>();
+    auto debug_entities = registry.view<InView, Interactable, Hoverable, Position, Shape>();
     for (auto entity : debug_entities)
     {
         // Skip entities that are not in the same interior as the player
@@ -403,14 +403,36 @@ void updateInteractions(entt::registry &registry)
 void updatePositions(entt::registry &registry) {
 
     Position playerPos = registry.get<Position>(_player);
-
+    bool playerIsInside = registry.all_of<Inside>(_player);
+    entt::entity playerInterior = (playerIsInside) ? registry.get<Inside>(_player).interior : entt::null;
+ 
     auto entities = registry.view<Position, Shape>();
     for (auto &entity : entities)
     {
-
+        bool skipCheck = false;
         auto &position = entities.get<Position>(entity);
         auto &shape = entities.get<Shape>(entity);
         bool has_visible = registry.all_of<Visible>(entity);
+        bool is_inView = registry.all_of<InView>(entity);
+
+
+        if(registry.all_of<Inside>(entity)) {
+            if(!playerIsInside) {
+                skipCheck = true;
+            }
+            else if(!registry.any_of<Interior, InteriorPortal>(entity)) {
+                auto interior = registry.get<Inside>(entity).interior;
+                if(interior != playerInterior) {
+                    skipCheck = true;
+                }
+            }
+        }
+        else if(!registry.any_of<Interior, InteriorPortal>(entity)){
+            if(playerIsInside) {
+                printf("Skipping check\n");
+                skipCheck = true;
+            }
+        }
 
         float gridOffsetX = playerPos.x - (width / 2);
         float gridOffsetY = playerPos.y - (height / 2);
@@ -420,6 +442,7 @@ void updatePositions(entt::registry &registry) {
         float entityGridY = position.y - gridOffsetY;
         
         // Check whether any part of the entity falls within the screen boundaries
+        
         if (entityGridX + shape.size.x > 0 && entityGridX < width &&
             entityGridY + shape.size.y > 0 && entityGridY < height)
         {
@@ -434,14 +457,31 @@ void updatePositions(entt::registry &registry) {
             position.sy -= shape.scaled_size.y * (.999);
 
             // // check if entity is visible
-            if (!has_visible)
+            if (!has_visible && !skipCheck)
             {
                 registry.emplace<Visible>(entity);
             }
+            else if(skipCheck) {
+                if(has_visible) {
+                    registry.remove<Visible>(entity);
+                }
+                if(is_inView) {
+                    registry.remove<InView>(entity);
+                }
+            }
+
+            if(!is_inView) {
+                registry.emplace<InView>(entity);
+            }
         }
-        else if (has_visible)
+        else
         {
-            registry.remove<Visible>(entity);
+            if(has_visible) {
+                registry.remove<Visible>(entity);
+            }
+            if(is_inView) {
+                registry.remove<InView>(entity);
+            }
         }
     }
 }
@@ -460,7 +500,7 @@ void updateShapes(entt::registry &registry) {
 void updateLinkedEntities(entt::registry &registry) {
 
     // Check for new links
-    auto _entities = registry.view<Visible, Interactable, Linkable>();
+    auto _entities = registry.view<InView, Interactable, Linkable>();
     for(auto& entity : _entities) {
         
         auto &interactable = _entities.get<Interactable>(entity);
@@ -510,4 +550,30 @@ void updateLinkedEntities(entt::registry &registry) {
         }
         
     }
+}
+
+void updateOther(entt::registry &registry) {
+    auto entities = registry.view<Color>();
+    for(auto& entity : entities) {
+        auto &color = entities.get<Color>(entity);
+        // If hovered over, change color
+        if(registry.all_of<Hovered>(entity) || registry.all_of<Interacted>(entity)) {
+            if(registry.all_of<Interacted>(entity)) {
+                color.r = 255;
+                color.g = 0;
+                color.b = 0;
+            }
+            else {
+                color.r = 0;
+                color.g = 255;
+                color.b = 0;
+            }
+        }
+        else {
+            color.r = color.defaultR;
+            color.g = color.defaultG;
+            color.b = color.defaultB;
+        }
+    }
+
 }

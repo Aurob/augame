@@ -6,21 +6,6 @@
 
 extern entt::entity _player;
 
-/*For creating entities*/
-enum struct ComponentType {
-    Position,
-    Shape,
-    Color,
-    Validation,
-    Visible,
-    Debug,
-    Teleport,
-    Hoverable,
-    Hovered,
-    Interactable,
-    Interacted,
-    Collisions
-};
 entt::entity createBasicEntity(entt::registry& registry, float x, float y, float w, float h) {
     auto entity = registry.create();
     registry.emplace<Position>(entity, Position{x, y});
@@ -41,7 +26,6 @@ entt::entity createDebugEntity(entt::registry& registry, float x = 0.0f, float y
     Color color = {static_cast<float>(rand() % 255), static_cast<float>(rand() % 255), static_cast<float>(rand() % 255), 1.0f};
 
     registry.emplace<Color>(entity, color);
-    registry.emplace<Validation>(entity);
     registry.emplace<Debug>(entity, Debug{color});
     registry.emplace<Hoverable>(entity);
     registry.emplace<Interactable>(entity);
@@ -65,9 +49,7 @@ entt::entity createPlayerEntity(entt::registry& registry, float xOffset = 0.0f, 
     auto entity = registry.create();
     registry.emplace<Position>(entity, Position{xOffset, yOffset});
     registry.emplace<Color>(entity, Color{0, 0, 255, 0.0f});
-    registry.emplace<Validation>(entity);
     registry.emplace<Shape>(entity, Shape{1, 1});
-    registry.emplace<Collisions>(entity);
     registry.emplace<Player>(entity);
     registry.emplace<Visible>(entity);
     registry.emplace<Movement>(entity, Movement{25, 110, Vector2f{0, 0}, Vector2f{0, 0}, 10, 20});
@@ -80,7 +62,6 @@ void createWall(entt::registry& registry, float x, float y, float width, float h
     auto wall = registry.create();
     registry.emplace<Position>(wall, Position{x + xOffset, y + yOffset});
     registry.emplace<Color>(wall, color);
-    registry.emplace<Validation>(wall);
     registry.emplace<Shape>(wall, Shape{width, height});
     registry.emplace<Debug>(wall, Debug{color});
     registry.emplace<Collidable>(wall);
@@ -90,7 +71,6 @@ void createDoor(entt::registry& registry, float x, float y, Position destination
     auto door = registry.create();
     registry.emplace<Position>(door, Position{x + xOffset, y + yOffset});
     registry.emplace<Teleport>(door, Teleport{destination1, destination2, bidirectional});
-    registry.emplace<Validation>(door);
     registry.emplace<Debug>(door);
     registry.emplace<Shape>(door, Shape{1, 1});
 }
@@ -111,7 +91,6 @@ void createDynamicBuilding(entt::registry& registry,
         auto door = registry.create();
         registry.emplace<Position>(door, Position{x + xOffset, y + yOffset});
         registry.emplace<Teleport>(door, Teleport{dest1, dest2, bidirectional});
-        registry.emplace<Validation>(door);
         registry.emplace<Debug>(door);
         registry.emplace<Shape>(door, Shape{width, height});
     }
