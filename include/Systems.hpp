@@ -186,6 +186,7 @@ void updateCollisions(entt::registry &registry)
                 }
             }
         }
+
         if (colliding)
         {
             Movement &entityMovement = registry.get<Movement>(entity);
@@ -196,7 +197,7 @@ void updateCollisions(entt::registry &registry)
 
             if (!registry.all_of<Colliding>(entity))
             {
-                registry.emplace<Colliding>(entity);
+                registry.emplace<Colliding>(entity, Colliding{overlaps});
             }
 
             // Calculate the maximum allowed movement per frame to prevent tunneling
@@ -576,4 +577,47 @@ void updateOther(entt::registry &registry) {
         }
     }
 
+}
+
+void updatePaths(entt::registry &registry) {
+    auto entities = registry.view<BasicPathfinding, Position, Movement>();
+    for(auto& entity : entities) {
+        auto &pathfinding = entities.get<BasicPathfinding>(entity);
+        auto &position = entities.get<Position>(entity);
+        auto &movement = entities.get<Movement>(entity);
+
+        float pathModX = 0;
+        float pathModY = 0;
+
+        // If the entity is currently colliding, iterate and adjust pathMod values perpendicularly to the overlap direction
+        if(registry.all_of<Colliding>(entity)) {
+            auto &colliding = registry.get<Colliding>(entity);
+            for(auto& overlap : colliding.overlaps) {
+                if (overlap.x > 0) {
+                    pathModX += -overlap.y;
+                } else {
+                    pathModX += overlap.y;
+                }
+                if (overlap.y > 0) {
+                    pathModY += overlap.x;
+                } else {
+                    pathModY += -overlap.x;
+                }
+            }
+        }
+
+        if(pathfinding.target != entt::null) {
+            auto targetPos = registry.get<Position>(pathfinding.target);
+            auto targetShape = registry.get<Shape>(pathfinding.target);
+            float dx = targetPos.x - position.x + pathModX;
+            float dy = targetPos.y - position.y + pathModY;
+            float distance = std::sqrt(dx * dx + dy * dy);
+            if(distance > 0) {
+                dx /= distance;
+                dy /= distance;
+            }
+            movement.velocity.x = dx * movement.speed;
+            movement.velocity.y = dy * movement.speed;
+        }
+    }
 }

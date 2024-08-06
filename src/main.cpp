@@ -138,6 +138,7 @@ void updateFrame(context *ctx)
     updateCollisions(registry);
     updatePositions(registry);
     updateOther(registry);
+    updatePaths(registry);
 
 }
 

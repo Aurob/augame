@@ -196,4 +196,14 @@ void runFactories(entt::registry& registry) {
     registry.emplace<Collidable>(buildingDoor);
     registry.emplace<Color>(buildingDoor, Color{0, 255, 0, 1.0f});
     registry.emplace<Debug>(buildingDoor, Debug{Color{0, 255, 0, 1.0f}});
+
+    // Pathfinding tests
+    auto pathing_entity = createDebugEntity(registry, 10, 20, 4, 4);
+    registry.emplace<BasicPathfinding>(pathing_entity, BasicPathfinding{_player});
+    registry.emplace<AlwaysInView>(pathing_entity);
+    auto &movement = registry.get<Movement>(pathing_entity);
+    movement.speed = 1.25;
+
+    // add a wall at 10, 20, and make it 25 long and only 1 thick
+    createWall(registry, 10, 20, 25, 1, Color{255, 0, 0, 1.0f});
 }
