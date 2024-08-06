@@ -49,6 +49,7 @@ struct Color {
 
 struct Visible {};
 struct InView {};
+struct AlwaysInView {};
 
 struct Debug {
     Color defaultColor;
@@ -72,7 +73,7 @@ struct Interacted {
 };
 
 struct Colliding{
-    std::vector<entt::entity> colliding_entities;
+    std::vector<Vector2f> overlaps;
 };
 struct Collidable {
     std::vector<entt::entity> colliding_with;
@@ -113,3 +114,8 @@ struct OnInteriorPortal {
     entt::entity portal;
 };
 
+// Basic Pathfinding
+struct BasicPathfinding {
+    entt::entity target;
+    Position targetPos;
+};

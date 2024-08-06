@@ -1,13 +1,13 @@
 
 <!-- Add your logo here -->
-![AuGame Logo](path/to/logo.png)
+<!-- ![AuGame Logo](path/to/logo.png) -->
 
 # AuGame Game Engine
 
 > A lightweight, web-based 2D game engine powered by C++ and WebAssembly
 
 <!-- Add a demo image or gif here -->
-![AuGame Demo](path/to/demo.gif)
+<!-- ![AuGame Demo](path/to/demo.gif) -->
 
 AuGame is an early prototype for a future unnamed game. It's a 2D game engine that runs directly in web browsers, combining the performance of C++ with the accessibility of web technologies.
 ## Features
