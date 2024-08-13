@@ -26,11 +26,10 @@ extern GLfloat globalCursorPos[2];
 extern bool windowResized;
 extern GLfloat gridSpacingValue;
 extern bool ready;
-extern float moveSpeed;
-extern float defaultMoveSpeed;
 extern float defaultGSV;
 extern GLfloat toplefttile[2];
 extern entt::entity _player;
+extern float seed;
 
 // General variables
 int width = 1024;
@@ -39,16 +38,17 @@ float deltaTime = 0;
 unordered_map<int, bool> keys;
 GLfloat cursorPos[2] = {0, 0};
 GLfloat globalCursorPos[2] = {0, 0};
-GLfloat gridSpacingValue = 2048.0f;
 GLfloat offsetValue[2] = {0.0f, 0.0f};
 GLfloat toplefttile[2] = {0.0f, 0.0f};
 bool windowResized = false;
 bool ready = false;
-float moveSpeed = 1.15f;
-float defaultMoveSpeed = moveSpeed;
 int lastTime = 0;
 float defaultGSV = 16.0f;
+GLfloat generationSize[2] = {defaultGSV/3, defaultGSV/3};
+GLfloat gridSpacingValue = 1024.0f;
 bool first_start = false;
+float defaultMoveSpeed = 0.0f;
+float seed = 0.0f;
 
 entt::entity _player;
 entt::registry registry;
@@ -88,6 +88,10 @@ int main(int argc, char *argv[])
     _js__fetch_configs();   
     _js__ready();
     
+    srand(time(NULL));
+    seed = 82938; //rand() % 100000;
+    printf("Seed: %f\n", seed);
+
     // Set the main loop
     ctx.window = mpWindow;
     emscripten_set_main_loop_arg(mainloop, &ctx, 0, 1);
@@ -125,9 +129,6 @@ void updateFrame(context *ctx)
     // Calculate cursor global position
     globalCursorPos[0] = toplefttile[0] * defaultGSV + (cursorPos[0] / gridSpacingValue) + playerPos.x;
     globalCursorPos[1] = toplefttile[1] * defaultGSV + (cursorPos[1] / gridSpacingValue) + playerPos.y;
-    
-    // Scale moveSpeed with grid spacing
-    moveSpeed = defaultMoveSpeed;// * (defaultGSV / gridSpacingValue) * 10;
 
     // Update entity movement and interactions
     updateTeleporters(registry);
@@ -136,9 +137,9 @@ void updateFrame(context *ctx)
     updateLinkedEntities(registry);
     updateMovement(registry);
     updateCollisions(registry);
-    updatePositions(registry);
     updateOther(registry);
     updatePaths(registry);
+    updatePositions(registry);
 
 }
 
@@ -155,10 +156,15 @@ bool js_loaded() {
             printf("Loading texture: %s\n", src.c_str());
             textureIDMap[name] = loadGLTexture(shaderProgramMap["texture"], src.c_str());
         }
+
+        // set defaultMoveSpeed
+        Movement &playerMovement = registry.get<Movement>(_player);
+        defaultMoveSpeed = playerMovement.speed;
     }
     return true;
 }
 
+bool onetime = false;
 void mainloop(void *arg)
 {
     if(!js_loaded()) return;
@@ -170,6 +176,15 @@ void mainloop(void *arg)
     while (SDL_PollEvent(&ctx->event))
     {
         EventHandler(0, &ctx->event);
+    }
+
+    // If Shift is pressed, increase speed
+    auto& playerMovement = registry.get<Movement>(_player);
+    if(keys[SDLK_LSHIFT]) {
+        playerMovement.speed = defaultMoveSpeed * 20;
+    }
+    else {
+        playerMovement.speed = defaultMoveSpeed;
     }
 
     // Update frame
@@ -192,33 +207,75 @@ void mainloop(void *arg)
             gridSpacingValue, 
             offsetValue, 
             width, height, 
-            toplefttile);
+            toplefttile,
+            generationSize
+        );
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     }
     
-    // Sort visible entities so that Interiors and InteriorPortals are rendered first
     registry.sort<Visible>([&](const entt::entity lhs, const entt::entity rhs) {
-        bool lhs_priority = registry.any_of<Interior, InteriorPortal>(lhs);
-        bool rhs_priority = registry.any_of<Interior, InteriorPortal>(rhs);
-        return lhs_priority && !rhs_priority;
+        // Check if either entity has RenderPriority component
+        // bool lhs_has_priority = registry.all_of<RenderPriority>(lhs);
+        // bool rhs_has_priority = registry.all_of<RenderPriority>(rhs);
+
+        // // If both have RenderPriority, compare their priority values
+        // if (lhs_has_priority && rhs_has_priority) {
+        //     return registry.get<RenderPriority>(lhs).priority > registry.get<RenderPriority>(rhs).priority;
+        // }
+
+        // // If only one has RenderPriority, it should be rendered first
+        // if (lhs_has_priority) {
+        //     return true;
+        // }
+        // if (rhs_has_priority) {
+        //     return false;
+        // }
+        // Default to x-order, then y-order
+        const auto& lhsPos = registry.get<Position>(lhs);
+        const auto& rhsPos = registry.get<Position>(rhs);
+        if (lhsPos.x == rhsPos.x) {
+            return lhsPos.y < rhsPos.y;
+        }
+        return lhsPos.x < rhsPos.x;
     });
 
-    // Render visible entities
-    auto visible_entities = registry.view<Position, Shape, Visible>();
 
+    // Render visible entities
+    auto visible_entities = registry.view<Position, Shape, Visible, RenderPriority>();
     for(auto& entity : visible_entities) {
+
+        if(registry.all_of<RenderPriority>(entity) && keys[SDLK_p]) {
+            auto &priority = registry.get<RenderPriority>(entity);
+            printf("Priority: %d\n", priority.priority);
+        }
+
         auto &position = visible_entities.get<Position>(entity);
         auto &shape = visible_entities.get<Shape>(entity);
         
         bool isDebug = registry.all_of<Debug>(entity);
         bool isTeleport = registry.all_of<Teleport>(entity);
-        if(isDebug && registry.all_of<Color>(entity)) {
+
+        if(entity == _player) {
+
+            // Render player at the center of the screen
+            updateUniformsTexture(shaderProgramMap["texture"], 
+                textureIDMap["smile"],
+                playerPos.sx + playerShape.scaled_size.x, (playerPos.sy) + playerShape.scaled_size.y,
+                playerShape.scaled_size.x, playerShape.scaled_size.y);
+            
+        }
+        else if(isDebug && registry.all_of<Color>(entity)) {
             auto color = registry.get<Color>(entity);
+
+            float angle = 0.0f;
+            if(registry.all_of<Rotation>(entity)) {
+                angle = registry.get<Rotation>(entity).angle;
+            }
 
             updateUniformsDebug(shaderProgramMap["debug_entity"],
                 color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a,
                 position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
-                shape.scaled_size.x, shape.scaled_size.y);
+                shape.scaled_size.x, shape.scaled_size.y, angle);
 
         }
         else if(isTeleport) {
@@ -237,14 +294,6 @@ void mainloop(void *arg)
     }
 
     // Render player at the center of the screen
-    updateUniformsTexture(shaderProgramMap["texture"], 
-        textureIDMap["smile"],
-        playerPos.sx + playerShape.scaled_size.x, playerPos.sy + playerShape.scaled_size.y,
-        playerShape.scaled_size.x, playerShape.scaled_size.y);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    
-    
-    // Render player at the center of the screen
     updateUniforms2(shaderProgramMap["ui_layer"], 
         width, height, gridSpacingValue,
         toplefttile);
@@ -257,6 +306,7 @@ void mainloop(void *arg)
     // Update info on front end
     _js__kvdata("x", playerPos.x);
     _js__kvdata("y", playerPos.y);
+    _js__kvdata("z", playerPos.z);
     _js__kvdata("gridSpacingValue", gridSpacingValue);
     ctx->iteration++;
 }

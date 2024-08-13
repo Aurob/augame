@@ -9,70 +9,179 @@ extern unordered_map<int, bool> keys;
 extern float deltaTime;
 extern int width, height;
 extern GLfloat cursorPos[2];
+extern GLfloat toplefttile[2];
 extern float gridSpacingValue;
 extern float defaultGSV;
 extern entt::entity _player;
-extern float moveSpeed;
-
 
 void updateMovement(entt::registry &registry)
 {
-    auto movement_entities = registry.view<InView, Movement, Position, Shape>();
+    auto view = registry.view<Movement, Position>();
 
-    for (auto entity : movement_entities)
+    for (auto entity : view)
     {
-        auto &movement = movement_entities.get<Movement>(entity);
-        auto &position = movement_entities.get<Position>(entity);
-        auto &shape = movement_entities.get<Shape>(entity);
+        auto &movement = view.get<Movement>(entity);
+        auto &position = view.get<Position>(entity);
+
         bool isPlayer = registry.all_of<Player>(entity);
 
+        // Handle player input
         if (isPlayer)
         {
-            float deltaX = keys[SDLK_a] - keys[SDLK_d];
-            float deltaY = keys[SDLK_w] - keys[SDLK_s];
-
-            movement.acceleration.x -= deltaX * movement.speed * moveSpeed;
-            movement.acceleration.y -= deltaY * movement.speed * moveSpeed;
+            Vector2f input{static_cast<float>(keys[SDLK_d]) - static_cast<float>(keys[SDLK_a]),
+                           static_cast<float>(keys[SDLK_s]) - static_cast<float>(keys[SDLK_w])};
+            movement.acceleration = input.normalized() * movement.speed;
         }
 
-        if (movement.acceleration.x != 0 || movement.acceleration.y != 0)
+        // Update velocity
+        movement.velocity += movement.acceleration * deltaTime;
+
+        // Apply drag
+        movement.velocity *= (1.0f - movement.friction * deltaTime);
+
+        // Clamp velocity to max speed
+        float currentSpeed = movement.velocity.length();
+        if (currentSpeed > movement.max_speed)
         {
-            movement.velocity.x += movement.acceleration.x * deltaTime;
-            movement.velocity.y += movement.acceleration.y * deltaTime;
-            movement.acceleration.x = 0;
-            movement.acceleration.y = 0;
+            movement.velocity *= (movement.max_speed / currentSpeed);
         }
 
-        if (movement.velocity.x != 0 || movement.velocity.y != 0)
+        // Update position
+        position.x += movement.velocity.x * deltaTime;
+        position.y += movement.velocity.y * deltaTime;
+
+        // Reset acceleration
+        movement.acceleration = {0, 0};
+    }
+}
+
+void updateInteriorCollisions(entt::registry &registry, entt::entity entity, Position &entityPosition, Shape &entityShape, std::vector<entt::entity> &_collidables, std::vector<Vector2f> &overlaps)
+{
+
+    Position playerPos = registry.get<Position>(entity);
+    auto collidables = registry.view<Collidable, Position, Shape, InView>();
+
+    for (auto _entity : collidables)
+    {
+        if (_entity == entity)
+            continue;
+
+        if (registry.all_of<Linked>(_entity) && registry.get<Linked>(_entity).parent == entity)
+            continue;
+
+        Position &_entityPosition = registry.get<Position>(_entity);
+        Shape &_entityShape = registry.get<Shape>(_entity);
+
+        bool skipCollide = false;
+        bool invert = false;
+
+        if (registry.all_of<Inside>(entity) && !registry.all_of<OnInteriorPortal>(entity))
         {
-            movement.velocity.x -= movement.velocity.x * movement.friction * deltaTime;
-            movement.velocity.y -= movement.velocity.y * movement.friction * deltaTime;
+
+            auto interior = registry.get<Inside>(entity).interior;
+            if (interior == _entity)
+            {
+                invert = true;
+            }
         }
 
-        if (movement.max_speed > 0)
+        Vector2f overlap = positionsCollide(entityPosition, entityShape, _entityPosition, _entityShape, invert);
+
+        if (overlap.x != 0 || overlap.y != 0)
         {
-            movement.velocity.x = std::clamp(movement.velocity.x, -movement.max_speed, movement.max_speed);
-            movement.velocity.y = std::clamp(movement.velocity.y, -movement.max_speed, movement.max_speed);
+            if (registry.all_of<Interior>(_entity))
+            {
+                if (registry.all_of<Inside>(entity))
+                {
+                    auto interior = registry.get<Inside>(entity).interior;
+                    if (interior == _entity)
+                    {
+                        if (!registry.all_of<OnInteriorPortal>(entity))
+                        {
+                            _collidables.push_back(_entity);
+                            overlaps.push_back(overlap);
+                        }
+                        else
+                        {
+                            skipCollide = true;
+                        }
+                    }
+                    else {
+                        auto entityInside = registry.all_of<Inside>(entity) ? registry.get<Inside>(entity).interior : entt::null;
+                        auto _entityInside = registry.all_of<Inside>(_entity) ? registry.get<Inside>(_entity).interior : entt::null;
+                        if (entityInside != _entityInside) {
+                            skipCollide = true;
+                        }
+                    }
+                }
+                if (registry.all_of<OnInteriorPortal>(entity))
+                {
+                    auto portal = registry.get<OnInteriorPortal>(entity).portal;
+                    auto portalInterior = registry.get<InteriorPortal>(portal).A;
+                    if (portalInterior == _entity)
+                    {
+                        skipCollide = true;
+                    }
+                }
+            }
+
+            if (registry.all_of<InteriorPortal>(_entity))
+            {
+                if (!registry.all_of<OnInteriorPortal>(entity))
+                {
+                    registry.emplace_or_replace<OnInteriorPortal>(entity, OnInteriorPortal{_entity});
+                    auto &interiorPortal = registry.get<InteriorPortal>(_entity);
+                    auto currentInterior = registry.all_of<Inside>(entity) ? registry.get<Inside>(entity).interior : entt::null;
+                    auto newInterior = (interiorPortal.A != currentInterior) ? interiorPortal.A : interiorPortal.B;
+                    if (newInterior != entt::null)
+                    {
+                        registry.emplace_or_replace<Inside>(entity, Inside{newInterior});
+                    }
+                    else
+                    {
+                        registry.remove<Inside>(entity);
+                    }
+                }
+                skipCollide = true;
+            }
+
+            if (!skipCollide)
+            {
+                _collidables.push_back(_entity);
+                overlaps.push_back(overlap);
+            }
         }
-
-        // Calculate the movement step
-        float stepX = movement.velocity.x * deltaTime;
-        float stepY = movement.velocity.y * deltaTime;
-
-        // Move in smaller increments to prevent tunneling
-        const int substeps = 10;
-        for (int i = 0; i < substeps; ++i)
+        else
         {
-            position.x += stepX / substeps;
-            position.y += stepY / substeps;
+            if (registry.all_of<Interior>(_entity) && registry.all_of<InteriorColliding>(entity))
+            {
+                // registry.remove<InteriorColliding>(entity);
+            }
+            if (registry.all_of<InteriorPortal>(_entity) && registry.all_of<OnInteriorPortal>(entity))
+            {
+                auto portal = registry.get<OnInteriorPortal>(entity);
+                if (portal.portal == _entity)
+                {
+                    registry.remove<OnInteriorPortal>(entity);
+
+                    auto& interiorPortal = registry.get<InteriorPortal>(_entity);
+                    if (!registry.all_of<Inside>(entity)) {
+                        registry.remove<OnInteriorPortal>(entity);
+                    } else {
+                        auto interior = registry.get<Inside>(entity).interior;
+                        if (interior != interiorPortal.A && interior != interiorPortal.B ||
+                            interiorPortal.A == entt::null || interiorPortal.B == entt::null) {
+                            registry.remove<OnInteriorPortal>(entity);
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
-
 void updateCollisions(entt::registry &registry)
 {
-    // Sort so that the player is checked first
     registry.sort<Collidable>([&](const entt::entity lhs, const entt::entity rhs)
                               { return registry.all_of<Player>(lhs) && !registry.all_of<Player>(rhs); });
 
@@ -83,206 +192,206 @@ void updateCollisions(entt::registry &registry)
         if (!registry.all_of<Movement>(entity))
             continue;
 
-        bool hasLink = registry.all_of<Linked>(entity);
-        bool isInterior = registry.all_of<Interior>(entity);
-
-        bool colliding = false;
         std::vector<entt::entity> _collidables;
         std::vector<Vector2f> overlaps;
 
         Shape &entityShape = registry.get<Shape>(entity);
         Position &entityPosition = registry.get<Position>(entity);
-        
-        for (auto _entity : collidables)
+
+        updateInteriorCollisions(registry, entity, entityPosition, entityShape, _collidables, overlaps);
+
+        if (!_collidables.empty())
         {
-            if (_entity == entity)
-                continue; // skip self
+            registry.emplace_or_replace<Colliding>(entity, Colliding{_collidables, overlaps});
 
-            if(registry.all_of<Linked>(_entity)) {
-                auto _link = registry.get<Linked>(_entity);
-                if(_link.parent == entity) {
-                    continue;
-                }
-            }
+            auto &movement = registry.get<Movement>(entity);
+            Vector2f totalOverlap{0, 0};
 
-            Position &_entityPosition = registry.get<Position>(_entity);
-            Shape &_entityShape = registry.get<Shape>(_entity);
-            bool skipCollide = false;
-            
-            bool invert = false;
-            if(registry.all_of<Inside>(entity) && !registry.all_of<OnInteriorPortal>(entity)) {
-                auto interior = registry.get<Inside>(entity).interior;
-                if(interior == _entity) {
-                    invert = true;
-                }
-            }
-
-            Vector2f overlap = positionsCollide(entityPosition, entityShape, _entityPosition, _entityShape, invert);
-
-            if (overlap.x != 0 || overlap.y != 0)
+            for (size_t i = 0; i < _collidables.size(); ++i)
             {
-                if(registry.all_of<Interior>(_entity)) {
-                    if(!registry.all_of<InteriorColliding>(entity)) {
-                        registry.emplace<InteriorColliding>(entity);
-                    }
-                    if(registry.all_of<Inside>(entity)) {
-                        auto interior = registry.get<Inside>(entity).interior;
-                        if(interior == _entity) {
-                            if(!registry.all_of<OnInteriorPortal>(entity)) {
-                                colliding = true;
-                                _collidables.push_back(_entity);
-                                overlaps.push_back(overlap);
-                            } else {
-                                skipCollide = true;
-                            }
-                        }
-                    } else {
-                        if(registry.all_of<OnInteriorPortal>(entity)) {
-                            auto portal = registry.get<OnInteriorPortal>(entity).portal;
-                            auto portalInterior = registry.get<InteriorPortal>(portal).A;
-                            if(portalInterior == _entity) {
-                                printf("Entering InteriorPortal\n");
-                                skipCollide = true;
-                            }
-                        }
-                    }
-                }
-                
-                if(registry.all_of<InteriorPortal>(_entity)) {
-                    if(!registry.all_of<OnInteriorPortal>(entity)) {
-                        registry.emplace_or_replace<OnInteriorPortal>(entity, OnInteriorPortal{_entity});
-                        printf("Entering InteriorPortal\n");
+                auto other = _collidables[i];
+                const auto &overlap = overlaps[i];
+                Vector2f normal = overlap.normalized();
 
-                        if(!registry.all_of<Inside>(entity)) {
-                            auto portalInterior = registry.get<InteriorPortal>(_entity).A;
-                            registry.emplace<Inside>(entity, Inside{portalInterior});
-                        }
-                    }
-                    skipCollide = true;
-                }
-                
-                if(!skipCollide) {
-                    colliding = true;
-                    _collidables.push_back(_entity);
-                    overlaps.push_back(overlap);
-                }
-            }
-            else {
+                bool otherHasMovement = registry.all_of<Movement>(other);
+                float entityMass = movement.mass;
+                float otherMass = otherHasMovement ? registry.get<Movement>(other).mass : std::numeric_limits<float>::infinity();
 
-                if(registry.all_of<Interior>(_entity) && registry.all_of<InteriorColliding>(entity)) {
-                    registry.remove<InteriorColliding>(entity);
-                }
-
-                if(registry.all_of<InteriorPortal>(_entity) && registry.all_of<OnInteriorPortal>(entity)) {
-                    auto portal = registry.get<OnInteriorPortal>(entity);
-                    if(portal.portal == _entity) {
-                        registry.remove<OnInteriorPortal>(entity);
-                        printf("Exiting InteriorPortal\n");
-
-                        if(!registry.all_of<InteriorColliding>(entity)) {
-                            registry.remove<Inside>(entity);
-                        }
-                    }
-                }
-            }
-        }
-
-        if (colliding)
-        {
-            Movement &entityMovement = registry.get<Movement>(entity);
-            float overlapx = 0, overlapy = 0;
-            float m1 = entityMovement.mass;
-            float xv1 = entityMovement.velocity.x;
-            float yv1 = entityMovement.velocity.y;
-
-            if (!registry.all_of<Colliding>(entity))
-            {
-                registry.emplace<Colliding>(entity, Colliding{overlaps});
-            }
-
-            // Calculate the maximum allowed movement per frame to prevent tunneling
-            float maxMovement = std::min(entityShape.size.x, entityShape.size.y) / 2.0f;
-            float currentMovement = std::sqrt(xv1 * xv1 + yv1 * yv1) * deltaTime;
-
-            if (currentMovement > maxMovement)
-            {
-                float scale = maxMovement / currentMovement;
-                entityMovement.velocity.x *= scale;
-                entityMovement.velocity.y *= scale;
-                xv1 = entityMovement.velocity.x;
-                yv1 = entityMovement.velocity.y;
-            }
-
-            const float defaultRestitution = 0.5f;
-
-            for (auto _entity : _collidables)
-            {
-                if (registry.all_of<Movement>(_entity) && registry.all_of<Moveable>(_entity))
+                Vector2f relativeVelocity = movement.velocity;
+                if (otherHasMovement)
                 {
-                    Movement &_entityMovement = registry.get<Movement>(_entity);
-                    float m2 = _entityMovement.mass;
-                    float xv2 = _entityMovement.velocity.x;
-                    float yv2 = _entityMovement.velocity.y;
+                    relativeVelocity -= registry.get<Movement>(other).velocity;
+                }
 
-                    // Apply friction
-                    float frictionCoeff = (entityMovement.friction + _entityMovement.friction) / 2.0f;
-                    xv1 *= (1.0f - frictionCoeff * deltaTime);
-                    yv1 *= (1.0f - frictionCoeff * deltaTime);
-                    xv2 *= (1.0f - frictionCoeff * deltaTime);
-                    yv2 *= (1.0f - frictionCoeff * deltaTime);
+                float velocityAlongNormal = relativeVelocity.dot(normal);
 
-                    float xv1f = ((m1 - m2) / (m1 + m2)) * xv1 + ((2 * m2) / (m1 + m2)) * xv2;
-                    float xv2f = ((2 * m1) / (m1 + m2)) * xv1 + ((m2 - m1) / (m1 + m2)) * xv2;
+                if (velocityAlongNormal < 0)
+                {
+                    float restitution = movement.restitution;
+                    if (otherHasMovement)
+                    {
+                        restitution = std::max(restitution, registry.get<Movement>(other).restitution);
+                    }
 
-                    float yv1f = ((m1 - m2) / (m1 + m2)) * yv1 + ((2 * m2) / (m1 + m2)) * yv2;
-                    float yv2f = ((2 * m1) / (m1 + m2)) * yv1 + ((m2 - m1) / (m1 + m2)) * yv2;
+                    float j = -(1 + restitution) * velocityAlongNormal;
+                    j /= 1 / entityMass + (otherHasMovement ? 1 / otherMass : 0);
 
-                    // Apply restitution
-                    entityMovement.velocity.x = xv1f * defaultRestitution;
-                    entityMovement.velocity.y = yv1f * defaultRestitution;
+                    Vector2f impulse = normal * j;
+                    movement.velocity += impulse / entityMass;
 
-                    _entityMovement.velocity.x = xv2f * defaultRestitution;
-                    _entityMovement.velocity.y = yv2f * defaultRestitution;
+                    if (otherHasMovement)
+                    {
+                        auto &otherMovement = registry.get<Movement>(other);
+                        otherMovement.velocity -= impulse / otherMass;
+                    }
+                }
+
+                totalOverlap += overlap;
+            }
+            // Anti-tunneling
+            float maxMovement = std::min(movement.max_speed * deltaTime, 0.5f); // Limit max movement to half the smallest object size
+            float totalOverlapMagnitude = totalOverlap.length();
+
+            if (totalOverlapMagnitude > maxMovement)
+            {
+                totalOverlap = totalOverlap.normalized() * maxMovement;
+            }
+
+            // Apply position correction in smaller steps
+            const int steps = 25;
+            for (int i = 0; i < steps; ++i)
+            {
+                Vector2f stepCorrection = totalOverlap / static_cast<float>(steps);
+                entityPosition.x += stepCorrection.x;
+                entityPosition.y += stepCorrection.y;
+
+                // Check for new collisions after each step
+                std::vector<entt::entity> stepCollidables;
+                std::vector<Vector2f> stepOverlaps;
+                updateInteriorCollisions(registry, entity, entityPosition, entityShape, stepCollidables, stepOverlaps);
+
+                if (!stepCollidables.empty())
+                {
+                    // If new collision detected, revert this step and break
+                    entityPosition.x -= stepCorrection.x;
+                    entityPosition.y -= stepCorrection.y;
+                    break;
                 }
             }
 
-            for (const auto &overlap : overlaps)
-            {
-                overlapx += overlap.x;
-                overlapy += overlap.y;
-            }
-            
-            // Apply separation to resolve overlap
-            entityPosition.x += overlapx;
-            entityPosition.y += overlapy;
+            // Adjust velocity based on the actual position change
+            Vector2f actualMovement = {entityPosition.x - (entityPosition.x - totalOverlap.x),
+                                       entityPosition.y - (entityPosition.y - totalOverlap.y)};
+            movement.velocity = actualMovement / deltaTime;
 
-            // Adjust velocity based on the collision normal
-            if (overlapx != 0 || overlapy != 0)
+            // Ensure velocity doesn't exceed max_speed
+            float speed = movement.velocity.length();
+            if (speed > movement.max_speed)
             {
-                Vector2f normal{overlapx, overlapy};
-                float length = std::sqrt(normal.x * normal.x + normal.y * normal.y);
-                if (length != 0) {
-                    normal.x /= length;
-                    normal.y /= length;
-                }
-                float dotProduct = entityMovement.velocity.x * normal.x + entityMovement.velocity.y * normal.y;
-                entityMovement.velocity.x -= (1.0f + defaultRestitution) * dotProduct * normal.x;
-                entityMovement.velocity.y -= (1.0f + defaultRestitution) * dotProduct * normal.y;
-            }
-
-            // Apply additional anti-tunneling measure
-            float speed = std::sqrt(entityMovement.velocity.x * entityMovement.velocity.x + 
-                                    entityMovement.velocity.y * entityMovement.velocity.y);
-            if (speed > maxMovement / deltaTime)
-            {
-                float scaleFactor = (maxMovement / deltaTime) / speed;
-                entityMovement.velocity.x *= scaleFactor;
-                entityMovement.velocity.y *= scaleFactor;
+                movement.velocity = movement.velocity.normalized() * movement.max_speed;
             }
         }
-        else if (registry.all_of<Colliding>(entity))
+        else
         {
             registry.remove<Colliding>(entity);
+        }
+    }
+}
+
+void updatePositions(entt::registry &registry)
+{
+    Position playerPos = registry.get<Position>(_player);
+    auto entities = registry.view<Position, Shape>();
+
+    for (auto entity : entities)
+    {
+        
+        auto &position = entities.get<Position>(entity);
+        auto &shape = entities.get<Shape>(entity);
+
+        float gridOffsetX = playerPos.x - (width / 2);
+        float gridOffsetY = playerPos.y - (height / 2);
+
+        float entityGridX = position.x - gridOffsetX;
+        float entityGridY = position.y - gridOffsetY;
+
+        float posX = (playerPos.x - position.x) * gridSpacingValue + width / 2;
+        float posY = (playerPos.y - position.y) * gridSpacingValue + height / 2;
+        float posZ = position.z * gridSpacingValue;
+        position.sx = (2 * posX / width - 1) / defaultGSV - shape.scaled_size.x * 0.999f;
+        position.sy = (2 * posY / height - 1) / defaultGSV - shape.scaled_size.y * 0.999f;
+        position.sz = (2 * posZ / height - 1) / defaultGSV - shape.scaled_size.z * 0.999f;
+
+        bool isWithinBounds = (entity == _player) || (position.sx + shape.scaled_size.x * 4 >= -1 && position.sx - shape.scaled_size.x * 4 <= 1 &&
+                                                      position.sy + shape.scaled_size.y * 4 >= -1 && position.sy - shape.scaled_size.y * 4 <= 1);
+        bool isAtOrAbovePlayer = position.z >= playerPos.z;
+        if (isWithinBounds) // && isAtOrAbovePlayer)
+        {
+            bool shouldBeVisible = false;
+            bool shouldBeInView = true;
+
+            // if player is inside an interior, only show entities that are inside the same interior
+            if (registry.all_of<Inside>(_player))
+            {
+                auto playerInterior = registry.get<Inside>(_player).interior;
+
+                if (registry.all_of<Interior>(entity) && entity == playerInterior)
+                {
+                    shouldBeVisible = true;
+                }
+
+                if (registry.all_of<Inside>(entity))
+                {
+                    auto entityInterior = registry.get<Inside>(entity).interior;
+                    if (playerInterior == entityInterior)
+                    {
+                        shouldBeVisible = true;
+                    }
+                }
+
+                if (registry.all_of<InteriorPortal>(entity))
+                {
+                    auto &portal = registry.get<InteriorPortal>(entity);
+                    if (portal.A == playerInterior || portal.B == playerInterior)
+                    {
+                        shouldBeVisible = true;
+                    }
+                }
+            }
+            else
+            {
+                // Check if the entity is inside something
+                if (!registry.all_of<Inside>(entity))
+                {
+                    shouldBeVisible = true;
+                }
+                else {
+                    shouldBeInView = false;
+                }
+            }
+
+            if (shouldBeVisible && !registry.all_of<Visible>(entity))
+            {
+                registry.emplace<Visible>(entity);
+            }
+            else if (!shouldBeVisible && registry.all_of<Visible>(entity))
+            {
+                registry.remove<Visible>(entity);
+            }
+
+            if (shouldBeInView && !registry.all_of<InView>(entity))
+            {
+                registry.emplace<InView>(entity);
+            }
+            else if (!shouldBeInView && registry.all_of<InView>(entity))
+            {
+                registry.remove<InView>(entity);
+            }
+        }
+        else
+        {
+            registry.remove<Visible>(entity);
+            registry.remove<InView>(entity);
         }
     }
 }
@@ -290,7 +399,7 @@ void updateCollisions(entt::registry &registry)
 void updateTeleporters(entt::registry &registry)
 {
     // do collision checks for teleport entities
-    auto collidable_entities = registry.view<Position, Shape, Collidable, InView>();
+    auto collidable_entities = registry.view<Position, Shape, Collidable, InView, Teleportable>();
     for (auto &entity : collidable_entities)
     {
         auto &position = collidable_entities.get<Position>(entity);
@@ -309,11 +418,13 @@ void updateTeleporters(entt::registry &registry)
                 position.x = teleport.destination.x;
                 position.y = teleport.destination.y;
 
-                if(teleport.reverse) {
-                    if(registry.all_of<Movement>(entity)) {
+                if (teleport.reverse)
+                {
+                    if (registry.all_of<Movement>(entity))
+                    {
                         auto &movement = registry.get<Movement>(entity);
                         movement.velocity.x = 0;
-                        movement.velocity.y *= -1;
+                        movement.velocity.y = 0;
                     }
                 }
             }
@@ -327,7 +438,8 @@ void updateInteractions(entt::registry &registry)
     auto playerShape = registry.get<Shape>(_player);
     bool playerInside = registry.all_of<Inside>(_player);
     entt::entity playerInterior = entt::null;
-    if (playerInside) {
+    if (playerInside)
+    {
         playerInterior = registry.get<Inside>(_player).interior;
     }
 
@@ -335,11 +447,15 @@ void updateInteractions(entt::registry &registry)
     for (auto entity : debug_entities)
     {
         // Skip entities that are not in the same interior as the player
-        if (playerInside) {
-            if (!registry.all_of<Inside>(entity) || registry.get<Inside>(entity).interior != playerInterior) {
+        if (playerInside)
+        {
+            if (!registry.all_of<Inside>(entity) || registry.get<Inside>(entity).interior != playerInterior)
+            {
                 continue;
             }
-        } else if (registry.all_of<Inside>(entity)) {
+        }
+        else if (registry.all_of<Inside>(entity))
+        {
             continue;
         }
 
@@ -356,11 +472,13 @@ void updateInteractions(entt::registry &registry)
         if (normalizedCursorX >= position.sx - shape.scaled_size.x &&
             normalizedCursorX <= position.sx + shape.scaled_size.x &&
             normalizedCursorY >= position.sy - shape.scaled_size.y &&
-            normalizedCursorY <= position.sy + shape.scaled_size.y ) {
+            normalizedCursorY <= position.sy + shape.scaled_size.y)
+        {
             mouseCollides = true;
         }
 
-        if(mouseCollides) {
+        if (mouseCollides)
+        {
             if (!registry.all_of<Hovered>(entity))
             {
                 registry.emplace<Hovered>(entity);
@@ -372,7 +490,8 @@ void updateInteractions(entt::registry &registry)
                 {
                     registry.emplace<Interacted>(entity, _player);
                 }
-                else {
+                else
+                {
                     interactable.interactions++;
                     interactable.toggle = !interactable.toggle;
                 }
@@ -399,129 +518,61 @@ void updateInteractions(entt::registry &registry)
             }
         }
     }
-}
 
-void updatePositions(entt::registry &registry) {
-
-    Position playerPos = registry.get<Position>(_player);
-    bool playerIsInside = registry.all_of<Inside>(_player);
-    entt::entity playerInterior = (playerIsInside) ? registry.get<Inside>(_player).interior : entt::null;
- 
-    auto entities = registry.view<Position, Shape>();
-    for (auto &entity : entities)
+    // For Interacted entities, perform the interaction action
+    auto interacted_entities = registry.view<Interacted, InteractionAction>();
+    for (auto entity : interacted_entities)
     {
-        bool skipCheck = false;
-        auto &position = entities.get<Position>(entity);
-        auto &shape = entities.get<Shape>(entity);
-        bool has_visible = registry.all_of<Visible>(entity);
-        bool is_inView = registry.all_of<InView>(entity);
+        auto &interacted = interacted_entities.get<Interacted>(entity);
+        auto &action = interacted_entities.get<InteractionAction>(entity);
 
-
-        if(registry.all_of<Inside>(entity)) {
-            if(!playerIsInside) {
-                skipCheck = true;
-            }
-            else if(!registry.any_of<Interior, InteriorPortal>(entity)) {
-                auto interior = registry.get<Inside>(entity).interior;
-                if(interior != playerInterior) {
-                    skipCheck = true;
-                }
-            }
-        }
-        else if(!registry.any_of<Interior, InteriorPortal>(entity)){
-            if(playerIsInside) {
-                printf("Skipping check\n");
-                skipCheck = true;
-            }
-        }
-
-        float gridOffsetX = playerPos.x - (width / 2);
-        float gridOffsetY = playerPos.y - (height / 2);
-
-        // Adjust entity coordinates relative to the grid offset
-        float entityGridX = position.x - gridOffsetX;
-        float entityGridY = position.y - gridOffsetY;
-        
-        // Check whether any part of the entity falls within the screen boundaries
-        
-        if (entityGridX + shape.size.x > 0 && entityGridX < width &&
-            entityGridY + shape.size.y > 0 && entityGridY < height)
+        for (auto &entity : interacted_entities)
         {
-
-            float posX = (playerPos.x - position.x) * gridSpacingValue + width/2;
-            float posY = (playerPos.y - position.y) * gridSpacingValue + height/2;
-
-            position.sx = (2 * posX / width - 1) / defaultGSV;
-            position.sy = (2 * posY / height - 1) / defaultGSV;
-
-            position.sx -= shape.scaled_size.x * (.999);
-            position.sy -= shape.scaled_size.y * (.999);
-
-            // // check if entity is visible
-            if (!has_visible && !skipCheck)
-            {
-                registry.emplace<Visible>(entity);
-            }
-            else if(skipCheck) {
-                if(has_visible) {
-                    registry.remove<Visible>(entity);
-                }
-                if(is_inView) {
-                    registry.remove<InView>(entity);
-                }
-            }
-
-            if(!is_inView) {
-                registry.emplace<InView>(entity);
-            }
-        }
-        else
-        {
-            if(has_visible) {
-                registry.remove<Visible>(entity);
-            }
-            if(is_inView) {
-                registry.remove<InView>(entity);
-            }
+            action.action(registry, entity);
         }
     }
 }
 
-void updateShapes(entt::registry &registry) {
+void updateShapes(entt::registry &registry)
+{
 
     // update shapes
     auto entities = registry.view<Shape>();
-    for(auto& entity : entities) {
+    for (auto &entity : entities)
+    {
         auto &shape = entities.get<Shape>(entity);
         shape.scaled_size.x = (shape.size.x / defaultGSV) * gridSpacingValue / width;
         shape.scaled_size.y = (shape.size.y / defaultGSV) * gridSpacingValue / height;
     }
 }
 
-void updateLinkedEntities(entt::registry &registry) {
+void updateLinkedEntities(entt::registry &registry)
+{
 
     // Check for new links
     auto _entities = registry.view<InView, Interactable, Linkable>();
-    for(auto& entity : _entities) {
-        
+    for (auto &entity : _entities)
+    {
+
         auto &interactable = _entities.get<Interactable>(entity);
 
-        if(registry.all_of<Interacted>(entity)) {
-            if(!registry.all_of<Linked>(entity)) {
-                auto interact = registry.get<Interacted>(entity); 
+        if (registry.all_of<Interacted>(entity))
+        {
+            if (!registry.all_of<Linked>(entity))
+            {
+                auto interact = registry.get<Interacted>(entity);
                 registry.emplace<Linked>(entity, Linked{interact.interactor, 1});
             }
-            else {
+            else
+            {
                 registry.remove<Linked>(entity);
             }
         }
-
-
     }
 
-
     auto entities = registry.view<Position, Shape, Linked>();
-    for(auto& entity : entities) {
+    for (auto &entity : entities)
+    {
         auto &position = entities.get<Position>(entity);
         auto &shape = entities.get<Shape>(entity);
         auto &linked = entities.get<Linked>(entity);
@@ -540,48 +591,56 @@ void updateLinkedEntities(entt::registry &registry) {
         // }
 
         // If the link distance is > 0 ensure the entity is within the link distance
-        if(linked.distance > 0) {
+        if (linked.distance > 0)
+        {
             float distance = std::sqrt(std::pow(position.x - parentPos.x, 2) + std::pow(position.y - parentPos.y, 2));
-            if(distance > linked.distance) {
+            if (distance > linked.distance)
+            {
                 float angle = std::atan2(parentPos.y - position.y, parentPos.x - position.x);
                 float adjustmentSpeed = 0.05f; // Adjust this value to control the adjustment speed
                 position.x += (parentPos.x - cos(angle) * linked.distance - position.x) * adjustmentSpeed;
                 position.y += (parentPos.y - sin(angle) * linked.distance - position.y) * adjustmentSpeed;
             }
         }
-        
     }
 }
 
-void updateOther(entt::registry &registry) {
+void updateOther(entt::registry &registry)
+{
     auto entities = registry.view<Color>();
-    for(auto& entity : entities) {
+    for (auto &entity : entities)
+    {
         auto &color = entities.get<Color>(entity);
         // If hovered over, change color
-        if(registry.all_of<Hovered>(entity) || registry.all_of<Interacted>(entity)) {
-            if(registry.all_of<Interacted>(entity)) {
+        if (registry.all_of<Hovered>(entity) || registry.all_of<Interacted>(entity))
+        {
+            if (registry.all_of<Interacted>(entity))
+            {
                 color.r = 255;
                 color.g = 0;
                 color.b = 0;
             }
-            else {
+            else
+            {
                 color.r = 0;
                 color.g = 255;
                 color.b = 0;
             }
         }
-        else {
+        else
+        {
             color.r = color.defaultR;
             color.g = color.defaultG;
             color.b = color.defaultB;
         }
     }
-
 }
 
-void updatePaths(entt::registry &registry) {
+void updatePaths(entt::registry &registry)
+{
     auto entities = registry.view<BasicPathfinding, Position, Movement>();
-    for(auto& entity : entities) {
+    for (auto &entity : entities)
+    {
         auto &pathfinding = entities.get<BasicPathfinding>(entity);
         auto &position = entities.get<Position>(entity);
         auto &movement = entities.get<Movement>(entity);
@@ -590,29 +649,39 @@ void updatePaths(entt::registry &registry) {
         float pathModY = 0;
 
         // If the entity is currently colliding, iterate and adjust pathMod values perpendicularly to the overlap direction
-        if(registry.all_of<Colliding>(entity)) {
+        if (registry.all_of<Colliding>(entity))
+        {
             auto &colliding = registry.get<Colliding>(entity);
-            for(auto& overlap : colliding.overlaps) {
-                if (overlap.x > 0) {
+            for (auto &overlap : colliding.overlaps)
+            {
+                if (overlap.x > 0)
+                {
                     pathModX += -overlap.y;
-                } else {
+                }
+                else
+                {
                     pathModX += overlap.y;
                 }
-                if (overlap.y > 0) {
+                if (overlap.y > 0)
+                {
                     pathModY += overlap.x;
-                } else {
+                }
+                else
+                {
                     pathModY += -overlap.x;
                 }
             }
         }
 
-        if(pathfinding.target != entt::null) {
+        if (pathfinding.target != entt::null)
+        {
             auto targetPos = registry.get<Position>(pathfinding.target);
             auto targetShape = registry.get<Shape>(pathfinding.target);
             float dx = targetPos.x - position.x + pathModX;
             float dy = targetPos.y - position.y + pathModY;
             float distance = std::sqrt(dx * dx + dy * dy);
-            if(distance > 0) {
+            if (distance > 0)
+            {
                 dx /= distance;
                 dy /= distance;
             }
