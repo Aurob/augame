@@ -4,7 +4,7 @@
 #include "../include/shaders.hpp"
 
 extern GLfloat cursorPos[2];
-
+extern float seed;
 void loadGl(SDL_Window *mpWindow)
 {
     // Create OpenGLES 2 context on SDL window
@@ -22,7 +22,8 @@ void updateUniforms(GLuint &shaderProgram,
                     float gridSpacingValue,
                     float offsetValue[2],
                     float _width, float _height,
-                    float toplefttile[2])   
+                    float toplefttile[2],
+                    float generationSize[2])   
 {
 
     glUseProgram(shaderProgram);
@@ -50,8 +51,13 @@ void updateUniforms(GLuint &shaderProgram,
     GLint timeLocation = glGetUniformLocation(shaderProgram, "time");
     glUniform1f(timeLocation, SDL_GetTicks() / 1000000.0f);
 
+    // generationSize
+    GLint generationSizeLocation = glGetUniformLocation(shaderProgram, "generationSize");
+    glUniform2fv(generationSizeLocation, 1, generationSize);
 
-   
+    // seed
+    GLint seedLocation = glGetUniformLocation(shaderProgram, "seed");
+    glUniform1f(seedLocation, seed);
 }
 
 void updateUniforms2(GLuint &shaderProgram, float _width, float _height, float gridSpacingValue, float toplefttile[2])
@@ -90,7 +96,7 @@ void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, float x, flo
 
 void updateUniformsDebug(GLuint &shaderProgram, 
 float r, float g, float b, float a, float x, float y, 
-float scalex, float scaley) {
+float scalex, float scaley, float angle) {
     glUseProgram(shaderProgram);
 
     GLint colorLocation = glGetUniformLocation(shaderProgram, "uColor");
@@ -101,6 +107,9 @@ float scalex, float scaley) {
 
     GLint debugScaleLocation = glGetUniformLocation(shaderProgram, "entityScale");
     glUniform2f(debugScaleLocation, scalex, scaley);
+
+    GLint angleLocation = glGetUniformLocation(shaderProgram, "angle");
+    glUniform1f(angleLocation, angle);
 }
 
 

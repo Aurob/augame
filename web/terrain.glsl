@@ -6,7 +6,8 @@ uniform vec2 resolution;
 varying vec3 color;
 uniform vec2 playerPos;
 uniform vec2 toplefttile;
-uniform vec2 cursorPos; // Add cursorPos uniform
+uniform vec2 cursorPos;
+uniform vec2 generationSize; // Add uniform for width and height of generation area
 // Add a lot of grass with patches of dirt and a sandy shore around small seas, sparse stone and rare snow
 const float waterMax = 0.01;  // Less water
 const float sandMax = 0.10;   // Sandy shore around seas
@@ -19,8 +20,8 @@ const float amplitude = 1.0;
 const float persistence = 0.5;
 const float lacunarity = 2.0;
 const int octaves = 4;
-uniform float scale; // Add scale as a uniform to control zoom level
-uniform float seed; // Add seed as a uniform to influence noise generation
+uniform float scale;
+uniform float seed;
 uniform float time;
 
 vec4 permute(in vec4 x) {return mod(((x * 34.0) + 1.0) * x, 289.0);}
@@ -54,7 +55,7 @@ vec3 hash(vec3 p) {
     p = vec3(dot(p, vec3(127.1, 311.7, 74.7)), 
              dot(p, vec3(269.5, 183.3, 246.1)),
              dot(p, vec3(113.5, 271.9, 101.5)));
-    return -1.0 + 2.0 * fract(sin(p) * 43758.5453);
+    return -1.0 + 2.0 * fract(sin(p + seed) * 43758.5453);
 }
 float smootherNoise(vec2 p) {
     vec2 i = floor(p);
@@ -84,8 +85,18 @@ void main() {
     // Invert the y-coordinate
     coord.y = resolution.y - coord.y;
 
-    // Adjust the coordinates with grid spacing, toplefttile, and offset
-    vec2 adjustedCoord = (coord / grid_spacing) + toplefttile + (offset / grid_spacing);
+    // Calculate generationOffset based on generationSize
+    vec2 generationOffset = vec2(generationSize.x / 2.0, generationSize.y / 2.0);
+
+    // Adjust the coordinates with grid spacing, toplefttile, offset, and generationOffset
+    vec2 adjustedCoord = (coord / grid_spacing) + toplefttile + (offset / grid_spacing) + generationOffset;
+
+    // Limit generation to specified area
+    if (adjustedCoord.x < 0.0 || adjustedCoord.x > generationSize.x ||
+        adjustedCoord.y < 0.0 || adjustedCoord.y > generationSize.y) {
+        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); // Set color to black for areas outside generation bounds
+        return;
+    }
 
     vec2 _coord = adjustedCoord;
 
@@ -104,12 +115,6 @@ void main() {
     // Calculate terrain color
     vec3 terrainColor = simple_tile_color(_coord, n);
     vec3 finalColor = terrainColor;
-    if (grid_spacing <= 128.0) {
-        if(length(_coord) > resolution.y/2.0) {
-            finalColor = vec3(0.0, 0.0, 0.0);
-        }
-    }
 
     gl_FragColor = vec4(finalColor, 1.0);
 }
-

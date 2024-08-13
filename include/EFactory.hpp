@@ -1,29 +1,45 @@
-
 #pragma once
 #include "../include/entt.hpp"
 #include <vector>
 #include <type_traits>
+#include <functional>
+#include <random>
+#include <string>
 
 extern entt::entity _player;
 
-entt::entity createBasicEntity(entt::registry& registry, float x, float y, float w, float h) {
+// Random number generator function
+float rand_float(float min = 0.0f, float max = 1.0f) {
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(min, max);
+    return static_cast<float>(dis(gen));
+}
+
+/**
+ * @brief Creates a basic entity with position and shape components.
+ */
+entt::entity createBasicEntity(entt::registry& registry, float x, float y, float w, float h, float z = 0.0f) {
     auto entity = registry.create();
-    registry.emplace<Position>(entity, Position{x, y});
+    registry.emplace<Position>(entity, Position{x, y, z});
     registry.emplace<Shape>(entity, Shape{w, h});
     return entity;
 }
-entt::entity createDebugEntity(entt::registry& registry, float x = 0.0f, float y = 0.0f, float w = 0.0f, float h = 0.0f, bool random = false) {
 
+/**
+ * @brief Creates a debug entity with various components.
+ */
+entt::entity createDebugEntity(entt::registry& registry, float x = 0.0f, float y = 0.0f, float w = 0.0f, float h = 0.0f, bool random = false) {
     if (random) {
-        x = static_cast<float>(rand() % 10) + static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-        y = static_cast<float>(rand() % 10) + static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-        w = 0.2f + static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 0.5f;
-        h = 0.2f + static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 0.5f;
+        x = rand_float(-60.0f, -50.0f);
+        y = rand_float(0.0f, 10.0f);
+        w = rand_float(0.2f, 0.7f);
+        h = rand_float(0.2f, 0.7f);
     }
 
     auto entity = createBasicEntity(registry, x, y, w, h);
 
-    Color color = {static_cast<float>(rand() % 255), static_cast<float>(rand() % 255), static_cast<float>(rand() % 255), 1.0f};
+    Color color = {rand_float(0.0f, 255.0f), rand_float(0.0f, 255.0f), rand_float(0.0f, 255.0f), 1.0f};
 
     registry.emplace<Color>(entity, color);
     registry.emplace<Debug>(entity, Debug{color});
@@ -32,178 +48,257 @@ entt::entity createDebugEntity(entt::registry& registry, float x = 0.0f, float y
     registry.emplace<Linkable>(entity);
 
     registry.emplace<Movement>(entity, Movement{
-        static_cast<float>(rand() % 10) + 1, 
-        (static_cast<float>(rand() % 10) + 1) * 4, 
-        Vector2f{0, 0}, 
-        Vector2f{0, 0}, 
-        .1, 
-        .25
+        25, 110, Vector2f{0, 0}, Vector2f{0, 0}, .01, .01, .1
     });
     registry.emplace<Moveable>(entity);
     registry.emplace<Collidable>(entity);
 
+    registry.emplace<InteractionAction>(entity, InteractionAction{
+        [](entt::registry& registry, entt::entity entity) {
+            const int N = 10;
+            std::string randomString;
+            randomString.reserve(N);
+            std::generate_n(std::back_inserter(randomString), N, []() { return static_cast<char>(rand_float(65, 90)); });
+            printf("Entity %d says: %s\n", static_cast<int>(entity), randomString.c_str());
+        }
+    });
+
     return entity;
 }
 
+/**
+ * @brief Creates a player entity.
+ */
 entt::entity createPlayerEntity(entt::registry& registry, float xOffset = 0.0f, float yOffset = 0.0f) {
-    auto entity = registry.create();
-    registry.emplace<Position>(entity, Position{xOffset, yOffset});
+    auto entity = createBasicEntity(registry, xOffset, yOffset, 1.0f, 1.0f);
     registry.emplace<Color>(entity, Color{0, 0, 255, 0.0f});
-    registry.emplace<Shape>(entity, Shape{1, 1});
     registry.emplace<Player>(entity);
     registry.emplace<Visible>(entity);
-    registry.emplace<Movement>(entity, Movement{25, 110, Vector2f{0, 0}, Vector2f{0, 0}, 10, 20});
+    registry.emplace<Movement>(entity, Movement{100, 1000, Vector2f{0, 0}, Vector2f{0, 0}, 10, 1, 0});
+    registry.emplace<Moveable>(entity);
     registry.emplace<Debug>(entity, Debug{Color{0, 0, 255, 0.0f}});
     registry.emplace<Collidable>(entity);
+    registry.emplace<Teleportable>(entity);
     return entity;
 }
 
-void createWall(entt::registry& registry, float x, float y, float width, float height, Color color, float xOffset = 0.0f, float yOffset = 0.0f) {
-    auto wall = registry.create();
-    registry.emplace<Position>(wall, Position{x + xOffset, y + yOffset});
+/**
+ * @brief Creates a wall entity.
+ */
+void createWall(entt::registry& registry, float x, float y, float z, float width, float height, Color color, entt::entity parent=entt::null) {
+    auto wall = createBasicEntity(registry, x, y, width, height, z);
     registry.emplace<Color>(wall, color);
-    registry.emplace<Shape>(wall, Shape{width, height});
     registry.emplace<Debug>(wall, Debug{color});
     registry.emplace<Collidable>(wall);
-}
-
-void createDoor(entt::registry& registry, float x, float y, Position destination1, Position destination2, bool bidirectional = false, float xOffset = 0.0f, float yOffset = 0.0f) {
-    auto door = registry.create();
-    registry.emplace<Position>(door, Position{x + xOffset, y + yOffset});
-    registry.emplace<Teleport>(door, Teleport{destination1, destination2, bidirectional});
-    registry.emplace<Debug>(door);
-    registry.emplace<Shape>(door, Shape{1, 1});
-}
-
-void createDynamicBuilding(entt::registry& registry, 
-                           const std::vector<std::tuple<float, float, float, float>>& walls,
-                           const std::vector<std::tuple<float, float, float, float, Position, Position, bool>>& teleporters,
-                           Color wallColor = Color{77, 88, 99, 1.0f},
-                           float xOffset = 0.0f, float yOffset = 0.0f) {
+    if (parent != entt::null) {
+        registry.emplace<Inside>(wall, Inside{parent});
+    }
     
-    // Create walls
-    for (const auto& [x, y, width, height] : walls) {
-        createWall(registry, x, y, width, height, wallColor, xOffset, yOffset);
+}
+
+/**
+ * @brief Creates a room entity with optional door.
+ */
+entt::entity createRoom(entt::registry& registry, float x, float y, float width, float height, Color color, entt::entity parent = entt::null, bool createDoor = false, int priority = 52, int doorPosition = 0) {
+    auto room = createBasicEntity(registry, x, y, width, height);
+    registry.emplace<Color>(room, color);
+    registry.emplace<Interior>(room);
+    registry.emplace<Collidable>(room);
+    registry.emplace<Debug>(room, Debug{color});
+
+    if (parent != entt::null) {
+        registry.emplace<Inside>(room, Inside{parent});
+        if (registry.all_of<RenderPriority>(parent)) {
+            auto parentPriority = registry.get<RenderPriority>(parent).priority;
+            registry.emplace<RenderPriority>(room, RenderPriority{parentPriority - 1});
+        } else {
+            registry.emplace<RenderPriority>(room, RenderPriority{priority});
+        }
+    } else {
+        registry.emplace<RenderPriority>(room, RenderPriority{priority});
     }
 
-    // Create teleporters
-    for (const auto& [x, y, width, height, dest1, dest2, bidirectional] : teleporters) {
-        auto door = registry.create();
-        registry.emplace<Position>(door, Position{x + xOffset, y + yOffset});
-        registry.emplace<Teleport>(door, Teleport{dest1, dest2, bidirectional});
-        registry.emplace<Debug>(door);
-        registry.emplace<Shape>(door, Shape{width, height});
+    if (createDoor) {
+        float doorX, doorY;
+        switch (doorPosition) {
+            case 0: // Left
+                doorX = x - 0.8f;
+                doorY = y + height / 2 - 1;
+                break;
+            case 1: // Top
+                doorX = x + width / 2 - 0.5f;
+                doorY = y + height - 0.8f;
+                break;
+            case 2: // Right
+                doorX = x + width - 0.2f;
+                doorY = y + height / 2 - 1;
+                break;
+            case 3: // Bottom
+                doorX = x + width / 2 - 0.5f;
+                doorY = y - 1.2f;
+                break;
+            default:
+                doorX = x - 0.8f;
+                doorY = y + height / 2 - 1;
+        }
+        auto door = createBasicEntity(registry, doorX, doorY, 1, 2);
+        registry.emplace<Color>(door, Color{0, 255, 0, 1.0f});
+        registry.emplace<InteriorPortal>(door, InteriorPortal{room, parent});
+        registry.emplace<Collidable>(door);
+        registry.emplace<Debug>(door, Debug{Color{0, 255, 0, 1.0f}});
+        registry.emplace<RenderPriority>(door, RenderPriority{priority - 2});
+        if (parent != entt::null) {
+            registry.emplace<Inside>(door, Inside{parent});
+        }
     }
+
+    return room;
 }
 
-void createDebugBuilding(entt::registry& registry, float xOffset = 0.0f, float yOffset = 0.0f) {
-    std::vector<std::tuple<float, float, float, float>> walls = {
-        {0, 0, 11, 1},    // Top wall
-        {10, 0, 1, 11},   // Right wall
-        {0, 10, 11, 1},   // Bottom wall
-        {0, 0, 1, 11}     // Left wall
-    };
+void runFactories2(entt::registry& registry) {
+    // Large exterior building
+    auto largeBuilding = createRoom(registry, -100, -50, 100, 100, Color{100, 100, 100, 1.0f}, entt::null, false, 52);
+    // Define loop count
+    const int loopCount = 5;
 
-    std::vector<std::tuple<float, float, float, float, Position, Position, bool>> teleporters = {
-        {5, 11, 1, 1, Position{5, 12}, Position{5, 8}, false},
-        {5, 9, 1, 1, Position{5, 8}, Position{5, 12}, false}
-    };
+    // Nested interiors
+    auto currentInterior = largeBuilding;
+    float width = 90.0f;
+    float height = 90.0f;
+    float x = -95.0f;
+    float y = -45.0f;
+    for (int i = 0; i < loopCount; ++i) {
+        Color nestedColor = {
+            250.0f - i * 30.0f,
+            150.0f + i * 20.0f,
+            150.0f + i * 20.0f,
+            1.0f
+        };
+        int doorPosition = i % 4;  // Alternates between 0, 1, 2, 3
+        auto nestedInterior = createRoom(registry, x, y, width, height, nestedColor, currentInterior, true, 52 - (i + 1), doorPosition);
+        registry.emplace<Test>(nestedInterior, Test{"Nested " + std::to_string(i + 1)});
+        if (i < loopCount - 1) {
+            // Add basic wall slightly above the room door
+            float wallWidth = 3.0f;
+            float wallHeight = 0.5f;
+            float wallX = x - 0.8f;  // Align with door x-position
+            float wallY = y + height / 2;
+            Color nestedColor2 = {0, 0, 0, 1.0f};
+            auto wall = createDebugEntity(registry, wallX, wallY, wallWidth, wallHeight);
+            registry.emplace_or_replace<Color>(wall, nestedColor2);
+            registry.remove<Movement>(wall);
+            registry.emplace<Inside>(wall, Inside{nestedInterior});
+            registry.emplace<InteriorColliding>(wall, InteriorColliding{nestedInterior});
+            registry.emplace<RenderPriority>(wall, RenderPriority{2});
+        }
 
-    createDynamicBuilding(registry, walls, teleporters, Color{77, 88, 99, 1.0f}, xOffset, yOffset);
+        // Update for next iteration
+        currentInterior = nestedInterior;
+        width *= 0.5f;
+        height *= 0.5f;
+        x += 5.0f;
+        y += 5.0f;
+    }
 
-    // Make another building next to the first one
-    std::vector<std::tuple<float, float, float, float>> walls2 = {
-        {11, 0, 11, 1},  // Top wall
-        {21, 0, 1, 13},  // Right wall
-        {11, 0, 1, 11},  // Left wall
-        {10, 11, 1, 1}, 
-        {12, 12, 10, 1}, 
-        {13, 10, 9, 1}, 
-        {12, 13, .1, .6},
-        {14, 13, .1, .6},
-        {12, 13.6, 2, .1}
+    // Add ~20 very small debug entities in the innermost room
+    for (int i = 0; i < 20; ++i) {
+        float size = rand_float(0.15f, 0.4f);
+        float debugX = rand_float(x, x + width/4 - size);
+        float debugY = rand_float(y, y + height/4 - size);
+        auto smallDebug = createDebugEntity(registry, debugX, debugY, size, size);
+        registry.emplace<Inside>(smallDebug, Inside{currentInterior});
+        registry.emplace<InteriorColliding>(smallDebug, InteriorColliding{currentInterior});
+        registry.emplace<RenderPriority>(smallDebug, RenderPriority{2});
+    }
 
-        
-    };
-
-    createDynamicBuilding(registry, walls2, {}, Color{77, 88, 99, 1.0f}, xOffset, yOffset);
-
-
-    // Create 2 debug entities and add the Linked component and link them    
-    float x1 = 11;
-    float y1 = 11;
-    float w1 = 6;
-    float h1 = 1;
-    auto entity1 = createDebugEntity(registry, x1, y1, w1, h1);
-    registry.remove<Moveable>(entity1);
-    registry.remove<Linkable>(entity1);
-    registry.remove<Interactable>(entity1);
-    registry.remove<Color>(entity1);
-    registry.emplace<Color>(entity1, Color{55, 66, 77, 1.0f});
-    auto &movement = registry.get<Movement>(entity1);
-    movement.friction = 10;
-
-    float x2 = 12.1;
-    float y2 = 13;
-    float w2 = 1;
-    float h2 = .5;
-    auto entity2 = createDebugEntity(registry, x2, y2, w2, h2);
-
-    registry.emplace<Linked>(entity1, Linked{entity2, .1});
-    // remove color and re-add with 66, 77, 88
-    registry.remove<Color>(entity2);
-    auto &color2 = registry.emplace<Color>(entity2, Color{100, 22, 33, 1.0f});
-    auto movement2 = registry.get<Movement>(entity2);
-    movement2.friction = 10;
+    // Player
+    float playerX = x + width / 4;
+    float playerY = y + height / 4;
+    _player = createPlayerEntity(registry, playerX, playerY);
+    registry.emplace<RenderPriority>(_player, RenderPriority{1});
+    registry.emplace<Inside>(_player, Inside{currentInterior});
 
 }
-
-void createDebugTeleporter(entt::registry& registry, float xOffset = 0.0f, float yOffset = 0.0f) {
-    std::vector<std::tuple<float, float, float, float, Position, Position, bool>> teleporters = {
-        {5, 9, 1, 1, Position{5, 9}, Position{5, 12}, false},
-        {5, 11, 1, 1, Position{5, 11}, Position{5, 8}, false}
-    };
-
-    createDynamicBuilding(registry, {}, teleporters, Color{}, xOffset, yOffset);
-}
-
-
 
 void runFactories(entt::registry& registry) {
+    // Player
+    float px = 35.0f, py = 35.0f, pz = 0.0f;
+    float pw = 1.0f, ph = 1.0f;
+    auto player = registry.create();
+    registry.emplace<Player>(player);
+    registry.emplace<Position>(player, Position{px, py, pz});
+    registry.emplace<Shape>(player, Shape{pw, ph});    
+    registry.emplace<Color>(player, Color{0, 0, 255, 0.0f});
+    registry.emplace<Movement>(player,
+        Movement{100, 1000, Vector2f{0, 0}, Vector2f{0, 0}, 10, 1, 0});
+    registry.emplace<Moveable>(player);
+    registry.emplace<Collidable>(player);
+    registry.emplace<Teleportable>(player);
+    registry.emplace<RenderPriority>(player, RenderPriority{1});
+    _player = player;
 
-    // create player entity
-    _player = createPlayerEntity(registry, 5, 2);
+    // Containing Walls
+    for (int i = 0; i < 4; ++i) {
+        auto wall = registry.create();
+        float x, y, width, height;
 
-    
-    for(int i = 0; i < 10; i++) {
-        createDebugEntity(registry, 0, 0, 0, 0, true);
+        if (i == 1 || i == 2) {
+            // Vertical walls
+            x = -40 + (i - 1) * 80; // Adjust position for vertical walls
+            y = -40;
+            width = .5;
+            height = 80.5; // 4x larger
+        } else {
+            // Horizontal walls
+            x = -40;
+            y = -40 + (i / 2) * 80; // Corrected position for horizontal walls
+            width = 80.5; // 4x larger
+            height = .5;
+        }
+
+        registry.emplace<Position>(wall, Position{x, y, 0});
+        registry.emplace<Shape>(wall, Shape{width, height});
+        registry.emplace<Color>(wall, Color{0, 0, 0, 0.0f}); // Black color
+        registry.emplace<Debug>(wall, Debug{Color{0, 0, 0, 1.0f}}); // Black debug color
+        registry.emplace<Collidable>(wall);
+        registry.emplace<RenderPriority>(wall, RenderPriority{1});
     }
 
-    createDebugBuilding(registry);
-    createDebugTeleporter(registry);
+    // Place simple entities along each wall
+    for (int i = 0; i < 4; ++i) {
+        float x, y, width, height;
 
-    auto test_building = createDebugEntity(registry, -10, 0, 10, 10);
-    registry.remove<Moveable>(test_building);
-    registry.remove<Movement>(test_building);
-    registry.remove<Linkable>(test_building);
-    registry.remove<Hoverable>(test_building);
-    registry.emplace<Interior>(test_building, Interior{Vector2f{0, 0}});
+        if (i == 1 || i == 2) {
+            // Vertical walls
+            x = -40 + (i - 1) * 80; // Adjust position for vertical walls
+            y = -40;
+            width = .5;
+            height = 80.5; // 4x larger
+        } else {
+            // Horizontal walls
+            x = -40;
+            y = -40 + (i / 2) * 80; // Corrected position for horizontal walls
+            width = 80.5; // 4x larger
+            height = .5;
+        }
 
-    auto buildingDoor = createBasicEntity(registry, -5, 9.5, 1, 1);
-    registry.remove<Moveable>(buildingDoor);
-    registry.remove<Movement>(buildingDoor);
-    registry.emplace<InteriorPortal>(buildingDoor, InteriorPortal{test_building});
-    registry.emplace<Collidable>(buildingDoor);
-    registry.emplace<Color>(buildingDoor, Color{0, 255, 0, 1.0f});
-    registry.emplace<Debug>(buildingDoor, Debug{Color{0, 255, 0, 1.0f}});
+        for (int j = 0; j < 10; ++j) {
+            auto simpleEntity = registry.create();
+            float entityX, entityY;
 
-    // Pathfinding tests
-    auto pathing_entity = createDebugEntity(registry, 10, 20, 4, 4);
-    registry.emplace<BasicPathfinding>(pathing_entity, BasicPathfinding{_player});
-    registry.emplace<AlwaysInView>(pathing_entity);
-    auto &movement = registry.get<Movement>(pathing_entity);
-    movement.speed = 1.25;
-
-    // add a wall at 10, 20, and make it 25 long and only 1 thick
-    createWall(registry, 10, 20, 25, 1, Color{255, 0, 0, 1.0f});
+            if (i == 1 || i == 2) {
+                // Vertical walls
+                entityX = x + (i == 1 ? -5.0f : -5.0f); // Slightly outside the wall
+                entityY = y + j * (height / 10.0f) - 2; // Adjusted position for vertical walls
+            } else {
+                // Horizontal walls
+                entityX = x + j * (width / 10.0f) - 2; // Adjusted position for horizontal walls
+                entityY = y + (i == 0 ? 0.0f : 0.0f) - 10; // Slightly outside the wall
+            }   
+            registry.emplace<Position>(simpleEntity, Position{entityX, entityY, 0});
+            registry.emplace<Shape>(simpleEntity, Shape{10, 10});
+            registry.emplace<Color>(simpleEntity, Color{255, 0, 0, 1.0f}); // Red color
+            registry.emplace<RenderPriority>(simpleEntity, RenderPriority{1});
+        }
+    }
 }
