@@ -37,6 +37,13 @@ AuGame is an early prototype for a future unnamed game. It's a 2D game engine th
 ## Building and Running
 
 1. Set up Emscripten by following the [official installation guide](https://emscripten.org/docs/getting_started/downloads.html).
+   ```
+   git clone https://github.com/emscripten-core/emsdk.git
+   cd emsdk
+   ./emsdk install latest
+   ./emsdk activate latest
+   source ./emsdk_env.sh
+   ```
 2. Clone this repository:
    ```
    git clone https://github.com/Aurob/augame.git
