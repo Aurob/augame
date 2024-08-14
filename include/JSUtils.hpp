@@ -11,6 +11,7 @@ using namespace std;
 
 extern int width, height;
 extern bool windowResized;
+extern float gridSpacingValue;
 extern bool ready;
 extern entt::entity _player;
 extern entt::registry registry;
@@ -113,16 +114,17 @@ extern "C"
                 height = js_json["world"]["height"];
                 windowResized = true;
             }
-        } else {
-            if (js_json.contains("width") && js_json["width"].is_number()) {
-                width = js_json["width"];
-                windowResized = true;
+
+            // zoom
+            if (js_json["world"].contains("zoom") && js_json["world"]["zoom"].is_number()) {
+                float zoom = js_json["world"]["zoom"];
+                if (zoom == -1) {
+                    gridSpacingValue /= 1.08f;
+                } else if (zoom == 1) {
+                    gridSpacingValue *= 1.08f;
+                }
             }
-            if (js_json.contains("height") && js_json["height"].is_number()) {
-                height = js_json["height"];
-                windowResized = true;
-            }
-        }
+        } 
         if (js_json.contains("shader") && js_json["shader"].is_object())
         { 
             // should contain "name", "vertex", "fragment"

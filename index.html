@@ -173,6 +173,8 @@
         <button class="mobile-btn" id="btnS">&#8595;</button>
         <button class="mobile-btn" id="btnD">&#8594;</button>
         <button class="mobile-btn" id="btnE">Interact</button>
+        <button class="mobile-btn" id="btnF">Zoom In</button>
+        <button class="mobile-btn" id="btnG">Zoom Out</button>
     </div>
     </div>
 
@@ -258,8 +260,8 @@
         document.getElementById('palette2').addEventListener('click', () => setPalette(2));
         document.getElementById('palette3').addEventListener('click', () => setPalette(3));
 
-        const mobileButtons = ['W', 'A', 'S', 'D', 'E'];
-        let pressedKeys = { W: 0, A: 0, S: 0, D: 0, E: 0 };
+        const mobileButtons = ['W', 'A', 'S', 'D', 'E', 'F', 'G'];
+        let pressedKeys = { W: 0, A: 0, S: 0, D: 0, E: 0, F: 0, G: 0 };
 
         mobileButtons.forEach(key => {
             const button = document.getElementById(`btn${key}`);
@@ -272,7 +274,6 @@
                     updateMovement();
                 }
             });
-
             button.addEventListener('mouseup', () => {
                 pressedKeys[key] = 0;
                 if (key !== 'E') {
@@ -286,6 +287,10 @@
                 pressedKeys[key] = 1;
                 if (key === 'E') {
                     interact();
+                } else if (key === 'F') {
+                    zoom(1);
+                } else if (key === 'G') {
+                    zoom(-1);
                 } else {
                     updateMovement();
                 }
@@ -294,10 +299,13 @@
             button.addEventListener('touchend', (e) => {
                 e.preventDefault(); // Prevent default touch behavior
                 pressedKeys[key] = 0;
-                if (key !== 'E') {
+                if (key !== 'E' && key !== 'F' && key !== 'G') {
                     updateMovement();
                 }
             });
+
+            // button.addEventListener('click', () => {
+            
         });
 
         function updateMovement() {

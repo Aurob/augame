@@ -40,3 +40,10 @@ function update_worldsize(width, height) {
       "height": height
     }});
 }
+
+function zoom(zoom) {
+  Module.js_to_c(
+    {"world": {
+      "zoom": zoom
+    }});  
+}
