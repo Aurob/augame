@@ -3,7 +3,7 @@ name: Build and Upload to itch.io
 on:
   push:
     branches:
-      - main
+      - itch
   workflow_dispatch:    # Allow manual trigger
 
 jobs:
