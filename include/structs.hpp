@@ -106,44 +106,14 @@ struct Interacted {
 struct InteractionAction {
     std::function<void(entt::registry&, entt::entity)> action;
 };
+struct CollisionAction {
+    std::function<void(entt::registry&, entt::entity)> action;
+};
 
 struct Interactable {
     int interactions;
     bool toggle;
 };
-
-// Utility functions for common actions
-namespace InteractionActions {
-    template<typename Component>
-    InteractionAction AddComponent() {
-        return {[](entt::registry& registry, entt::entity entity) {
-            registry.emplace<Component>(entity);
-        }};
-    }
-
-    template<typename Component>
-    InteractionAction RemoveComponent() {
-        return {[](entt::registry& registry, entt::entity entity) {
-            registry.remove<Component>(entity);
-        }};
-    }
-
-    template<typename Component, typename Func>
-    InteractionAction ModifyComponent(Func&& modifier) {
-        return {[modifier = std::forward<Func>(modifier)](entt::registry& registry, entt::entity entity) {
-            if (auto* component = registry.try_get<Component>(entity)) {
-                modifier(*component);
-            }
-        }};
-    }
-
-    // Example: Add random color action
-    InteractionAction AddRandomColor() {
-        return ModifyComponent<Color>([](Color& color) {
-            color = {static_cast<float>(rand() % 255), static_cast<float>(rand() % 255), static_cast<float>(rand() % 255), 1.0f};
-        });
-    }
-}
 
 struct Colliding{
     std::vector<entt::entity> collidables;
@@ -152,6 +122,7 @@ struct Colliding{
 struct Collidable {
     std::vector<entt::entity> colliding_with;
     bool ignorePlayer;
+    bool ignoreCollideAll;
 };
 
 struct Movement {
@@ -178,6 +149,14 @@ struct Linked {
     entt::entity parent;
     float distance;
     bool keepCollisions{false};
+};
+
+struct Associated {
+    std::vector<entt::entity> entities;
+};
+
+struct Flag {
+    std::unordered_map<std::string, std::any> flags;
 };
 
 // Interiors
@@ -208,4 +187,9 @@ struct RenderPriority {
 
 struct Test {
     std::string name;
+};
+
+struct Texture {
+    std::string name;
+    float x, y, w, h;
 };

@@ -33,6 +33,14 @@ const CONFIG = {
         {
             "name": "smile",
             "path": "resources/smile1.png"
+        },
+        {
+            "name": "treeset1",
+            "path": "resources/treeset1.png"
+        },
+        {
+            "name": "treeset2",
+            "path": "resources/treeset2.png"
         }
     ]
 };

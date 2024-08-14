@@ -118,11 +118,11 @@ extern "C"
                     if(texture.contains("path") && texture["path"].is_string()) {
                         textureMap[texture["name"]] = texture["path"];
                         printf("Loaded texture: %s\n", texture["path"].get<std::string>().c_str());
+                        
                     }
                 }
             }
         }
-        
 
         if (js_json.contains("Entities") && js_json["Entities"].is_array())
         {

@@ -89,6 +89,8 @@ void updateInteriorCollisions(entt::registry &registry, entt::entity entity, Pos
 
         if (overlap.x != 0 || overlap.y != 0)
         {
+         
+
             if (registry.all_of<Interior>(_entity))
             {
                 if (registry.all_of<Inside>(entity))
@@ -202,14 +204,30 @@ void updateCollisions(entt::registry &registry)
 
         if (!_collidables.empty())
         {
-            registry.emplace_or_replace<Colliding>(entity, Colliding{_collidables, overlaps});
+            if (registry.all_of<Colliding>(entity)) {
+                auto& colliding = registry.get<Colliding>(entity);
+                colliding.collidables = _collidables;
+            } else {
+                registry.emplace<Colliding>(entity, Colliding{_collidables, overlaps});
+            }
+
+            if(registry.get<Collidable>(entity).ignorePlayer) {
+                continue;
+            }
+            else if(registry.get<Collidable>(entity).ignoreCollideAll) {
+                continue;
+            }
 
             auto &movement = registry.get<Movement>(entity);
             Vector2f totalOverlap{0, 0};
-
             for (size_t i = 0; i < _collidables.size(); ++i)
             {
                 auto other = _collidables[i];
+                if ((registry.get<Collidable>(other).ignorePlayer && registry.all_of<Player>(entity)) ||
+                    registry.get<Collidable>(other).ignoreCollideAll)
+                {
+                    continue;
+                }
                 const auto &overlap = overlaps[i];
                 Vector2f normal = overlap.normalized();
 
@@ -531,6 +549,19 @@ void updateInteractions(entt::registry &registry)
             action.action(registry, entity);
         }
     }
+
+    // For Colliding entities, perform the collision action
+    auto colliding_entities = registry.view<Colliding, CollisionAction>();
+    for (auto entity : colliding_entities)
+    {
+        auto &colliding = colliding_entities.get<Colliding>(entity);
+        auto &action = colliding_entities.get<CollisionAction>(entity);
+        printf("Colliding\n");
+        // for (auto &collidable : colliding.collidables)
+        // {
+        //     action.action(registry, entity, collidable);
+        // }
+    }
 }
 
 void updateShapes(entt::registry &registry)
@@ -687,6 +718,32 @@ void updatePaths(entt::registry &registry)
             }
             movement.velocity.x = dx * movement.speed;
             movement.velocity.y = dy * movement.speed;
+        }
+    }
+}
+
+void updateFlags(entt::registry &registry)
+{
+    auto entities = registry.view<Flag>();
+    for (auto &entity : entities)
+    {
+        auto &flag = entities.get<Flag>(entity);
+        for (const auto& [flagName, flagValue] : flag.flags)
+        {
+            if (flagName == "Destroy" && std::any_cast<bool>(flagValue))
+            {
+                // Destroy associated entities
+                auto associatedView = registry.view<Associated>();
+                for (auto [associatedEntity, associated] : associatedView.each()) {
+                    if (std::find(associated.entities.begin(), associated.entities.end(), entity) != associated.entities.end()) {
+                        registry.destroy(associatedEntity);
+                    }
+                }
+                
+                // Destroy the entity itself
+                registry.destroy(entity);
+                break;
+            }
         }
     }
 }

@@ -43,8 +43,8 @@ GLfloat toplefttile[2] = {0.0f, 0.0f};
 bool windowResized = false;
 bool ready = false;
 int lastTime = 0;
-float defaultGSV = 16.0f;
-GLfloat generationSize[2] = {defaultGSV/3, defaultGSV/3};
+float defaultGSV = 8.0f;
+GLfloat generationSize[2] = {defaultGSV*2, defaultGSV*2};
 GLfloat gridSpacingValue = 1024.0f;
 bool first_start = false;
 float defaultMoveSpeed = 0.0f;
@@ -82,14 +82,15 @@ int main(int argc, char *argv[])
     }
 
     loadGl(mpWindow);
-    runFactories(registry);
+    makePlayer(registry);
 
     // Trigger JS functions
     _js__fetch_configs();   
     _js__ready();
-    
+
     srand(time(NULL));
-    seed = 82938; //rand() % 100000;
+    // seed = rand() % 100000;
+    seed = 85582;
     printf("Seed: %f\n", seed);
 
     // Set the main loop
@@ -131,14 +132,15 @@ void updateFrame(context *ctx)
     globalCursorPos[1] = toplefttile[1] * defaultGSV + (cursorPos[1] / gridSpacingValue) + playerPos.y;
 
     // Update entity movement and interactions
+    updateFlags(registry);
     updateTeleporters(registry);
-    updateInteractions(registry);
     updateShapes(registry);
     updateLinkedEntities(registry);
     updateMovement(registry);
     updateCollisions(registry);
     updateOther(registry);
     updatePaths(registry);
+    updateInteractions(registry);
     updatePositions(registry);
 
 }
@@ -154,12 +156,20 @@ bool js_loaded() {
         // Load textures from textureMap
         for(auto& [name, src] : textureMap) {
             printf("Loading texture: %s\n", src.c_str());
-            textureIDMap[name] = loadGLTexture(shaderProgramMap["texture"], src.c_str());
-        }
+            int width{0}, height{0};
+            textureIDMap[name] = loadGLTexture(shaderProgramMap["texture"], src.c_str(), width, height);
+            
+            // Set the shape of the texture
+            textureShapeMap[name] = {width, height};
 
+            printf("Texture: %s, ID: %d, Width: %d, Height: %d\n", name.c_str(), textureIDMap[name], width, height);
+        }
         // set defaultMoveSpeed
         Movement &playerMovement = registry.get<Movement>(_player);
         defaultMoveSpeed = playerMovement.speed;
+
+        runFactories(registry);
+        
     }
     return true;
 }
@@ -214,40 +224,29 @@ void mainloop(void *arg)
     }
     
     registry.sort<Visible>([&](const entt::entity lhs, const entt::entity rhs) {
-        // Check if either entity has RenderPriority component
-        // bool lhs_has_priority = registry.all_of<RenderPriority>(lhs);
-        // bool rhs_has_priority = registry.all_of<RenderPriority>(rhs);
+        bool lhs_has_priority = registry.all_of<RenderPriority>(lhs);
+        bool rhs_has_priority = registry.all_of<RenderPriority>(rhs);
 
-        // // If both have RenderPriority, compare their priority values
-        // if (lhs_has_priority && rhs_has_priority) {
-        //     return registry.get<RenderPriority>(lhs).priority > registry.get<RenderPriority>(rhs).priority;
-        // }
+        if (lhs_has_priority && rhs_has_priority) {
+            int lhs_priority = registry.get<RenderPriority>(lhs).priority;
+            int rhs_priority = registry.get<RenderPriority>(rhs).priority;
+            if (lhs_priority != rhs_priority) {
+                return lhs_priority > rhs_priority;
+            }
+        }
 
-        // // If only one has RenderPriority, it should be rendered first
-        // if (lhs_has_priority) {
-        //     return true;
-        // }
-        // if (rhs_has_priority) {
-        //     return false;
-        // }
-        // Default to x-order, then y-order
         const auto& lhsPos = registry.get<Position>(lhs);
         const auto& rhsPos = registry.get<Position>(rhs);
-        if (lhsPos.x == rhsPos.x) {
-            return lhsPos.y < rhsPos.y;
+        if (lhsPos.x != rhsPos.x) {
+            return lhsPos.x < rhsPos.x;
         }
-        return lhsPos.x < rhsPos.x;
+        return lhsPos.y < rhsPos.y;
     });
 
 
     // Render visible entities
     auto visible_entities = registry.view<Position, Shape, Visible, RenderPriority>();
     for(auto& entity : visible_entities) {
-
-        if(registry.all_of<RenderPriority>(entity) && keys[SDLK_p]) {
-            auto &priority = registry.get<RenderPriority>(entity);
-            printf("Priority: %d\n", priority.priority);
-        }
 
         auto &position = visible_entities.get<Position>(entity);
         auto &shape = visible_entities.get<Shape>(entity);
@@ -263,6 +262,15 @@ void mainloop(void *arg)
                 playerPos.sx + playerShape.scaled_size.x, (playerPos.sy) + playerShape.scaled_size.y,
                 playerShape.scaled_size.x, playerShape.scaled_size.y);
             
+        }
+
+        else if (registry.all_of<Texture>(entity)) {
+            const auto& texture = registry.get<Texture>(entity);
+            updateUniformsTexture(shaderProgramMap["texture"], 
+                textureIDMap[texture.name],
+                position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
+                shape.scaled_size.x, shape.scaled_size.y,
+                texture.x, texture.y, texture.w, texture.h);
         }
         else if(isDebug && registry.all_of<Color>(entity)) {
             auto color = registry.get<Color>(entity);
@@ -281,12 +289,6 @@ void mainloop(void *arg)
         else if(isTeleport) {
             updateUniformsTexture(shaderProgramMap["texture"], 
                 textureIDMap["door"],
-                position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
-                shape.scaled_size.x, shape.scaled_size.y);
-        }
-        else {
-            updateUniformsTexture(shaderProgramMap["texture"], 
-                textureIDMap["tree"],
                 position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
                 shape.scaled_size.x, shape.scaled_size.y);
         }
