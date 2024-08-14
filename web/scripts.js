@@ -27,7 +27,16 @@ function interact() {
     {"Entities": [  {
       "Player": true,
       "Action": {
-        "player": ["interact"]
+        "player": [{"interact": true}]
       }
     }]});
+}
+
+
+function update_worldsize(width, height) {
+  Module.js_to_c(
+    {"world": {
+      "width": width,
+      "height": height
+    }});
 }
