@@ -80,8 +80,7 @@ void updateUniforms2(GLuint &shaderProgram, float _width, float _height, float g
     GLint toplefttileLocation = glGetUniformLocation(shaderProgram, "toplefttile");
     glUniform2fv(toplefttileLocation, 1, toplefttile);
 }
-
-void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, float x, float y, float scalex, float scaley) {
+void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, float x, float y, float scalex, float scaley, float startX = 0.0f, float startY = 0.0f, float sizeX = 1.0f, float sizeY = 1.0f) {
     glUseProgram(shaderProgram);
     glBindTexture(GL_TEXTURE_2D, textureID);
 
@@ -90,6 +89,12 @@ void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, float x, flo
 
     GLint instanceScaleLocation = glGetUniformLocation(shaderProgram, "instanceScale");
     glUniform2f(instanceScaleLocation, scalex, scaley);
+
+    GLint cropStartLocation = glGetUniformLocation(shaderProgram, "cropStart");
+    glUniform2f(cropStartLocation, startX, startY);
+
+    GLint cropSizeLocation = glGetUniformLocation(shaderProgram, "cropSize");
+    glUniform2f(cropSizeLocation, sizeX, sizeY);
 }
 
 // updateUniformsDebug(shaderProgramMap["debug"], color.r, color.g, color.b, color.a, position.sx, position.sy, 0.1f * gridSpacingValue/1000);
@@ -295,13 +300,19 @@ void loadImageAndCreateTexture(const char* imagePath, GLuint &textureID) {
     SDL_FreeSurface(image);
 }
 
-GLuint loadGLTexture(GLuint &shaderProgram, std::string textureSrc) {
+GLuint loadGLTexture(GLuint &shaderProgram, std::string textureSrc, int &width, int &height) {
     // Load shaders and create a program
     shaderProgram = createProgram(shaderGLSLMap["texture"][0], shaderGLSLMap["texture"][1]);
     glUseProgram(shaderProgram);
 
     // Load an image and create a texture from it
     GLuint textureID;
+    SDL_Surface* image = IMG_Load(textureSrc.c_str());
+    if (image) {
+        width = image->w;
+        height = image->h;
+        SDL_FreeSurface(image);
+    }
     loadImageAndCreateTexture(textureSrc.c_str(), textureID);
 
     // Define vertices for the texture
