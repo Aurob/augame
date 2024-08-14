@@ -313,11 +313,11 @@ void mainloop(void *arg)
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
                 // Render bottom wall
-                // updateUniformsDebug(shaderProgramMap["debug_entity"],
-                //     1.0f, 1.0f, 1.0f, 1.0f, // Assuming white color for walls
-                //     position.sx + playerShape.scaled_size.x, position.sy + shape.scaled_size.y - wallHeight,
-                //     shape.scaled_size.x, wallHeight, 0.0f);
-                // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                updateUniformsDebug(shaderProgramMap["debug_entity"],
+                    1.0f, 1.0f, 1.0f, 1.0f, // Assuming white color for walls
+                    position.sx + playerShape.scaled_size.x, position.sy + shape.scaled_size.y - wallHeight*2,
+                    shape.scaled_size.x, wallHeight, 0.0f);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
             }
         }
         else if(isTeleport) {
