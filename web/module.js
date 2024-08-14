@@ -18,6 +18,8 @@ var Module = {
 
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+    
+    update_worldsize(window.innerWidth, window.innerHeight);
   },
 
   ready() {

@@ -5,14 +5,39 @@
 #include "shaders.hpp"
 #include "../include/entt.hpp"
 #include "../include/structs.hpp"
+#include <sstream>
 
 using namespace std;
 
 extern int width, height;
+extern bool windowResized;
 extern bool ready;
 extern entt::entity _player;
 extern entt::registry registry;
 extern unordered_map<int, bool> keys;
+
+// Logging function
+void log_message(const string& message) {
+    static stringstream log_buffer;
+    log_buffer << message << "\n";
+    
+    // Print the buffer when it reaches a certain size or when explicitly flushed
+    if (log_buffer.str().length() > 1000) {
+        printf("%s", log_buffer.str().c_str());
+        log_buffer.str("");
+        log_buffer.clear();
+    }
+}
+
+// Flush the log buffer
+void flush_log() {
+    static stringstream log_buffer;
+    if (!log_buffer.str().empty()) {
+        printf("%s", log_buffer.str().c_str());
+        log_buffer.str("");
+        log_buffer.clear();
+    }
+}
 
 // key, float value
 void _js__kvdata(string k, float v)
@@ -57,8 +82,8 @@ nlohmann::json str_to_json(string str)
     }
     catch (nlohmann::json::parse_error &e)
     {
-        printf("JSON parse error: %s\n", e.what());
-        printf("str: %s\n", str.c_str());
+        log_message("JSON parse error: " + string(e.what()));
+        log_message("str: " + str);
     }
     return js_json;
 }
@@ -74,12 +99,30 @@ extern "C"
         ready = true;
     }
 
+    
     void load_json(char *str)
     {
-        printf("Loading JSON\n");
+        log_message("Loading JSON");
         nlohmann::json js_json = str_to_json(str);
-        // printf("JSON: %s\n", js_json.dump().c_str());
-
+        if (js_json.contains("world")) {
+            if (js_json["world"].contains("width") && js_json["world"]["width"].is_number()) {
+                width = js_json["world"]["width"];
+                windowResized = true;
+            }
+            if (js_json["world"].contains("height") && js_json["world"]["height"].is_number()) {
+                height = js_json["world"]["height"];
+                windowResized = true;
+            }
+        } else {
+            if (js_json.contains("width") && js_json["width"].is_number()) {
+                width = js_json["width"];
+                windowResized = true;
+            }
+            if (js_json.contains("height") && js_json["height"].is_number()) {
+                height = js_json["height"];
+                windowResized = true;
+            }
+        }
         if (js_json.contains("shader") && js_json["shader"].is_object())
         { 
             // should contain "name", "vertex", "fragment"
@@ -104,7 +147,7 @@ extern "C"
                             fragmentSource
                         };
                         
-                        printf("Loaded shader: %s\n", shader["name"].get<std::string>().c_str());                        
+                        log_message("Loaded shader: " + shader["name"].get<std::string>());                        
                     }
                 }
             }
@@ -117,7 +160,7 @@ extern "C"
                 if(!texture_exists) {
                     if(texture.contains("path") && texture["path"].is_string()) {
                         textureMap[texture["name"]] = texture["path"];
-                        printf("Loaded texture: %s\n", texture["path"].get<std::string>().c_str());
+                        log_message("Loaded texture: " + texture["path"].get<std::string>());
                         
                     }
                 }
@@ -149,7 +192,7 @@ extern "C"
                                     if (is_player) {
                                         // Trigger interaction for player
                                         // You might want to implement an interaction system or event
-                                        printf("Player interaction triggered\n");
+                                        log_message("Player interaction triggered");
                                         keys[SDL_BUTTON_LEFT] = true;
                                     }
                                 }
@@ -165,7 +208,7 @@ extern "C"
                         {
                             float x = position["x"];
                             float y = position["y"];
-                            printf("Position: %f, %f\n", x, y);
+                            log_message("Position: " + to_string(x) + ", " + to_string(y));
 
                             if (is_player)
                             {
@@ -189,7 +232,7 @@ extern "C"
 
                             if (is_player)
                             {
-                                printf("MobileMovement: %f, %f, %f, %f\n", w, a, s, d);
+                                log_message("MobileMovement: " + to_string(w) + ", " + to_string(a) + ", " + to_string(s) + ", " + to_string(d));
                                 keys[SDLK_a] = a;
                                 keys[SDLK_w] = w;
                                 keys[SDLK_s] = s;
@@ -200,5 +243,8 @@ extern "C"
                 }
             }
         }
+        
+        // Flush the log buffer at the end of processing
+        flush_log();
     }
 }

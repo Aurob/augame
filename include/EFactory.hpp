@@ -169,7 +169,7 @@ void runFactories(entt::registry& registry) {
 
         registry.emplace<Position>(wall, Position{x, y, 0});
         registry.emplace<Shape>(wall, Shape{width, height});
-        registry.emplace<Color>(wall, Color{0, 0, 0, 0.0f}); // Black color
+        registry.emplace<Color>(wall, Color{0, 0, 0, 1.0f}); // Black color
         registry.emplace<Debug>(wall, Debug{Color{0, 0, 0, 1.0f}}); // Black debug color
         registry.emplace<Collidable>(wall);
         registry.emplace<RenderPriority>(wall, RenderPriority{1});
