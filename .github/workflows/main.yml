@@ -2,7 +2,8 @@ name: Build and Upload to itch.io
 
 on:
   push:
-    branches: [ main ]  # Trigger on push to main branch
+    branches:
+      - main
   workflow_dispatch:    # Allow manual trigger
 
 jobs:
