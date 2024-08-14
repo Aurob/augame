@@ -136,13 +136,12 @@ void updateFrame(context *ctx)
     updateTeleporters(registry);
     updateShapes(registry);
     updateLinkedEntities(registry);
-    updateMovement(registry);
-    updateCollisions(registry);
     updateOther(registry);
     updatePaths(registry);
     updateInteractions(registry);
     updatePositions(registry);
-
+    updateMovement(registry);
+    updateCollisions(registry);
 }
 
 bool js_loaded() {
@@ -266,6 +265,17 @@ void mainloop(void *arg)
 
         else if (registry.all_of<Texture>(entity)) {
             const auto& texture = registry.get<Texture>(entity);
+
+            // Check if the entity has RenderDebug
+            if (registry.all_of<RenderDebug>(entity)) {
+                // Render a small transparent square to indicate bounding box
+                updateUniformsDebug(shaderProgramMap["debug_entity"],
+                    1.0f, 1.0f, 1.0f, 0.2f, // White color with 20% opacity
+                    position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
+                    shape.scaled_size.x, shape.scaled_size.y, 0.0f);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            }
+
             updateUniformsTexture(shaderProgramMap["texture"], 
                 textureIDMap[texture.name],
                 position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
