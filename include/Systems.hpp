@@ -556,7 +556,6 @@ void updateInteractions(entt::registry &registry)
     {
         auto &colliding = colliding_entities.get<Colliding>(entity);
         auto &action = colliding_entities.get<CollisionAction>(entity);
-        printf("Colliding\n");
         // for (auto &collidable : colliding.collidables)
         // {
         //     action.action(registry, entity, collidable);
@@ -721,29 +720,37 @@ void updatePaths(entt::registry &registry)
         }
     }
 }
-
 void updateFlags(entt::registry &registry)
 {
+    std::vector<entt::entity> entitiesToDestroy;
     auto entities = registry.view<Flag>();
-    for (auto &entity : entities)
+    for (auto entity : entities)
     {
         auto &flag = entities.get<Flag>(entity);
         for (const auto& [flagName, flagValue] : flag.flags)
         {
             if (flagName == "Destroy" && std::any_cast<bool>(flagValue))
             {
-                // Destroy associated entities
+                // Mark associated entities for destruction
                 auto associatedView = registry.view<Associated>();
                 for (auto [associatedEntity, associated] : associatedView.each()) {
-                    if (std::find(associated.entities.begin(), associated.entities.end(), entity) != associated.entities.end()) {
-                        registry.destroy(associatedEntity);
+                    if (associatedEntity != entity && 
+                        std::find(associated.entities.begin(), associated.entities.end(), entity) != associated.entities.end()) {
+                        entitiesToDestroy.push_back(associatedEntity);
                     }
                 }
-                
-                // Destroy the entity itself
-                registry.destroy(entity);
+                entitiesToDestroy.push_back(entity);
                 break;
             }
+        }
+    }
+
+    // Destroy marked entities
+    for (auto entityToDestroy : entitiesToDestroy)
+    {
+        if (registry.valid(entityToDestroy))
+        {
+            registry.destroy(entityToDestroy);
         }
     }
 }

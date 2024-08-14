@@ -172,6 +172,7 @@
         <button class="mobile-btn" id="btnA">&#8592;</button>
         <button class="mobile-btn" id="btnS">&#8595;</button>
         <button class="mobile-btn" id="btnD">&#8594;</button>
+        <button class="mobile-btn" id="btnE">Interact</button>
     </div>
     </div>
 
@@ -257,33 +258,45 @@
         document.getElementById('palette2').addEventListener('click', () => setPalette(2));
         document.getElementById('palette3').addEventListener('click', () => setPalette(3));
 
-        const mobileButtons = ['W', 'A', 'S', 'D'];
-        let pressedKeys = { W: 0, A: 0, S: 0, D: 0 };
+        const mobileButtons = ['W', 'A', 'S', 'D', 'E'];
+        let pressedKeys = { W: 0, A: 0, S: 0, D: 0, E: 0 };
 
         mobileButtons.forEach(key => {
             const button = document.getElementById(`btn${key}`);
 
             button.addEventListener('mousedown', () => {
                 pressedKeys[key] = 1;
-                updateMovement();
+                if (key === 'E') {
+                    interact();
+                } else {
+                    updateMovement();
+                }
             });
 
             button.addEventListener('mouseup', () => {
                 pressedKeys[key] = 0;
-                updateMovement();
+                if (key !== 'E') {
+                    updateMovement();
+                }
             });
 
             // For touch devices
             button.addEventListener('touchstart', (e) => {
                 e.preventDefault(); // Prevent default touch behavior
                 pressedKeys[key] = 1;
-                updateMovement();
+                if (key === 'E') {
+                    interact();
+                } else {
+                    updateMovement();
+                }
             });
 
             button.addEventListener('touchend', (e) => {
                 e.preventDefault(); // Prevent default touch behavior
                 pressedKeys[key] = 0;
-                updateMovement();
+                if (key !== 'E') {
+                    updateMovement();
+                }
             });
         });
 

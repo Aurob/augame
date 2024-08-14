@@ -21,3 +21,13 @@ function move(w=0, a=0, s=0, d=0) {
       }
     }]});
 }
+
+function interact() {
+  Module.js_to_c(
+    {"Entities": [  {
+      "Player": true,
+      "Action": {
+        "player": ["interact"]
+      }
+    }]});
+}

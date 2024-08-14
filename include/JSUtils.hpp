@@ -139,6 +139,24 @@ extern "C"
                         is_player = _el["Player"];
                     }
 
+                    // Check for Action
+                    if (_el.contains("Action") && _el["Action"].is_object()) {
+                        auto &action = _el["Action"];
+                        if (action.contains("player") && action["player"].is_array()) {
+                            auto &playerActions = action["player"];
+                            for (const auto &act : playerActions) {
+                                if (act == "interact") {
+                                    if (is_player) {
+                                        // Trigger interaction for player
+                                        // You might want to implement an interaction system or event
+                                        printf("Player interaction triggered\n");
+                                        keys[SDL_BUTTON_LEFT] = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // Check for Position:x:y
                     if (_el.contains("Position") && _el["Position"].is_object())
                     {
