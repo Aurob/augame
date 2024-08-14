@@ -47,3 +47,23 @@ function zoom(zoom) {
       "zoom": zoom
     }});  
 }
+
+function test() {
+  Module.js_to_c(
+    {"Entities": [  {
+      "New": true,
+      "Position": {
+          "x": 30,
+          "y": 30
+      },
+      "Shape": {
+          "size": [1, 1, 1]
+      },
+      "Color": {
+          "r": 255,
+          "g": 0,
+          "b": 0,
+          "a": 255
+      }
+    }]});
+}

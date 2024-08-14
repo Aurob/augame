@@ -8,6 +8,70 @@
 #include "JSUtils.hpp"
 
 extern entt::entity _player;
+/**
+ * @brief Creates a room entity with optional door.
+ */
+entt::entity createRoom(entt::registry& registry, float x, float y, float width, float height, Color color, entt::entity parent = entt::null, bool createDoor = false, int priority = 52, int doorPosition = 0) {
+    auto room = registry.create();
+    registry.emplace<Position>(room, Position{x, y, 0});
+    registry.emplace<Shape>(room, Shape{width, height});
+    registry.emplace<Color>(room, color);
+    registry.emplace<Interior>(room);
+    registry.emplace<Collidable>(room);
+    registry.emplace<Debug>(room, Debug{color});
+
+    if (parent != entt::null) {
+        registry.emplace<Inside>(room, Inside{parent});
+        if (registry.all_of<RenderPriority>(parent)) {
+            auto parentPriority = registry.get<RenderPriority>(parent).priority;
+            registry.emplace<RenderPriority>(room, RenderPriority{parentPriority - 1});
+        } else {
+            registry.emplace<RenderPriority>(room, RenderPriority{priority});
+        }
+    } else {
+        registry.emplace<RenderPriority>(room, RenderPriority{priority});
+    }
+
+    if (createDoor) {
+        float doorX, doorY;
+        switch (doorPosition) {
+            case 0: // Left
+                doorX = x - 0.8f;
+                doorY = y + height / 2 - 1;
+                break;
+            case 1: // Top
+                doorX = x + width / 2 - 0.5f;
+                doorY = y + height - 0.8f;
+                break;
+            case 2: // Right
+                doorX = x + width - 0.2f;
+                doorY = y + height / 2 - 1;
+                break;
+            case 3: // Bottom
+                doorX = x + width / 2 - 0.5f;
+                doorY = y - 1.2f;
+                break;
+            default:
+                doorX = x - 0.8f;
+                doorY = y + height / 2 - 1;
+        }
+        auto door = registry.create();
+        registry.emplace<Position>(door, Position{doorX, doorY, 0});
+        registry.emplace<Shape>(door, Shape{1.5, 2});
+        registry.emplace<Color>(door, Color{0, 255, 0, 1.0f});
+        registry.emplace<InteriorPortal>(door, InteriorPortal{room, parent});
+        registry.emplace<Collidable>(door);
+        registry.emplace<Debug>(door, Debug{Color{0, 255, 0, 1.0f}});
+        registry.emplace<RenderPriority>(door, RenderPriority{priority - 2});
+        if (parent != entt::null) {
+            registry.emplace<Inside>(door, Inside{parent});
+        }
+        // Associate component
+        registry.emplace<Associated>(door, Associated{{room}});
+    }
+
+    return room;
+}
 
 void makePlayer(entt::registry& registry) {
         // Player
@@ -24,8 +88,10 @@ void makePlayer(entt::registry& registry) {
     registry.emplace<Collidable>(player);
     registry.emplace<Teleportable>(player);
     registry.emplace<RenderPriority>(player, RenderPriority{1});
+    registry.emplace<Test>(player, Test{"Player"});
     _player = player;
 }
+
 void runFactories(entt::registry& registry) {
 
     // get px, py, pw, ph
@@ -65,6 +131,9 @@ void runFactories(entt::registry& registry) {
 
             registry.emplace<Hoverable>(tree);
             registry.emplace<Interactable>(tree);
+            registry.emplace<RenderDebug>(tree);
+            
+            registry.emplace<Test>(tree, Test{"Tree"});
 
             registry.emplace<InteractionAction>(tree, InteractionAction{
                 [](entt::registry& registry, entt::entity entity) {
@@ -128,6 +197,7 @@ void runFactories(entt::registry& registry) {
             registry.emplace<RenderPriority>(treeBase, RenderPriority{-1});
             registry.emplace<Debug>(treeBase, Debug{Color{0, 0, 0, 1.0f}}); // Black debug color
             registry.emplace<Associated>(treeBase, Associated{{tree}});
+            registry.emplace<Test>(treeBase, Test{"Tree Base"});
 
             // Create another entity under and adjacent with same stats
             auto treeBaseInteraction = registry.create();
@@ -138,17 +208,15 @@ void runFactories(entt::registry& registry) {
             registry.emplace<RenderPriority>(treeBaseInteraction, RenderPriority{-1});
             registry.emplace<Debug>(treeBaseInteraction, Debug{Color{0, 0, 0, 1.0f}});
             registry.emplace<Associated>(treeBaseInteraction, Associated{{tree}});
-            registry.emplace<CollisionAction>(treeBaseInteraction, CollisionAction{
-                [](entt::registry& reg, entt::entity e) {
-                    printf("Tree base collision\n");
-                }
-            });
+            registry.emplace<CollisionAction>(treeBaseInteraction);
             registry.emplace<Flag>(treeBaseInteraction, Flag{});
             registry.get<Flag>(treeBaseInteraction).flags["Test"] = std::string("Hello World");
+            registry.emplace<Test>(treeBaseInteraction, Test{"Tree Base Interaction"});
         }
     }
 
     // Containing Walls (unchanged)
+    std::vector<entt::entity> walls;
     for (int i = 0; i < 4; ++i) {
         auto wall = registry.create();
         float x, y, width, height;
@@ -173,7 +241,23 @@ void runFactories(entt::registry& registry) {
         registry.emplace<Debug>(wall, Debug{Color{0, 0, 0, 1.0f}}); // Black debug color
         registry.emplace<Collidable>(wall);
         registry.emplace<RenderPriority>(wall, RenderPriority{1});
+        registry.emplace<Test>(wall, Test{"Wall"});
+        walls.push_back(wall);
     }
+
+    // Associate each wall to each other
+    for (auto wall : walls) {
+        std::vector<entt::entity> associatedWalls;
+        for (auto otherWall : walls) {
+            if (wall != otherWall) {
+                associatedWalls.push_back(otherWall);
+            }
+        }
+        registry.emplace<Associated>(wall, Associated{associatedWalls});
+    }
+
+    // Create a room with a door
+    auto room = createRoom(registry, -20, -20, 40, 40, Color{100, 100, 100, 1.0f}, entt::null, true, 52, 1);
 }
 
 // float rand_float(float min = 0.0f, float max = 1.0f) {
@@ -263,64 +347,7 @@ void runFactories(entt::registry& registry) {
     
 // }
 
-// /**
-//  * @brief Creates a room entity with optional door.
-//  */
-// entt::entity createRoom(entt::registry& registry, float x, float y, float width, float height, Color color, entt::entity parent = entt::null, bool createDoor = false, int priority = 52, int doorPosition = 0) {
-//     auto room = createBasicEntity(registry, x, y, width, height);
-//     registry.emplace<Color>(room, color);
-//     registry.emplace<Interior>(room);
-//     registry.emplace<Collidable>(room);
-//     registry.emplace<Debug>(room, Debug{color});
 
-//     if (parent != entt::null) {
-//         registry.emplace<Inside>(room, Inside{parent});
-//         if (registry.all_of<RenderPriority>(parent)) {
-//             auto parentPriority = registry.get<RenderPriority>(parent).priority;
-//             registry.emplace<RenderPriority>(room, RenderPriority{parentPriority - 1});
-//         } else {
-//             registry.emplace<RenderPriority>(room, RenderPriority{priority});
-//         }
-//     } else {
-//         registry.emplace<RenderPriority>(room, RenderPriority{priority});
-//     }
-
-//     if (createDoor) {
-//         float doorX, doorY;
-//         switch (doorPosition) {
-//             case 0: // Left
-//                 doorX = x - 0.8f;
-//                 doorY = y + height / 2 - 1;
-//                 break;
-//             case 1: // Top
-//                 doorX = x + width / 2 - 0.5f;
-//                 doorY = y + height - 0.8f;
-//                 break;
-//             case 2: // Right
-//                 doorX = x + width - 0.2f;
-//                 doorY = y + height / 2 - 1;
-//                 break;
-//             case 3: // Bottom
-//                 doorX = x + width / 2 - 0.5f;
-//                 doorY = y - 1.2f;
-//                 break;
-//             default:
-//                 doorX = x - 0.8f;
-//                 doorY = y + height / 2 - 1;
-//         }
-//         auto door = createBasicEntity(registry, doorX, doorY, 1, 2);
-//         registry.emplace<Color>(door, Color{0, 255, 0, 1.0f});
-//         registry.emplace<InteriorPortal>(door, InteriorPortal{room, parent});
-//         registry.emplace<Collidable>(door);
-//         registry.emplace<Debug>(door, Debug{Color{0, 255, 0, 1.0f}});
-//         registry.emplace<RenderPriority>(door, RenderPriority{priority - 2});
-//         if (parent != entt::null) {
-//             registry.emplace<Inside>(door, Inside{parent});
-//         }
-//     }
-
-//     return room;
-// }
 
 // void runFactories2(entt::registry& registry) {
 //     // Large exterior building

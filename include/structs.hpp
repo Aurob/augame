@@ -88,6 +88,7 @@ struct AlwaysInView {};
 struct Debug {
     Color defaultColor;
 };
+struct RenderDebug {};
 
 struct Teleport {
     Position origin;
@@ -186,7 +187,7 @@ struct RenderPriority {
 };
 
 struct Test {
-    std::string name;
+    std::string value;
 };
 
 struct Texture {
