@@ -34,30 +34,11 @@ entt::entity createRoom(entt::registry& registry, float x, float y, float width,
 
     if (createDoor) {
         float doorX, doorY;
-        switch (doorPosition) {
-            case 0: // Left
-                doorX = x - 0.8f;
-                doorY = y + height / 2 - 1;
-                break;
-            case 1: // Top
-                doorX = x + width / 2 - 0.5f;
-                doorY = y + height - 0.8f;
-                break;
-            case 2: // Right
-                doorX = x + width - 0.2f;
-                doorY = y + height / 2 - 1;
-                break;
-            case 3: // Bottom
-                doorX = x + width / 2 - 0.5f;
-                doorY = y - 1.2f;
-                break;
-            default:
-                doorX = x - 0.8f;
-                doorY = y + height / 2 - 1;
-        }
+        doorX = x + width/2 - 0.75;
+        doorY = y + height;
         auto door = registry.create();
         registry.emplace<Position>(door, Position{doorX, doorY, 0});
-        registry.emplace<Shape>(door, Shape{1.5, 2});
+        registry.emplace<Shape>(door, Shape{1.5, .1});
         registry.emplace<Color>(door, Color{0, 255, 0, 1.0f});
         registry.emplace<InteriorPortal>(door, InteriorPortal{room, parent});
         registry.emplace<Collidable>(door);
