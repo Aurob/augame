@@ -34,29 +34,98 @@ entt::entity createRoom(entt::registry& registry, float x, float y, float width,
 
     if (createDoor) {
         float doorX, doorY;
-        doorX = x + width/2 - 0.75;
+        
+        float doorWidth = 1.5;
+        float doorHeight = 0.1;
+        
+        // Randomly choose horizontal position along the top wall
+        doorX = x + (rand() % static_cast<int>(width - doorWidth));
         doorY = y + height;
+
         auto door = registry.create();
         registry.emplace<Position>(door, Position{doorX, doorY, 0});
-        registry.emplace<Shape>(door, Shape{1.5, .1});
-        registry.emplace<Color>(door, Color{0, 255, 0, 1.0f});
+        registry.emplace<Shape>(door, Shape{doorWidth, doorHeight});
+        Color doorColor{static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), 0.0f};
+        registry.emplace<Color>(door, doorColor);
         registry.emplace<InteriorPortal>(door, InteriorPortal{room, parent});
         registry.emplace<Collidable>(door);
-        registry.emplace<Debug>(door, Debug{Color{0, 255, 0, 1.0f}});
+        registry.emplace<Debug>(door, Debug{doorColor});
         registry.emplace<RenderPriority>(door, RenderPriority{priority - 2});
         if (parent != entt::null) {
             registry.emplace<Inside>(door, Inside{parent});
         }
         // Associate component
         registry.emplace<Associated>(door, Associated{{room}});
+
+        // Add a door texture entitiy using the Teleport Component with .disabled = true
+        auto doorTexture = registry.create();
+        registry.emplace<Position>(doorTexture, Position{doorX, doorY - height/5, 0});
+        registry.emplace<Shape>(doorTexture, Shape{1.5, height/5});
+        Color doorTextureColor{static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), 1.0f};
+        registry.emplace<Color>(doorTexture, doorTextureColor);
+        registry.emplace<Texture>(doorTexture, Texture{"door", 0, 0, 1, 1});
+        registry.emplace<RenderPriority>(doorTexture, RenderPriority{-3});
+        registry.emplace<Associated>(doorTexture, Associated{{door}});
     }
+
+    // Interior Walls
+    // Create the lower wall entity
+    // it has no collidable and is Inside the room
+    auto lower_wall = registry.create();
+    registry.emplace<Position>(lower_wall, Position{x, y + height - height/4});
+    registry.emplace<Shape>(lower_wall, Shape{width, height/4});
+    Color lowerWallColor{static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), 0.9f};
+    registry.emplace<Color>(lower_wall, lowerWallColor);
+    registry.emplace<RenderPriority>(lower_wall, RenderPriority{-4});
+    registry.emplace<Debug>(lower_wall, Debug{lowerWallColor});
+    registry.emplace<Inside>(lower_wall, Inside{room});
+
+    // Create the upper wall entity
+    // it has no collidable and is Inside the room
+    auto upper_wall = registry.create();
+    registry.emplace<Position>(upper_wall, Position{x, y - height/4});
+    registry.emplace<Shape>(upper_wall, Shape{width, height/4});
+    Color upperWallColor{static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), 1.0f};
+    registry.emplace<Color>(upper_wall, upperWallColor);
+    registry.emplace<RenderPriority>(upper_wall, RenderPriority{-4});
+    registry.emplace<Debug>(upper_wall, Debug{upperWallColor});
+    registry.emplace<Inside>(upper_wall, Inside{room});
+
+    // Create the outer front wall
+    // it has collidable and is not Inside the room
+    auto front_wall = registry.create();
+    registry.emplace<Position>(front_wall, Position{x, y + height - height/4});
+    registry.emplace<Shape>(front_wall, Shape{width, height/4});
+    Color frontWallColor{static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), 1.0f};
+    registry.emplace<Color>(front_wall, frontWallColor);
+    registry.emplace<RenderPriority>(front_wall, RenderPriority{5});
+    registry.emplace<Debug>(front_wall, Debug{frontWallColor});
+    registry.emplace<Associated>(front_wall, Associated{{room}});
+    
+    // Create the upper part of the roof (1/4 height, slightly transparent)
+    auto roof_upper = registry.create();
+    registry.emplace<Position>(roof_upper, Position{x, y - height/4});
+    registry.emplace<Shape>(roof_upper, Shape{width, height/4});
+    Color roofUpperColor{static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), 0.7f};
+    registry.emplace<Color>(roof_upper, roofUpperColor);
+    registry.emplace<RenderPriority>(roof_upper, RenderPriority{-4});
+    registry.emplace<Debug>(roof_upper, Debug{roofUpperColor});
+
+    // Create the lower part of the roof (3/4 height, opaque)
+    auto roof_lower = registry.create();
+    registry.emplace<Position>(roof_lower, Position{x, y});
+    registry.emplace<Shape>(roof_lower, Shape{width, height * 3/4});
+    Color roofLowerColor{static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), 1.0f};
+    registry.emplace<Color>(roof_lower, roofLowerColor);
+    registry.emplace<RenderPriority>(roof_lower, RenderPriority{-4});
+    registry.emplace<Debug>(roof_lower, Debug{roofLowerColor});
 
     return room;
 }
 
 void makePlayer(entt::registry& registry) {
         // Player
-    float px = 35.0f, py = 35.0f, pz = 0.0f;
+    float px = 0.0f, py = 25.0f, pz = 0.0f;
     float pw = 1.0f, ph = 1.0f;
     auto player = registry.create();
     registry.emplace<Player>(player);
@@ -236,9 +305,15 @@ void runFactories(entt::registry& registry) {
         }
         registry.emplace<Associated>(wall, Associated{associatedWalls});
     }
-
     // Create a room with a door
-    auto room = createRoom(registry, -20, -20, 40, 40, Color{100, 100, 100, 1.0f}, entt::null, true, 52, 1);
+    auto room = createRoom(registry, -20, -20, 10, 10, Color{100, 100, 100, 1.0f}, entt::null, true, 52, rand() % 4 + 1);
+
+    // Create 5 more rooms with doors, spaced apart and with randomized door locations
+    auto room2 = createRoom(registry, -5, -20, 10, 10, Color{120, 120, 120, 1.0f}, entt::null, true, 52, rand() % 4 + 1);
+    auto room3 = createRoom(registry, 10, -20, 10, 10, Color{140, 140, 140, 1.0f}, entt::null, true, 52, rand() % 4 + 1);
+    auto room4 = createRoom(registry, 25, -20, 10, 10, Color{160, 160, 160, 1.0f}, entt::null, true, 52, rand() % 4 + 1);
+    auto room5 = createRoom(registry, -20, -5, 10, 10, Color{180, 180, 180, 1.0f}, entt::null, true, 52, rand() % 4 + 1);
+    auto room6 = createRoom(registry, -5, -5, 10, 10, Color{200, 200, 200, 1.0f}, entt::null, true, 52, rand() % 4 + 1);
 }
 
 // float rand_float(float min = 0.0f, float max = 1.0f) {

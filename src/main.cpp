@@ -298,32 +298,13 @@ void mainloop(void *arg)
                 color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a,
                 position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
                 shape.scaled_size.x, shape.scaled_size.y, angle);
-                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-                    
-            if (registry.all_of<Interior>(entity) && playerIsInside) {
-                printf("Rendering interior\n");
-                float wallHeight = shape.scaled_size.y / 4.0f;
-
-                // Render top wall
-                updateUniformsDebug(shaderProgramMap["debug_entity"],
-                    1.0f, .20f, 1.0f, .50f, // Assuming white color for walls
-                    position.sx + playerShape.scaled_size.x, position.sy + shape.scaled_size.y,
-                    shape.scaled_size.x, wallHeight, 0.0f);
-                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-                // Render bottom wall
-                // updateUniformsDebug(shaderProgramMap["debug_entity"],
-                //     1.0f, 1.0f, 1.0f, 1.0f, // Assuming white color for walls
-                //     position.sx + playerShape.scaled_size.x, position.sy + shape.scaled_size.y - wallHeight,
-                //     shape.scaled_size.x, wallHeight, 0.0f);
-                // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-            }
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         }
         else if(isTeleport) {
             updateUniformsTexture(shaderProgramMap["texture"], 
                 textureIDMap["door"],
-                position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
+                position.sx + playerShape.scaled_size.x, 
+                position.sy + playerShape.scaled_size.y,
                 shape.scaled_size.x, shape.scaled_size.y);
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 

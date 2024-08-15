@@ -245,9 +245,10 @@ void updatePositions(entt::registry &registry)
             {
                 auto playerInterior = registry.get<Inside>(_player).interior;
 
-                if (registry.all_of<Interior>(entity) && entity == playerInterior)
+                if (registry.all_of<Interior>(entity))
                 {
-                    shouldBeVisible = true;
+                    if(entity == playerInterior)
+                        shouldBeVisible = true;
                 }
 
                 if (registry.all_of<Inside>(entity))
@@ -267,17 +268,36 @@ void updatePositions(entt::registry &registry)
                         shouldBeVisible = true;
                     }
                 }
+                else if (registry.all_of<Associated>(entity))
+                {
+                    auto &associated = registry.get<Associated>(entity);
+                    for (auto &assoc_entity : associated.entities)
+                    {
+                        if (registry.all_of<InteriorPortal>(assoc_entity))
+                        {
+                            auto &portal = registry.get<InteriorPortal>(assoc_entity);
+                            if (portal.A == playerInterior || portal.B == playerInterior)
+                            {
+                                shouldBeVisible = true;
+                                break;
+                            }
+                        }
+                    }
+                }
             }
             else
             {
-                // Check if the entity is inside something
-                if (!registry.all_of<Inside>(entity))
+                if(registry.all_of<Interior>(entity)) {
+                    shouldBeVisible = false;
+                }
+                else if (!registry.all_of<Inside>(entity))
                 {
                     shouldBeVisible = true;
                 }
                 else {
                     shouldBeInView = false;
                 }
+
             }
 
             if (shouldBeVisible && !registry.all_of<Visible>(entity))
@@ -318,9 +338,14 @@ void updateTeleporters(entt::registry &registry)
         auto teleport_entities = registry.view<Position, Shape, Teleport, InView>();
         for (auto &tentity : teleport_entities)
         {
+            auto &teleport = teleport_entities.get<Teleport>(tentity);
+
+            if(teleport.disabled) {
+                continue;
+            }
+
             auto &tposition = teleport_entities.get<Position>(tentity);
             auto &tshape = teleport_entities.get<Shape>(tentity);
-            auto &teleport = teleport_entities.get<Teleport>(tentity);
 
             Vector2f collides = positionsCollide(position, shape, tposition, tshape, false);
             if (collides.x != 0 || collides.y != 0)

@@ -94,6 +94,7 @@ struct Teleport {
     Position origin;
     Position destination;
     bool reverse{false};
+    bool disabled{false};
 };
 struct Teleportable {};
 
