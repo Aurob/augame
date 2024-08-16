@@ -1,4 +1,4 @@
-const CONFIG = {
+var CONFIG = {
     "shaders": [
         {
             "name": "terrain",
@@ -44,3 +44,23 @@ const CONFIG = {
         }
     ]
 };
+
+const actions = ["Idle", "Run", "Dash", "Take_Damage", "Death"];
+const directions = ["Down", "Left", "Right", "Up"];
+const textures = [];
+
+actions.forEach((action, actionIndex) => {
+    directions.forEach((direction, directionIndex) => {
+        const index = actionIndex + 1;
+        const texture = {
+            "name": `${index}_Template_${action}_${direction}-Sheet`,
+            "path": `resources/${index}_Template_${action}_${direction}-Sheet.png`
+        };
+        textures.push(texture);
+    });
+});
+
+CONFIG.textures = CONFIG.textures.concat(textures);
+
+
+

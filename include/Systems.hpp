@@ -245,9 +245,10 @@ void updatePositions(entt::registry &registry)
             {
                 auto playerInterior = registry.get<Inside>(_player).interior;
 
-                if (registry.all_of<Interior>(entity) && entity == playerInterior)
+                if (registry.all_of<Interior>(entity))
                 {
-                    shouldBeVisible = true;
+                    if(entity == playerInterior)
+                        shouldBeVisible = true;
                 }
 
                 if (registry.all_of<Inside>(entity))
@@ -267,17 +268,36 @@ void updatePositions(entt::registry &registry)
                         shouldBeVisible = true;
                     }
                 }
+                else if (registry.all_of<Associated>(entity))
+                {
+                    auto &associated = registry.get<Associated>(entity);
+                    for (auto &assoc_entity : associated.entities)
+                    {
+                        if (registry.all_of<InteriorPortal>(assoc_entity))
+                        {
+                            auto &portal = registry.get<InteriorPortal>(assoc_entity);
+                            if (portal.A == playerInterior || portal.B == playerInterior)
+                            {
+                                shouldBeVisible = true;
+                                break;
+                            }
+                        }
+                    }
+                }
             }
             else
             {
-                // Check if the entity is inside something
-                if (!registry.all_of<Inside>(entity))
+                if(registry.all_of<Interior>(entity)) {
+                    shouldBeVisible = false;
+                }
+                else if (!registry.all_of<Inside>(entity))
                 {
                     shouldBeVisible = true;
                 }
                 else {
                     shouldBeInView = false;
                 }
+
             }
 
             if (shouldBeVisible && !registry.all_of<Visible>(entity))
@@ -318,9 +338,14 @@ void updateTeleporters(entt::registry &registry)
         auto teleport_entities = registry.view<Position, Shape, Teleport, InView>();
         for (auto &tentity : teleport_entities)
         {
+            auto &teleport = teleport_entities.get<Teleport>(tentity);
+
+            if(teleport.disabled) {
+                continue;
+            }
+
             auto &tposition = teleport_entities.get<Position>(tentity);
             auto &tshape = teleport_entities.get<Shape>(tentity);
-            auto &teleport = teleport_entities.get<Teleport>(tentity);
 
             Vector2f collides = positionsCollide(position, shape, tposition, tshape, false);
             if (collides.x != 0 || collides.y != 0)
@@ -429,7 +454,6 @@ void updateInteractions(entt::registry &registry)
         }
     }
 
-    // For Interacted entities, perform the interaction action
     auto interacted_entities = registry.view<Interacted, InteractionAction>();
     for (auto entity : interacted_entities)
     {
@@ -437,8 +461,6 @@ void updateInteractions(entt::registry &registry)
         auto &action = interacted_entities.get<InteractionAction>(entity);
         action.action(registry, entity);
     }
-
-    // For Colliding entities, perform the collision action
     auto colAction_entities = registry.view<CollisionAction>();
     for (auto entity : colAction_entities)
     {
@@ -446,6 +468,18 @@ void updateInteractions(entt::registry &registry)
             printf("Colliding\n");
         }
     }
+
+    auto tickAction_entities = registry.view<TickAction>();
+    for (auto entity : tickAction_entities)
+    {
+        auto &action = tickAction_entities.get<TickAction>(entity);
+        action.time += deltaTime;
+        if (action.time >= action.interval) {
+            action.action(registry, entity);
+            action.time = 0.0f; // Reset the time after triggering the action
+        }
+    }
+    
 }
 
 void updateShapes(entt::registry &registry)
@@ -606,14 +640,27 @@ void updateFlags(entt::registry &registry)
         {
             if (flagName == "Destroy" && std::any_cast<bool>(flagValue))
             {
+
+                printf("Destroying entity %d\n", entity);
+
+                // printf if has InteractionAction
+                if (registry.all_of<InteractionAction>(entity))
+                {
+                    printf("Has InteractionAction\n");
+                }
                 // Mark associated entities for destruction
                 auto associatedView = registry.view<Associated>();
-                for (auto [associatedEntity, associated] : associatedView.each()) {
-                    if (associatedEntity != entity && 
-                        std::find(associated.entities.begin(), associated.entities.end(), entity) != associated.entities.end()) {
-                        entitiesToDestroy.push_back(associatedEntity);
+                for (auto [associatedEntity, associated] : associatedView.each())
+                {
+                    if (associatedEntity != entity &&
+                        std::find(associated.entities.begin(), associated.entities.end(), entity) != associated.entities.end())
+                    {
+                        if(associated.destroy) {
+                            entitiesToDestroy.push_back(associatedEntity);
+                        }
                     }
                 }
+
                 entitiesToDestroy.push_back(entity);
                 break;
             }

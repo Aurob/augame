@@ -94,6 +94,7 @@ struct Teleport {
     Position origin;
     Position destination;
     bool reverse{false};
+    bool disabled{false};
 };
 struct Teleportable {};
 
@@ -109,6 +110,11 @@ struct InteractionAction {
 };
 struct CollisionAction {
     std::function<void(entt::registry&, entt::entity)> action;
+};
+struct TickAction {
+    std::function<void(entt::registry&, entt::entity)> action;
+    float interval;
+    float time;
 };
 
 struct Interactable {
@@ -154,6 +160,7 @@ struct Linked {
 
 struct Associated {
     std::vector<entt::entity> entities;
+    bool destroy;
 };
 
 struct Flag {
@@ -193,4 +200,10 @@ struct Test {
 struct Texture {
     std::string name;
     float x, y, w, h;
+    float scalex{1}, scaley{1};
+};
+
+struct Textures {
+    std::vector<Texture> textures;
+    int current;
 };
