@@ -631,14 +631,27 @@ void updateFlags(entt::registry &registry)
         {
             if (flagName == "Destroy" && std::any_cast<bool>(flagValue))
             {
+
+                printf("Destroying entity %d\n", entity);
+
+                // printf if has InteractionAction
+                if (registry.all_of<InteractionAction>(entity))
+                {
+                    printf("Has InteractionAction\n");
+                }
                 // Mark associated entities for destruction
                 auto associatedView = registry.view<Associated>();
-                for (auto [associatedEntity, associated] : associatedView.each()) {
-                    if (associatedEntity != entity && 
-                        std::find(associated.entities.begin(), associated.entities.end(), entity) != associated.entities.end()) {
-                        entitiesToDestroy.push_back(associatedEntity);
+                for (auto [associatedEntity, associated] : associatedView.each())
+                {
+                    if (associatedEntity != entity &&
+                        std::find(associated.entities.begin(), associated.entities.end(), entity) != associated.entities.end())
+                    {
+                        if(associated.destroy) {
+                            entitiesToDestroy.push_back(associatedEntity);
+                        }
                     }
                 }
+
                 entitiesToDestroy.push_back(entity);
                 break;
             }

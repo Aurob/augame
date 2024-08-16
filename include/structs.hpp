@@ -155,6 +155,7 @@ struct Linked {
 
 struct Associated {
     std::vector<entt::entity> entities;
+    bool destroy;
 };
 
 struct Flag {
