@@ -36,14 +36,14 @@ entt::entity createRoom(entt::registry& registry, float x, float y, float width,
         float doorX, doorY;
         
         float doorWidth = 1.5;
-        float doorHeight = 0.1;
+        float doorHeight = 0.25;
         
         // Randomly choose horizontal position along the top wall
         doorX = x + (rand() % static_cast<int>(width - doorWidth));
         doorY = y + height;
 
         auto door = registry.create();
-        registry.emplace<Position>(door, Position{doorX, doorY, 0});
+        registry.emplace<Position>(door, Position{doorX, doorY - doorHeight, 0});
         registry.emplace<Shape>(door, Shape{doorWidth, doorHeight});
         Color doorColor{static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), 0.0f};
         registry.emplace<Color>(door, doorColor);
@@ -59,12 +59,12 @@ entt::entity createRoom(entt::registry& registry, float x, float y, float width,
 
         // Add a door texture entitiy using the Teleport Component with .disabled = true
         auto doorTexture = registry.create();
-        registry.emplace<Position>(doorTexture, Position{doorX, doorY - height/5, 0});
-        registry.emplace<Shape>(doorTexture, Shape{1.5, height/5});
+        registry.emplace<Position>(doorTexture, Position{doorX, doorY - 2, 0});
+        registry.emplace<Shape>(doorTexture, Shape{1.5, 2});
         Color doorTextureColor{static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), 1.0f};
         registry.emplace<Color>(doorTexture, doorTextureColor);
         registry.emplace<Texture>(doorTexture, Texture{"door", 0, 0, 1, 1});
-        registry.emplace<RenderPriority>(doorTexture, RenderPriority{-3});
+        registry.emplace<RenderPriority>(doorTexture, RenderPriority{-5});
         registry.emplace<Associated>(doorTexture, Associated{{door}});
     }
 
@@ -121,6 +121,109 @@ entt::entity createRoom(entt::registry& registry, float x, float y, float width,
     registry.emplace<Debug>(roof_lower, Debug{roofLowerColor});
 
     return room;
+}
+
+float rand_float(float min = 0.0f, float max = 1.0f) {
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(min, max);
+    return static_cast<float>(dis(gen));
+}
+
+void createRandomEntityInRoom(entt::registry& registry, entt::entity room) {
+    auto roomPosition = registry.get<Position>(room);
+    auto roomShape = registry.get<Shape>(room);
+
+    float x = rand_float(roomPosition.x, roomPosition.x - roomShape.size.x);
+    float y = rand_float(roomPosition.y, roomPosition.y - roomShape.size.y);
+    float w = rand_float(0.5f, 1.5f);
+    float h = rand_float(0.5f, 1.5f);
+
+    auto entity = registry.create();
+    registry.emplace<Position>(entity, Position{x, y, 0});
+    registry.emplace<Shape>(entity, Shape{w, h});
+    
+    Color color = {rand_float(0.0f, 255.0f), rand_float(0.0f, 255.0f), rand_float(0.0f, 255.0f), 1.0f};
+    registry.emplace<Color>(entity, color);
+    registry.emplace<Debug>(entity, Debug{color});
+    registry.emplace<Collidable>(entity);
+    registry.emplace<Moveable>(entity);
+    registry.emplace<Movement>(entity, Movement{25, 110, Vector2f{0, 0}, Vector2f{0, 0}, .01, .01, .1});
+    registry.emplace<Inside>(entity, Inside{room});
+    registry.emplace<RenderPriority>(entity, RenderPriority{2});
+    registry.emplace<Test>(entity, Test{"Random Entity in Room"});
+    registry.emplace<Associated>(entity, Associated{{room}});
+    
+    registry.emplace<InteractionAction>(entity, InteractionAction{
+        [](entt::registry& registry, entt::entity entity) {
+            printf("Entity %d says: I'm a random entity in this room!\n", static_cast<int>(entity));
+        }
+    });
+}
+
+std::pair<Vector2f, Vector2f> createMazeInRoom(entt::registry& registry, entt::entity room) {
+    auto roomPosition = registry.get<Position>(room);
+    auto roomShape = registry.get<Shape>(room);
+
+    const int cellSize = 1;
+    int width = static_cast<int>(roomShape.size.x / cellSize);
+    int height = static_cast<int>(roomShape.size.y / cellSize);
+
+    std::vector<std::vector<bool>> maze(height, std::vector<bool>(width, false));
+    std::stack<std::pair<int, int>> stack;
+    int startY = height / 2;
+    int startX = width / 2;
+    stack.push({startY, startX});
+    maze[startY][startX] = true;
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
+    while (!stack.empty()) {
+        auto [y, x] = stack.top();
+        std::vector<std::pair<int, int>> neighbors;
+
+        for (const auto& [dy, dx] : std::vector<std::pair<int, int>>{{-2, 0}, {2, 0}, {0, -2}, {0, 2}}) {
+            int ny = y + dy, nx = x + dx;
+            if (ny >= 0 && ny < height && nx >= 0 && nx < width && !maze[ny][nx]) {
+                neighbors.push_back({ny, nx});
+            }
+        }
+
+        if (!neighbors.empty()) {
+            auto [ny, nx] = neighbors[std::uniform_int_distribution<>(0, neighbors.size() - 1)(gen)];
+            maze[ny][nx] = true;
+            maze[y + (ny - y) / 2][x + (nx - x) / 2] = true;
+            stack.push({ny, nx});
+        } else {
+            stack.pop();
+        }
+    }
+
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            if (!maze[y][x]) {
+                auto wall = registry.create();
+                float wx = roomPosition.x + x * cellSize;
+                float wy = roomPosition.y + y * cellSize;
+                registry.emplace<Position>(wall, Position{wx, wy, 0});
+                registry.emplace<Shape>(wall, Shape{static_cast<float>(cellSize), static_cast<float>(cellSize)});
+                registry.emplace<Color>(wall, Color{100, 100, 100, 1.0f});
+                registry.emplace<Debug>(wall, Debug{Color{100, 100, 100, 1.0f}});
+                registry.emplace<Collidable>(wall);
+                registry.emplace<Inside>(wall, Inside{room});
+                registry.emplace<RenderPriority>(wall, RenderPriority{-1});
+                registry.emplace<Associated>(wall, Associated{{room}});
+            }
+        }
+    }
+
+    // Return the xy of the start and end
+    float startXPos = roomPosition.x + startX * cellSize;
+    float startYPos = roomPosition.y + startY * cellSize;
+    float endXPos = roomPosition.x + (width - 1) * cellSize;
+    float endYPos = roomPosition.y + (height - 1) * cellSize;
+    return std::make_pair(Vector2f{startXPos, startYPos}, Vector2f{endXPos, endYPos});
 }
 
 void makePlayer(entt::registry& registry) {
@@ -246,7 +349,7 @@ void runFactories(entt::registry& registry) {
             registry.emplace<Color>(treeBase, Color{0, 0, 0, 1.0f}); // Black color
             registry.emplace<RenderPriority>(treeBase, RenderPriority{-1});
             registry.emplace<Debug>(treeBase, Debug{Color{0, 0, 0, 1.0f}}); // Black debug color
-            registry.emplace<Associated>(treeBase, Associated{{tree}});
+            registry.emplace<Associated>(treeBase, Associated{{tree}, true});
             registry.emplace<Test>(treeBase, Test{"Tree Base"});
 
             // Create another entity under and adjacent with same stats
@@ -257,7 +360,7 @@ void runFactories(entt::registry& registry) {
             registry.emplace<Color>(treeBaseInteraction, Color{0, 0, 0, .4f});
             registry.emplace<RenderPriority>(treeBaseInteraction, RenderPriority{-1});
             registry.emplace<Debug>(treeBaseInteraction, Debug{Color{0, 0, 0, 1.0f}});
-            registry.emplace<Associated>(treeBaseInteraction, Associated{{tree}});
+            registry.emplace<Associated>(treeBaseInteraction, Associated{{tree}, true});
             registry.emplace<CollisionAction>(treeBaseInteraction);
             registry.emplace<Flag>(treeBaseInteraction, Flag{});
             registry.get<Flag>(treeBaseInteraction).flags["Test"] = std::string("Hello World");
@@ -305,23 +408,35 @@ void runFactories(entt::registry& registry) {
         }
         registry.emplace<Associated>(wall, Associated{associatedWalls});
     }
-    // Create a room with a door
-    auto room = createRoom(registry, -20, -20, 10, 10, Color{100, 100, 100, 1.0f}, entt::null, true, 52, rand() % 4 + 1);
-
-    // Create 5 more rooms with doors, spaced apart and with randomized door locations
-    auto room2 = createRoom(registry, -5, -20, 10, 10, Color{120, 120, 120, 1.0f}, entt::null, true, 52, rand() % 4 + 1);
-    auto room3 = createRoom(registry, 10, -20, 10, 10, Color{140, 140, 140, 1.0f}, entt::null, true, 52, rand() % 4 + 1);
-    auto room4 = createRoom(registry, 25, -20, 10, 10, Color{160, 160, 160, 1.0f}, entt::null, true, 52, rand() % 4 + 1);
-    auto room5 = createRoom(registry, -20, -5, 10, 10, Color{180, 180, 180, 1.0f}, entt::null, true, 52, rand() % 4 + 1);
-    auto room6 = createRoom(registry, -5, -5, 10, 10, Color{200, 200, 200, 1.0f}, entt::null, true, 52, rand() % 4 + 1);
+    // Create rooms with doors and add random moveable entities inside each
+    std::vector<entt::entity> rooms;
+    rooms.push_back(createRoom(registry, -20, -20, 25, 25, Color{180, 180, 180, 1.0f}, entt::null, true, 52, rand() % 4 + 1));
+    
+    // Add random entities inside each room
+    for (auto room : rooms) {
+        // Create maze in the last room
+        auto [startPos, endPos] = createMazeInRoom(registry, room);
+    }
+    // Create a teleporter at the end of the maze
+    auto teleporter = registry.create();
+    registry.emplace<Position>(teleporter, Position{0, 30, 0});
+    registry.emplace<Shape>(teleporter, Shape{3, 3});
+    registry.emplace<Color>(teleporter, Color{0, 255, 0, 1.0f});
+    registry.emplace<Debug>(teleporter, Debug{Color{0, 255, 0, 1.0f}});
+    registry.emplace<Hoverable>(teleporter);
+    registry.emplace<Interactable>(teleporter);
+    registry.emplace<InteractionAction>(teleporter, InteractionAction{
+        [](entt::registry& registry, entt::entity entity) {
+            auto view = registry.view<Player, Position>();
+            for (auto [player, position] : view.each()) {
+                position.x += rand_float(-10.0f, 10.0f);
+                position.y += rand_float(-10.0f, 10.0f);
+                printf("Player teleported to (%.2f, %.2f)\n", position.x, position.y);
+            }
+        }
+    });
+    registry.emplace<RenderPriority>(teleporter, RenderPriority{1});
 }
-
-// float rand_float(float min = 0.0f, float max = 1.0f) {
-//     static std::random_device rd;
-//     static std::mt19937 gen(rd());
-//     std::uniform_real_distribution<> dis(min, max);
-//     return static_cast<float>(dis(gen));
-// }
 
 // /**
 //  * @brief Creates a basic entity with position and shape components.
