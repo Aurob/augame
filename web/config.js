@@ -45,7 +45,7 @@ var CONFIG = {
     ]
 };
 
-const actions = ["Idle", "Run", "Dash", "Take_Damage", "Death"];
+const actions = ["Idle", "Run"];
 const directions = ["Down", "Left", "Right", "Up"];
 const textures = [];
 

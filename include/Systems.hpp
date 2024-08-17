@@ -469,17 +469,24 @@ void updateInteractions(entt::registry &registry)
         }
     }
 
-    auto tickAction_entities = registry.view<TickAction>();
+    auto tickAction_entities = registry.view<TickAction, Movement>();
     for (auto entity : tickAction_entities)
     {
         auto &action = tickAction_entities.get<TickAction>(entity);
+        auto &movement = tickAction_entities.get<Movement>(entity);
+        
         action.time += deltaTime;
-        if (action.time >= action.interval) {
+        
+        float interval = action.interval;
+        if (entity == _player && std::abs(movement.velocity.x) < 0.01f && std::abs(movement.velocity.y) < 0.01f) {
+            interval *= 4.0f; // Increase interval if player is not moving
+        }
+        
+        if (action.time >= interval) {
             action.action(registry, entity);
             action.time = 0.0f; // Reset the time after triggering the action
         }
     }
-    
 }
 
 void updateShapes(entt::registry &registry)

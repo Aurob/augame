@@ -195,13 +195,41 @@ void mainloop(void *arg)
     else {
         playerMovement.speed = defaultMoveSpeed;
     }
+    
+    // Update player's TextureAlts based on direction and movement
+    if (registry.all_of<TextureAlts>(_player)) {
+        auto& textureAlts = registry.get<TextureAlts>(_player);
+        bool isMoving = keys[SDLK_w] || keys[SDLK_s] || keys[SDLK_a] || keys[SDLK_d];
+        std::string action = isMoving ? "Run" : "Idle";
+        static std::string lastDirection = "Down"; // Static variable to remember last direction
 
-    // If T is pressed increment the player's Textures .current % textures.size()
-    if(keys[SDLK_t]) {
-        auto& textures = registry.get<Textures>(_player);
-        textures.current = (textures.current + 1) % textures.textures.size();
-        keys[SDLK_t] = false;
+        if (keys[SDLK_w]) {
+            lastDirection = "Up";
+        } else if (keys[SDLK_s]) {
+            lastDirection = "Down";
+        } else if (keys[SDLK_a]) {
+            lastDirection = "Left";
+        } else if (keys[SDLK_d]) {
+            lastDirection = "Right";
+        }
+
+        textureAlts.current = action + "_" + lastDirection;
     }
+
+    // // If T is pressed, increment the player's TextureAlts or Textures .current
+    // if (keys[SDLK_t]) {
+    //     if (registry.all_of<TextureAlts>(_player)) {
+    //         auto& textureAlts = registry.get<TextureAlts>(_player);
+    //         auto it = textureAlts.alts.find(textureAlts.current);
+    //         if (it != textureAlts.alts.end()) {
+    //             it->second.current = (it->second.current + 1) % it->second.textures.size();
+    //         }
+    //     } else if (registry.all_of<Textures>(_player)) {
+    //         auto& textures = registry.get<Textures>(_player);
+    //         textures.current = (textures.current + 1) % textures.textures.size();
+    //     }
+    //     keys[SDLK_t] = false;
+    // }
 
     // Update frame
     updateFrame(ctx);
@@ -295,6 +323,27 @@ void mainloop(void *arg)
         } else if (registry.all_of<Textures>(entity)) {
             const auto& textures = registry.get<Textures>(entity);
             const auto& current_texture = textures.textures[textures.current];
+
+            // Check if the entity has RenderDebug
+            if (registry.all_of<RenderDebug>(entity)) {
+                // Render a small transparent square to indicate bounding box
+                updateUniformsDebug(shaderProgramMap["debug_entity"],
+                    1.0f, 1.0f, 1.0f, 0.2f, // White color with 20% opacity
+                    position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
+                    shape.scaled_size.x, shape.scaled_size.y, 0.0f);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            }
+
+            updateUniformsTexture(shaderProgramMap["texture"], 
+                textureIDMap[current_texture.name],
+                position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
+                shape.scaled_size.x * current_texture.scalex, shape.scaled_size.y * current_texture.scaley,
+                current_texture.x, current_texture.y, current_texture.w, current_texture.h);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        } else if (registry.all_of<TextureAlts>(entity)) {
+            const auto& textureAlts = registry.get<TextureAlts>(entity);
+            const auto& currentTextures = textureAlts.alts.at(textureAlts.current);
+            const auto& current_texture = currentTextures.textures[currentTextures.current];
 
             // Check if the entity has RenderDebug
             if (registry.all_of<RenderDebug>(entity)) {

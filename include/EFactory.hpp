@@ -7,6 +7,58 @@
 #include <string>
 #include "JSUtils.hpp"
 
+
+void makePlayer(entt::registry& registry) {
+        // Player
+    float px = 0.0f, py = 25.0f, pz = 0.0f;
+    float pw = 1.0f, ph = 1.0f;
+    auto player = registry.create();
+    registry.emplace<Player>(player);
+    registry.emplace<Position>(player, Position{px, py, pz});
+    registry.emplace<Shape>(player, Shape{pw, ph});    
+    registry.emplace<Color>(player, Color{0, 0, 255, 0.0f});
+    registry.emplace<Movement>(player,
+        Movement{100, 1000, Vector2f{0, 0}, Vector2f{0, 0}, 10, 1, 0});
+    registry.emplace<Moveable>(player);
+    registry.emplace<Collidable>(player);
+    registry.emplace<Teleportable>(player);
+    registry.emplace<RenderPriority>(player, RenderPriority{1});
+    registry.emplace<Test>(player, Test{"Player"});
+    // Add textures to the player
+    // texture full width: 768, full height: 128
+    // 6 columns, 1 row
+    std::vector<Textures> textureAlts;
+
+    const std::vector<std::string> actions = {"Idle", "Run"};
+    const std::vector<std::string> directions = {"Down", "Left", "Right", "Up"};
+    std::unordered_map<std::string, Textures> textureMap;
+
+    for (size_t actionIndex = 0; actionIndex < actions.size(); ++actionIndex) {
+        for (size_t directionIndex = 0; directionIndex < directions.size(); ++directionIndex) {
+            std::string textureName = std::to_string(actionIndex + 1) + "_Template_" + actions[actionIndex] + "_" + directions[directionIndex] + "-Sheet";
+            std::vector<Texture> textures;
+            for (int i = 0; i < 6; ++i) {
+                textures.push_back({textureName, i / 6.0f, 0.0f, 1.0f / 6, 1.0f, 8, 8});
+            }
+            textureMap[actions[actionIndex] + "_" + directions[directionIndex]] = Textures{textures, 0};
+        }
+    }
+
+    registry.emplace<TextureAlts>(player, TextureAlts{textureMap, "Idle_Down"});
+
+    // TickAction to animate the player, increment the texture index of the current TextureAlts
+    registry.emplace<TickAction>(player, TickAction{
+        [](entt::registry& registry, entt::entity entity) {
+            auto& movement = registry.get<Movement>(entity);
+            auto& textureAlts = registry.get<TextureAlts>(entity);
+            auto& currentTextures = textureAlts.alts[textureAlts.current];
+            currentTextures.current = (currentTextures.current + 1) % currentTextures.textures.size();
+        }, 0.1f
+    });
+
+    _player = player;
+}
+
 extern entt::entity _player;
 /**
  * @brief Creates a room entity with optional door.
@@ -165,7 +217,7 @@ std::pair<Vector2f, Vector2f> createMazeInRoom(entt::registry& registry, entt::e
     auto roomPosition = registry.get<Position>(room);
     auto roomShape = registry.get<Shape>(room);
 
-    const int cellSize = 2;
+    const int cellSize = 1;
     int width = static_cast<int>(roomShape.size.x / cellSize);
     int height = static_cast<int>(roomShape.size.y / cellSize);
 
@@ -224,48 +276,6 @@ std::pair<Vector2f, Vector2f> createMazeInRoom(entt::registry& registry, entt::e
     float endXPos = roomPosition.x + (width - 1) * cellSize;
     float endYPos = roomPosition.y + (height - 1) * cellSize;
     return std::make_pair(Vector2f{startXPos, startYPos}, Vector2f{endXPos, endYPos});
-}
-
-void makePlayer(entt::registry& registry) {
-        // Player
-    float px = 0.0f, py = 25.0f, pz = 0.0f;
-    float pw = 1.0f, ph = 1.0f;
-    auto player = registry.create();
-    registry.emplace<Player>(player);
-    registry.emplace<Position>(player, Position{px, py, pz});
-    registry.emplace<Shape>(player, Shape{pw, ph});    
-    registry.emplace<Color>(player, Color{0, 0, 255, 0.0f});
-    registry.emplace<Movement>(player,
-        Movement{100, 1000, Vector2f{0, 0}, Vector2f{0, 0}, 10, 1, 0});
-    registry.emplace<Moveable>(player);
-    registry.emplace<Collidable>(player);
-    registry.emplace<Teleportable>(player);
-    registry.emplace<RenderPriority>(player, RenderPriority{1});
-    registry.emplace<Test>(player, Test{"Player"});
-
-    // Add textures to the player
-    // texture full width: 768, full height: 128
-    // 6 columns, 1 row
-    std::vector<Texture> playerTextures = {
-        {"1_Template_Idle_Down-Sheet", 0.0f, 0.0f, 1.0f / 6, 1.0f, 8, 8},
-        {"1_Template_Idle_Down-Sheet", 1.0f / 6, 0.0f, 1.0f / 6, 1.0f, 8, 8},
-        {"1_Template_Idle_Down-Sheet", 2.0f / 6, 0.0f, 1.0f / 6, 1.0f, 8, 8},
-        {"1_Template_Idle_Down-Sheet", 3.0f / 6, 0.0f, 1.0f / 6, 1.0f, 8, 8},
-        {"1_Template_Idle_Down-Sheet", 4.0f / 6, 0.0f, 1.0f / 6, 1.0f, 8, 8},
-        {"1_Template_Idle_Down-Sheet", 5.0f / 6, 0.0f, 1.0f / 6, 1.0f, 8, 8}
-    };
-    registry.emplace<Textures>(player, Textures{playerTextures, 0});
-
-    // TickAction to animate the player, simply increment the texture index
-    registry.emplace<TickAction>(player, TickAction{
-        [](entt::registry& registry, entt::entity entity) {
-            auto& textures = registry.get<Textures>(entity);
-            auto& tick = registry.get<TickAction>(entity);
-            textures.current = (textures.current + 1) % textures.textures.size();
-        }, 0.5f
-    });
-
-    _player = player;
 }
 
 void runFactories(entt::registry& registry) {
