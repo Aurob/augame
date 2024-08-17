@@ -207,3 +207,8 @@ struct Textures {
     std::vector<Texture> textures;
     int current;
 };
+
+struct TextureAlts {
+    std::unordered_map<std::string, Textures> alts;
+    std::string current;
+};
