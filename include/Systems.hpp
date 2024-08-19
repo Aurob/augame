@@ -499,6 +499,7 @@ void updateShapes(entt::registry &registry)
         auto &shape = entities.get<Shape>(entity);
         shape.scaled_size.x = (shape.size.x / defaultGSV) * gridSpacingValue / width;
         shape.scaled_size.y = (shape.size.y / defaultGSV) * gridSpacingValue / height;
+        shape.scaled_size.z = (shape.size.z / defaultGSV) * gridSpacingValue / height;
     }
 }
 

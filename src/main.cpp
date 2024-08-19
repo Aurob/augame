@@ -256,30 +256,21 @@ void mainloop(void *arg)
         );
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     }
-    
-    registry.sort<Visible>([&](const entt::entity lhs, const entt::entity rhs) {
-        bool lhs_has_priority = registry.all_of<RenderPriority>(lhs);
-        bool rhs_has_priority = registry.all_of<RenderPriority>(rhs);
-
-        if (lhs_has_priority && rhs_has_priority) {
-            int lhs_priority = registry.get<RenderPriority>(lhs).priority;
-            int rhs_priority = registry.get<RenderPriority>(rhs).priority;
-            if (lhs_priority != rhs_priority) {
-                return lhs_priority > rhs_priority;
-            }
-        }
-
-        const auto& lhsPos = registry.get<Position>(lhs);
-        const auto& rhsPos = registry.get<Position>(rhs);
-        if (lhsPos.x != rhsPos.x) {
-            return lhsPos.x < rhsPos.x;
-        }
-        return lhsPos.y < rhsPos.y;
+    registry.sort<Position>([&](const entt::entity lhs, const entt::entity rhs) {
+        const auto& pos1 = registry.get<Position>(lhs);
+        const auto& shape1 = registry.get<Shape>(lhs);
+        const auto& pos2 = registry.get<Position>(rhs);
+        const auto& shape2 = registry.get<Shape>(rhs);
+        
+        float lhsY = pos1.sy + shape1.scaled_size.y + shape1.scaled_size.z;
+        float rhsY = pos2.sy + shape2.scaled_size.y + shape2.scaled_size.z;
+        
+        return lhsY > rhsY;
     });
 
 
     // Render visible entities
-    auto visible_entities = registry.view<Position, Shape, Visible, RenderPriority>();
+    auto visible_entities = registry.view<Position, Shape, Visible>();
     for(auto& entity : visible_entities) {
 
         auto &position = visible_entities.get<Position>(entity);
@@ -362,7 +353,7 @@ void mainloop(void *arg)
                 current_texture.x, current_texture.y, current_texture.w, current_texture.h);
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         }
-        else if(isDebug && registry.all_of<Color>(entity)) {
+        else if(registry.all_of<Color>(entity)) {
             auto color = registry.get<Color>(entity);
 
             float angle = 0.0f;
@@ -372,8 +363,8 @@ void mainloop(void *arg)
 
             updateUniformsDebug(shaderProgramMap["debug_entity"],
                 color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a,
-                position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
-                shape.scaled_size.x, shape.scaled_size.y, angle);
+                position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y + shape.scaled_size.z,
+                shape.scaled_size.x, shape.scaled_size.y + shape.scaled_size.z, angle);
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         }
         else if(isTeleport) {
