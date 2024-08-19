@@ -16,7 +16,7 @@ void makePlayer(entt::registry& registry) {
     registry.emplace<Player>(player);
     registry.emplace<Position>(player, Position{px, py, pz});
     registry.emplace<Shape>(player, Shape{pw, ph});    
-    registry.emplace<Color>(player, Color{0, 0, 255, 0.0f});
+    registry.emplace<Color>(player, Color{0, 0, 255, 1.0f});
     registry.emplace<Movement>(player,
         Movement{100, 1000, Vector2f{0, 0}, Vector2f{0, 0}, 10, 1, 0});
     registry.emplace<Moveable>(player);
@@ -24,37 +24,38 @@ void makePlayer(entt::registry& registry) {
     registry.emplace<Teleportable>(player);
     registry.emplace<RenderPriority>(player, RenderPriority{1});
     registry.emplace<Test>(player, Test{"Player"});
+    registry.emplace<RenderDebug>(player);
     // Add textures to the player
     // texture full width: 768, full height: 128
     // 6 columns, 1 row
-    std::vector<Textures> textureAlts;
+    // std::vector<Textures> textureAlts;
 
-    const std::vector<std::string> actions = {"Idle", "Run"};
-    const std::vector<std::string> directions = {"Down", "Left", "Right", "Up"};
-    std::unordered_map<std::string, Textures> textureMap;
+    // const std::vector<std::string> actions = {"Idle", "Run"};
+    // const std::vector<std::string> directions = {"Down", "Left", "Right", "Up"};
+    // std::unordered_map<std::string, Textures> textureMap;
 
-    for (size_t actionIndex = 0; actionIndex < actions.size(); ++actionIndex) {
-        for (size_t directionIndex = 0; directionIndex < directions.size(); ++directionIndex) {
-            std::string textureName = std::to_string(actionIndex + 1) + "_Template_" + actions[actionIndex] + "_" + directions[directionIndex] + "-Sheet";
-            std::vector<Texture> textures;
-            for (int i = 0; i < 6; ++i) {
-                textures.push_back({textureName, i / 6.0f, 0.0f, 1.0f / 6, 1.0f, 8, 8});
-            }
-            textureMap[actions[actionIndex] + "_" + directions[directionIndex]] = Textures{textures, 0};
-        }
-    }
+    // for (size_t actionIndex = 0; actionIndex < actions.size(); ++actionIndex) {
+    //     for (size_t directionIndex = 0; directionIndex < directions.size(); ++directionIndex) {
+    //         std::string textureName = std::to_string(actionIndex + 1) + "_Template_" + actions[actionIndex] + "_" + directions[directionIndex] + "-Sheet";
+    //         std::vector<Texture> textures;
+    //         for (int i = 0; i < 6; ++i) {
+    //             textures.push_back({textureName, i / 6.0f, 0.0f, 1.0f / 6, 1.0f, 8, 8});
+    //         }
+    //         textureMap[actions[actionIndex] + "_" + directions[directionIndex]] = Textures{textures, 0};
+    //     }
+    // }
 
-    registry.emplace<TextureAlts>(player, TextureAlts{textureMap, "Idle_Down"});
+    // registry.emplace<TextureAlts>(player, TextureAlts{textureMap, "Idle_Down"});
 
     // TickAction to animate the player, increment the texture index of the current TextureAlts
-    registry.emplace<TickAction>(player, TickAction{
-        [](entt::registry& registry, entt::entity entity) {
-            auto& movement = registry.get<Movement>(entity);
-            auto& textureAlts = registry.get<TextureAlts>(entity);
-            auto& currentTextures = textureAlts.alts[textureAlts.current];
-            currentTextures.current = (currentTextures.current + 1) % currentTextures.textures.size();
-        }, 0.1f
-    });
+    // registry.emplace<TickAction>(player, TickAction{
+    //     [](entt::registry& registry, entt::entity entity) {
+    //         auto& movement = registry.get<Movement>(entity);
+    //         auto& textureAlts = registry.get<TextureAlts>(entity);
+    //         auto& currentTextures = textureAlts.alts[textureAlts.current];
+    //         currentTextures.current = (currentTextures.current + 1) % currentTextures.textures.size();
+    //     }, 0.1f
+    // });
 
     _player = player;
 }
@@ -288,187 +289,16 @@ void runFactories(entt::registry& registry) {
     float pw = playerShape.size.x;
     float ph = playerShape.size.y;
 
-    // Create trees in a circular area around the player with smooth noise offset
-    float treeAreaSize = 30.0f; // Slightly larger than the walls
-    int numLayers = 2; // Increase the number of layers
-    float baseRadius = 35.0f;
-    float radiusIncrement = 15.0f;
-    float treeSize = 10.0f;
-
-    for (int layer = 0; layer < numLayers; ++layer) {
-        float radius = baseRadius + (layer * radiusIncrement);
-        int treesPerLayer = 20 + (layer * 5); // Increase trees per layer as radius increases
-        float angleStep = 2 * M_PI / treesPerLayer;
-
-        for (int i = 0; i < treesPerLayer; ++i) {
-            auto tree = registry.create();
-            float angle = i * angleStep;
-            
-            // Add chaotic noise offset using multiple trigonometric functions
-            float noiseOffset = sin(angle * 7) * 3.0f + cos(angle * 5) * 4.0f + tan(angle * 2) * 2.0f;
-            
-            float radialNoise = sin(radius * 0.5) * 2.0f + cos(radius * 0.3) * 3.0f;
-            float treeX = (radius + noiseOffset + radialNoise) * cos(angle) - treeSize/2;
-            float treeY = (radius + noiseOffset + radialNoise) * sin(angle) - treeSize/2;
-            registry.emplace<Shape>(tree, Shape{treeSize - pw, treeSize - ph});
-            registry.emplace<Position>(tree, Position{treeX, treeY, 0});
-            registry.emplace<Color>(tree, Color{0, 255, 0, 1.0f}); // Green color
-                    registry.emplace<RenderPriority>(tree, RenderPriority{0});
-
-            registry.emplace<Hoverable>(tree);
-            registry.emplace<Interactable>(tree);
-            registry.emplace<RenderDebug>(tree);
-            
-            registry.emplace<Test>(tree, Test{"Tree"});
-
-            registry.emplace<InteractionAction>(tree, InteractionAction{
-                [](entt::registry& registry, entt::entity entity) {
-                    auto& playerPos = registry.get<Position>(_player);
-                    auto& treePos = registry.get<Position>(entity);
-                    auto& treeShape = registry.get<Shape>(entity);
-                    float treeCenterX = treePos.x + treeShape.size.x / 2;
-                    float treeCenterY = treePos.y + treeShape.size.y / 2;
-                    float dx = playerPos.x - treeCenterX;
-                    float dy = playerPos.y - treeCenterY;
-                    float distanceSquared = dx * dx + dy * dy;
-                    float radiusSquared = 2.0f * 2.0f; // Small radius of 2 units
-
-                    if (distanceSquared <= radiusSquared) {
-                        auto& flags = registry.get_or_emplace<Flag>(entity);
-                        flags.flags["Destroy"] = true;
-                    } else {
-                        printf("Tree %d says: I'm a tree!\n", static_cast<int>(entity));
-                    }
-                }
-            });
+    auto wall1 = registry.create();
+    registry.emplace<Position>(wall1, Position{px - 10, py - 10, 0});
+    registry.emplace<Shape>(wall1, Shape{10, 1, 2});
+    registry.emplace<Color>(wall1, Color{100, 100, 100, 1.0f});
+    registry.emplace<Debug>(wall1, Debug{Color{100, 100, 100, 1.0f}});
+    registry.emplace<Collidable>(wall1);
+    registry.emplace<RenderPriority>(wall1, RenderPriority{-1});
 
 
 
-            // Assign a random tree texture
-            std::vector<std::string> treeTextures = {"treeset1", "treeset2", "treeset3"};
-            std::string randomTreeTexture = treeTextures[rand() % treeTextures.size()];
-            
-            auto [texWidth, texHeight] = textureShapeMap[randomTreeTexture];
-            if (texWidth == 0 || texHeight == 0) {
-                continue;
-            }
-
-            int columns, rows;
-            if (randomTreeTexture == "treeset1") {
-                columns = 5;
-                rows = 2;
-            } else if (randomTreeTexture == "treeset2") {
-                columns = 4;
-                rows = 1;
-            } else { // treeset3
-                columns = 6;
-                rows = 1;
-            }
-
-            int treeIndex = rand() % (columns * rows);
-            
-            float treeWidth = 1.0f / columns;
-            float treeHeight = 1.0f / rows;
-            
-            float x = treeWidth * (treeIndex % columns);
-            float y = treeHeight * (treeIndex / columns);
-            registry.emplace<Texture>(tree, Texture{randomTreeTexture, x, y, treeWidth, treeHeight});
-            // Create invisible collidable entity at the base of each tree
-            auto treeBase = registry.create();
-            float baseHeight = treeSize / 5.0f; // Bottom 1/5 of the tree
-            registry.emplace<Shape>(treeBase, Shape{2, .5});
-            registry.emplace<Position>(treeBase, Position{treeX + treeSize/3, treeY + 4*treeSize/5, 0});
-            registry.emplace<Collidable>(treeBase);
-            registry.emplace<Color>(treeBase, Color{0, 0, 0, 1.0f}); // Black color
-            registry.emplace<RenderPriority>(treeBase, RenderPriority{-1});
-            registry.emplace<Debug>(treeBase, Debug{Color{0, 0, 0, 1.0f}}); // Black debug color
-            registry.emplace<Associated>(treeBase, Associated{{tree}, true});
-            registry.emplace<Test>(treeBase, Test{"Tree Base"});
-
-            // Create another entity under and adjacent with same stats
-            auto treeBaseInteraction = registry.create();
-            registry.emplace<Shape>(treeBaseInteraction, Shape{2, 1});
-            registry.emplace<Position>(treeBaseInteraction, Position{treeX + treeSize/3, treeY + 4*treeSize/5 + 0.5f, 0});
-            registry.emplace<Collidable>(treeBaseInteraction, Collidable{.ignorePlayer = true});
-            registry.emplace<Color>(treeBaseInteraction, Color{0, 0, 0, .4f});
-            registry.emplace<RenderPriority>(treeBaseInteraction, RenderPriority{-1});
-            registry.emplace<Debug>(treeBaseInteraction, Debug{Color{0, 0, 0, 1.0f}});
-            registry.emplace<Associated>(treeBaseInteraction, Associated{{tree}, true});
-            registry.emplace<CollisionAction>(treeBaseInteraction);
-            registry.emplace<Flag>(treeBaseInteraction, Flag{});
-            registry.get<Flag>(treeBaseInteraction).flags["Test"] = std::string("Hello World");
-            registry.emplace<Test>(treeBaseInteraction, Test{"Tree Base Interaction"});
-        }
-    }
-
-    // Containing Walls (unchanged)
-    std::vector<entt::entity> walls;
-    for (int i = 0; i < 4; ++i) {
-        auto wall = registry.create();
-        float x, y, width, height;
-
-        if (i == 1 || i == 2) {
-            // Vertical walls
-            x = -40 + (i - 1) * 80; // Adjust position for vertical walls
-            y = -40;
-            width = .5;
-            height = 80.5; // 4x larger
-        } else {
-            // Horizontal walls
-            x = -40;
-            y = -40 + (i / 2) * 80; // Corrected position for horizontal walls
-            width = 80.5; // 4x larger
-            height = .5;
-        }
-
-        registry.emplace<Position>(wall, Position{x, y, 0});
-        registry.emplace<Shape>(wall, Shape{width, height});
-        registry.emplace<Color>(wall, Color{0, 0, 0, 1.0f}); // Black color
-        registry.emplace<Debug>(wall, Debug{Color{0, 0, 0, 1.0f}}); // Black debug color
-        registry.emplace<Collidable>(wall);
-        registry.emplace<RenderPriority>(wall, RenderPriority{1});
-        registry.emplace<Test>(wall, Test{"Wall"});
-        walls.push_back(wall);
-    }
-
-    // Associate each wall to each other
-    for (auto wall : walls) {
-        std::vector<entt::entity> associatedWalls;
-        for (auto otherWall : walls) {
-            if (wall != otherWall) {
-                associatedWalls.push_back(otherWall);
-            }
-        }
-        registry.emplace<Associated>(wall, Associated{associatedWalls});
-    }
-    // Create rooms with doors and add random moveable entities inside each
-    std::vector<entt::entity> rooms;
-    rooms.push_back(createRoom(registry, -20, -20, 25, 25, Color{180, 180, 180, 1.0f}, entt::null, true, 52, rand() % 4 + 1));
-    
-    // Add random entities inside each room
-    for (auto room : rooms) {
-        // Create maze in the last room
-        auto [startPos, endPos] = createMazeInRoom(registry, room);
-    }
-    // Create a teleporter at the end of the maze
-    auto teleporter = registry.create();
-    registry.emplace<Position>(teleporter, Position{0, 30, 0});
-    registry.emplace<Shape>(teleporter, Shape{3, 3});
-    registry.emplace<Color>(teleporter, Color{0, 255, 0, 1.0f});
-    registry.emplace<Debug>(teleporter, Debug{Color{0, 255, 0, 1.0f}});
-    registry.emplace<Hoverable>(teleporter);
-    registry.emplace<Interactable>(teleporter);
-    registry.emplace<InteractionAction>(teleporter, InteractionAction{
-        [](entt::registry& registry, entt::entity entity) {
-            auto view = registry.view<Player, Position>();
-            for (auto [player, position] : view.each()) {
-                position.x += rand_float(-10.0f, 10.0f);
-                position.y += rand_float(-10.0f, 10.0f);
-                printf("Player teleported to (%.2f, %.2f)\n", position.x, position.y);
-            }
-        }
-    });
-    registry.emplace<RenderPriority>(teleporter, RenderPriority{1});
 }
 
 // /**
