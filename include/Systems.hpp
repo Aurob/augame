@@ -72,7 +72,7 @@ void checkCollisions(entt::registry &registry, entt::entity entity, Position &en
 
         Vector2f overlap = positionsCollide(entityPosition, entityShape, _entityPosition, _entityShape, invert);
 
-        if (overlap.x != 0 || overlap.y != 0)
+        if (overlap.x != 0 || overlap.y != 0 && entityPosition.z >= _entityPosition.z)
         {
             if (registry.any_of<Interior>(_entity))
             {
@@ -187,7 +187,6 @@ void updateCollisions(entt::registry &registry)
             if (registry.any_of<Colliding>(entity))
             {
                 auto &colliding = registry.get<Colliding>(entity);
-                colliding.collidables = _collidables;
             }
             else
             {
@@ -227,10 +226,11 @@ void updatePositions(entt::registry &registry)
 
         float posX = (playerPos.x - position.x) * gridSpacingValue + width / 2;
         float posY = (playerPos.y - position.y) * gridSpacingValue + height / 2;
-        float posZ = position.z * gridSpacingValue;
+        float posZ = (playerPos.z - position.z) * gridSpacingValue + height / 2;
         position.sx = (2 * posX / width - 1) / defaultGSV - shape.scaled_size.x * 0.999f;
-        position.sy = (2 * posY / height - 1) / defaultGSV - shape.scaled_size.y * 0.999f;
         position.sz = (2 * posZ / height - 1) / defaultGSV - shape.scaled_size.z * 0.999f;
+        position.sy = (2 * posY / height - 1) / defaultGSV - shape.scaled_size.y * 0.999f;
+        position.sy -= position.sz;
 
         bool isWithinBounds = (entity == _player) || (position.sx + shape.scaled_size.x * 4 >= -1 && position.sx - shape.scaled_size.x * 4 <= 1 &&
                                                       position.sy + shape.scaled_size.y * 4 >= -1 && position.sy - shape.scaled_size.y * 4 <= 1);
@@ -251,7 +251,7 @@ void updatePositions(entt::registry &registry)
                         shouldBeVisible = true;
                 }
 
-                if (registry.all_of<Inside>(entity))
+                else if (registry.all_of<Inside>(entity))
                 {
                     auto entityInterior = registry.get<Inside>(entity).interior;
                     if (playerInterior == entityInterior)
@@ -260,7 +260,7 @@ void updatePositions(entt::registry &registry)
                     }
                 }
 
-                if (registry.all_of<InteriorPortal>(entity))
+                else if (registry.all_of<InteriorPortal>(entity))
                 {
                     auto &portal = registry.get<InteriorPortal>(entity);
                     if (portal.A == playerInterior || portal.B == playerInterior)
@@ -268,27 +268,33 @@ void updatePositions(entt::registry &registry)
                         shouldBeVisible = true;
                     }
                 }
-                else if (registry.all_of<Associated>(entity))
+                else if (registry.all_of<Associated>(entity) && registry.all_of<Texture>(entity))
                 {
                     auto &associated = registry.get<Associated>(entity);
                     for (auto &assoc_entity : associated.entities)
                     {
                         if (registry.all_of<InteriorPortal>(assoc_entity))
                         {
-                            auto &portal = registry.get<InteriorPortal>(assoc_entity);
-                            if (portal.A == playerInterior || portal.B == playerInterior)
-                            {
-                                shouldBeVisible = true;
-                                break;
-                            }
+                            // auto &portal = registry.get<InteriorPortal>(assoc_entity);
+                            // if (portal.A == playerInterior || portal.B == playerInterior)
+                            // {
+                            shouldBeVisible = true;
+                            // }
                         }
                     }
+                }
+                else {
+                    shouldBeInView = false;
                 }
             }
             else
             {
                 if(registry.all_of<Interior>(entity)) {
                     shouldBeVisible = false;
+
+                    if(registry.all_of<Inside>(entity)) {
+                        shouldBeInView = false;
+                    }
                 }
                 else if (!registry.all_of<Inside>(entity))
                 {
@@ -297,6 +303,8 @@ void updatePositions(entt::registry &registry)
                 else {
                     shouldBeInView = false;
                 }
+
+
 
             }
 

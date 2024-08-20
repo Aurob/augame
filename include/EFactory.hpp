@@ -16,7 +16,7 @@ void makePlayer(entt::registry& registry) {
     registry.emplace<Player>(player);
     registry.emplace<Position>(player, Position{px, py, pz});
     registry.emplace<Shape>(player, Shape{pw, ph});    
-    registry.emplace<Color>(player, Color{0, 0, 255, 1.0f});
+    registry.emplace<Color>(player, Color{0, 0, 255, 0.0f});
     registry.emplace<Movement>(player,
         Movement{100, 1000, Vector2f{0, 0}, Vector2f{0, 0}, 10, 1, 0});
     registry.emplace<Moveable>(player);
@@ -24,38 +24,37 @@ void makePlayer(entt::registry& registry) {
     registry.emplace<Teleportable>(player);
     registry.emplace<RenderPriority>(player, RenderPriority{1});
     registry.emplace<Test>(player, Test{"Player"});
-    registry.emplace<RenderDebug>(player);
     // Add textures to the player
     // texture full width: 768, full height: 128
     // 6 columns, 1 row
-    // std::vector<Textures> textureAlts;
+    std::vector<Textures> textureAlts;
 
-    // const std::vector<std::string> actions = {"Idle", "Run"};
-    // const std::vector<std::string> directions = {"Down", "Left", "Right", "Up"};
-    // std::unordered_map<std::string, Textures> textureMap;
+    const std::vector<std::string> actions = {"Idle", "Run"};
+    const std::vector<std::string> directions = {"Down", "Left", "Right", "Up"};
+    std::unordered_map<std::string, Textures> textureMap;
 
-    // for (size_t actionIndex = 0; actionIndex < actions.size(); ++actionIndex) {
-    //     for (size_t directionIndex = 0; directionIndex < directions.size(); ++directionIndex) {
-    //         std::string textureName = std::to_string(actionIndex + 1) + "_Template_" + actions[actionIndex] + "_" + directions[directionIndex] + "-Sheet";
-    //         std::vector<Texture> textures;
-    //         for (int i = 0; i < 6; ++i) {
-    //             textures.push_back({textureName, i / 6.0f, 0.0f, 1.0f / 6, 1.0f, 8, 8});
-    //         }
-    //         textureMap[actions[actionIndex] + "_" + directions[directionIndex]] = Textures{textures, 0};
-    //     }
-    // }
+    for (size_t actionIndex = 0; actionIndex < actions.size(); ++actionIndex) {
+        for (size_t directionIndex = 0; directionIndex < directions.size(); ++directionIndex) {
+            std::string textureName = std::to_string(actionIndex + 1) + "_Template_" + actions[actionIndex] + "_" + directions[directionIndex] + "-Sheet";
+            std::vector<Texture> textures;
+            for (int i = 0; i < 6; ++i) {
+                textures.push_back({textureName, i / 6.0f, 0.0f, 1.0f / 6, 1.0f, 8, 8});
+            }
+            textureMap[actions[actionIndex] + "_" + directions[directionIndex]] = Textures{textures, 0};
+        }
+    }
 
-    // registry.emplace<TextureAlts>(player, TextureAlts{textureMap, "Idle_Down"});
+    registry.emplace<TextureAlts>(player, TextureAlts{textureMap, "Idle_Down"});
 
     // TickAction to animate the player, increment the texture index of the current TextureAlts
-    // registry.emplace<TickAction>(player, TickAction{
-    //     [](entt::registry& registry, entt::entity entity) {
-    //         auto& movement = registry.get<Movement>(entity);
-    //         auto& textureAlts = registry.get<TextureAlts>(entity);
-    //         auto& currentTextures = textureAlts.alts[textureAlts.current];
-    //         currentTextures.current = (currentTextures.current + 1) % currentTextures.textures.size();
-    //     }, 0.1f
-    // });
+    registry.emplace<TickAction>(player, TickAction{
+        [](entt::registry& registry, entt::entity entity) {
+            auto& movement = registry.get<Movement>(entity);
+            auto& textureAlts = registry.get<TextureAlts>(entity);
+            auto& currentTextures = textureAlts.alts[textureAlts.current];
+            currentTextures.current = (currentTextures.current + 1) % currentTextures.textures.size();
+        }, 0.1f
+    });
 
     _player = player;
 }
@@ -64,9 +63,10 @@ extern entt::entity _player;
 /**
  * @brief Creates a room entity with optional door.
  */
-entt::entity createRoom(entt::registry& registry, float x, float y, float width, float height, Color color, entt::entity parent = entt::null, bool createDoor = false, int priority = 52, int doorPosition = 0) {
+entt::entity createRoom(entt::registry& registry, float x, float y, float z, float width, float height, 
+Color color, entt::entity parent = entt::null, bool createDoor = false, int priority = 52, int doorPosition = 0) {
     auto room = registry.create();
-    registry.emplace<Position>(room, Position{x, y, 0});
+    registry.emplace<Position>(room, Position{x, y, z});
     registry.emplace<Shape>(room, Shape{width, height});
     registry.emplace<Color>(room, color);
     registry.emplace<Interior>(room);
@@ -84,94 +84,48 @@ entt::entity createRoom(entt::registry& registry, float x, float y, float width,
     } else {
         registry.emplace<RenderPriority>(room, RenderPriority{priority});
     }
-
-    if (createDoor) {
-        float doorX, doorY;
-        
-        float doorWidth = 1.5;
-        float doorHeight = 0.25;
-        
-        // Randomly choose horizontal position along the top wall
-        doorX = x + (rand() % static_cast<int>(width - doorWidth));
-        doorY = y + height;
-
-        auto door = registry.create();
-        registry.emplace<Position>(door, Position{doorX, doorY - doorHeight, 0});
-        registry.emplace<Shape>(door, Shape{doorWidth, doorHeight});
-        Color doorColor{static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), 0.0f};
-        registry.emplace<Color>(door, doorColor);
-        registry.emplace<InteriorPortal>(door, InteriorPortal{room, parent});
-        registry.emplace<Collidable>(door);
-        registry.emplace<Debug>(door, Debug{doorColor});
-        registry.emplace<RenderPriority>(door, RenderPriority{priority - 2});
-        if (parent != entt::null) {
-            registry.emplace<Inside>(door, Inside{parent});
+    auto createWall = [&](float posX, float posY, float posZ, float shapeWidth, float shapeHeight, float colorAlpha, bool isInside, bool isCollidable = false) {
+        auto wall = registry.create();
+        registry.emplace<Position>(wall, Position{posX, posY, posZ});
+        registry.emplace<Shape>(wall, Shape{shapeWidth, shapeHeight});
+        Color wallColor{static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), colorAlpha};
+        registry.emplace<Color>(wall, wallColor);
+        registry.emplace<RenderPriority>(wall, RenderPriority{priority - (parent == entt::null)});
+        registry.emplace<Debug>(wall, Debug{wallColor});
+        if (isInside) {
+            registry.emplace<Inside>(wall, Inside{room});
         }
-        // Associate component
-        registry.emplace<Associated>(door, Associated{{room}});
-
-        // Add a door texture entitiy using the Teleport Component with .disabled = true
-        auto doorTexture = registry.create();
-        registry.emplace<Position>(doorTexture, Position{doorX, doorY - 2, 0});
-        registry.emplace<Shape>(doorTexture, Shape{1.5, 2});
-        Color doorTextureColor{static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), 1.0f};
-        registry.emplace<Color>(doorTexture, doorTextureColor);
-        registry.emplace<Texture>(doorTexture, Texture{"door", 0, 0, 1, 1});
-        registry.emplace<RenderPriority>(doorTexture, RenderPriority{-5});
-        registry.emplace<Associated>(doorTexture, Associated{{door}});
-    }
+        if (isCollidable) {
+            registry.emplace<Collidable>(wall);
+            registry.emplace<Associated>(wall, Associated{{room}});
+            if (parent != entt::null) {
+                registry.emplace<Inside>(wall, Inside{parent});
+            }
+        }
+        return wall;
+    };
 
     // Interior Walls
-    // Create the lower wall entity
-    // it has no collidable and is Inside the room
-    auto lower_wall = registry.create();
-    registry.emplace<Position>(lower_wall, Position{x, y + height - height/4});
-    registry.emplace<Shape>(lower_wall, Shape{width, height/4});
-    Color lowerWallColor{static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), 0.9f};
-    registry.emplace<Color>(lower_wall, lowerWallColor);
-    registry.emplace<RenderPriority>(lower_wall, RenderPriority{-4});
-    registry.emplace<Debug>(lower_wall, Debug{lowerWallColor});
-    registry.emplace<Inside>(lower_wall, Inside{room});
-
-    // Create the upper wall entity
-    // it has no collidable and is Inside the room
-    auto upper_wall = registry.create();
-    registry.emplace<Position>(upper_wall, Position{x, y - height/4});
-    registry.emplace<Shape>(upper_wall, Shape{width, height/4});
-    Color upperWallColor{static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), 1.0f};
-    registry.emplace<Color>(upper_wall, upperWallColor);
-    registry.emplace<RenderPriority>(upper_wall, RenderPriority{-4});
-    registry.emplace<Debug>(upper_wall, Debug{upperWallColor});
-    registry.emplace<Inside>(upper_wall, Inside{room});
+    createWall(x, y + height - height / 4, z, width, height / 4, 0.9f, true); // lower wall
+    createWall(x, y - height / 4, z, width, height / 4, 1.0f, true); // upper wall
 
     // Create the outer front wall
-    // it has collidable and is not Inside the room
-    auto front_wall = registry.create();
-    registry.emplace<Position>(front_wall, Position{x, y + height - height/4});
-    registry.emplace<Shape>(front_wall, Shape{width, height/4});
-    Color frontWallColor{static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), 1.0f};
-    registry.emplace<Color>(front_wall, frontWallColor);
-    registry.emplace<RenderPriority>(front_wall, RenderPriority{5});
-    registry.emplace<Debug>(front_wall, Debug{frontWallColor});
-    registry.emplace<Associated>(front_wall, Associated{{room}});
-    
+    createWall(x, y + height - height / 4, z, width, height / 4, 1.0f, false, true); // front wall
+
     // Create the upper part of the roof (1/4 height, slightly transparent)
-    auto roof_upper = registry.create();
-    registry.emplace<Position>(roof_upper, Position{x, y - height/4});
-    registry.emplace<Shape>(roof_upper, Shape{width, height/4});
-    Color roofUpperColor{static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), 0.7f};
-    registry.emplace<Color>(roof_upper, roofUpperColor);
-    registry.emplace<RenderPriority>(roof_upper, RenderPriority{-4});
-    registry.emplace<Debug>(roof_upper, Debug{roofUpperColor});
+    createWall(x, y - height / 4, z, width, height / 4, 0.7f, parent != entt::null); // roof upper
 
     // Create the lower part of the roof (3/4 height, opaque)
     auto roof_lower = registry.create();
-    registry.emplace<Position>(roof_lower, Position{x, y});
+    registry.emplace<Position>(roof_lower, Position{x, y, z});
     registry.emplace<Shape>(roof_lower, Shape{width, height * 3/4});
     Color roofLowerColor{static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), 1.0f};
     registry.emplace<Color>(roof_lower, roofLowerColor);
-    registry.emplace<RenderPriority>(roof_lower, RenderPriority{-4});
+    registry.emplace<RenderPriority>(roof_lower, RenderPriority{priority - (parent == entt::null)});
     registry.emplace<Debug>(roof_lower, Debug{roofLowerColor});
+    if (parent != entt::null) {
+        registry.emplace<Inside>(roof_lower, Inside{parent});
+    }
 
     return room;
 }
@@ -289,17 +243,216 @@ void runFactories(entt::registry& registry) {
     float pw = playerShape.size.x;
     float ph = playerShape.size.y;
 
-    auto wall1 = registry.create();
-    registry.emplace<Position>(wall1, Position{px - 10, py - 10, 0});
-    registry.emplace<Shape>(wall1, Shape{10, 1, 2});
-    registry.emplace<Color>(wall1, Color{100, 100, 100, 1.0f});
-    registry.emplace<Debug>(wall1, Debug{Color{100, 100, 100, 1.0f}});
-    registry.emplace<Collidable>(wall1);
-    registry.emplace<RenderPriority>(wall1, RenderPriority{-1});
+    // Create trees in a circular area around the player with smooth noise offset
+    float treeAreaSize = 30.0f; // Slightly larger than the walls
+    int numLayers = 2; // Increase the number of layers
+    float baseRadius = 35.0f;
+    float radiusIncrement = 15.0f;
+    float treeSize = 10.0f;
+
+    for (int layer = 0; layer < numLayers; ++layer) {
+        float radius = baseRadius + (layer * radiusIncrement);
+        int treesPerLayer = 20 + (layer * 5); // Increase trees per layer as radius increases
+        float angleStep = 2 * M_PI / treesPerLayer;
+
+        for (int i = 0; i < treesPerLayer; ++i) {
+            auto tree = registry.create();
+            float angle = i * angleStep;
+            
+            // Add chaotic noise offset using multiple trigonometric functions
+            float noiseOffset = sin(angle * 7) * 3.0f + cos(angle * 5) * 4.0f + tan(angle * 2) * 2.0f;
+            
+            float radialNoise = sin(radius * 0.5) * 2.0f + cos(radius * 0.3) * 3.0f;
+            float treeX = (radius + noiseOffset + radialNoise) * cos(angle) - treeSize/2;
+            float treeY = (radius + noiseOffset + radialNoise) * sin(angle) - treeSize/2;
+            registry.emplace<Shape>(tree, Shape{treeSize - pw, treeSize - ph});
+            registry.emplace<Position>(tree, Position{treeX, treeY, 0});
+            registry.emplace<Color>(tree, Color{0, 255, 0, 1.0f}); // Green color
+                    registry.emplace<RenderPriority>(tree, RenderPriority{0});
+
+            registry.emplace<Hoverable>(tree);
+            registry.emplace<Interactable>(tree);
+            registry.emplace<RenderDebug>(tree);
+            
+            registry.emplace<Test>(tree, Test{"Tree"});
+
+            registry.emplace<InteractionAction>(tree, InteractionAction{
+                [](entt::registry& registry, entt::entity entity) {
+                    auto& playerPos = registry.get<Position>(_player);
+                    auto& treePos = registry.get<Position>(entity);
+                    auto& treeShape = registry.get<Shape>(entity);
+                    float treeCenterX = treePos.x + treeShape.size.x / 2;
+                    float treeCenterY = treePos.y + treeShape.size.y / 2;
+                    float dx = playerPos.x - treeCenterX;
+                    float dy = playerPos.y - treeCenterY;
+                    float distanceSquared = dx * dx + dy * dy;
+                    float radiusSquared = 2.0f * 2.0f; // Small radius of 2 units
+
+                    if (distanceSquared <= radiusSquared) {
+                        auto& flags = registry.get_or_emplace<Flag>(entity);
+                        flags.flags["Destroy"] = true;
+                    } else {
+                        printf("Tree %d says: I'm a tree!\n", static_cast<int>(entity));
+                    }
+                }
+            });
 
 
 
+            // Assign a random tree texture
+            std::vector<std::string> treeTextures = {"treeset1", "treeset2", "treeset3"};
+            std::string randomTreeTexture = treeTextures[rand() % treeTextures.size()];
+            
+            auto [texWidth, texHeight] = textureShapeMap[randomTreeTexture];
+            if (texWidth == 0 || texHeight == 0) {
+                continue;
+            }
+
+            int columns, rows;
+            if (randomTreeTexture == "treeset1") {
+                columns = 5;
+                rows = 2;
+            } else if (randomTreeTexture == "treeset2") {
+                columns = 4;
+                rows = 1;
+            } else { // treeset3
+                columns = 6;
+                rows = 1;
+            }
+
+            int treeIndex = rand() % (columns * rows);
+            
+            float treeWidth = 1.0f / columns;
+            float treeHeight = 1.0f / rows;
+            
+            float x = treeWidth * (treeIndex % columns);
+            float y = treeHeight * (treeIndex / columns);
+            registry.emplace<Texture>(tree, Texture{randomTreeTexture, x, y, treeWidth, treeHeight});
+            // Create invisible collidable entity at the base of each tree
+            auto treeBase = registry.create();
+            float baseHeight = treeSize / 5.0f; // Bottom 1/5 of the tree
+            registry.emplace<Shape>(treeBase, Shape{2, .5});
+            registry.emplace<Position>(treeBase, Position{treeX + treeSize/3, treeY + 4*treeSize/5, 0});
+            registry.emplace<Collidable>(treeBase);
+            registry.emplace<Color>(treeBase, Color{0, 0, 0, 1.0f}); // Black color
+            registry.emplace<RenderPriority>(treeBase, RenderPriority{-1});
+            registry.emplace<Debug>(treeBase, Debug{Color{0, 0, 0, 1.0f}}); // Black debug color
+            registry.emplace<Associated>(treeBase, Associated{{tree}, true});
+            registry.emplace<Test>(treeBase, Test{"Tree Base"});
+
+            // Create another entity under and adjacent with same stats
+            auto treeBaseInteraction = registry.create();
+            registry.emplace<Shape>(treeBaseInteraction, Shape{2, 1});
+            registry.emplace<Position>(treeBaseInteraction, Position{treeX + treeSize/3, treeY + 4*treeSize/5 + 0.5f, 0});
+            registry.emplace<Collidable>(treeBaseInteraction, Collidable{.ignorePlayer = true});
+            registry.emplace<Color>(treeBaseInteraction, Color{0, 0, 0, .4f});
+            registry.emplace<RenderPriority>(treeBaseInteraction, RenderPriority{-1});
+            registry.emplace<Debug>(treeBaseInteraction, Debug{Color{0, 0, 0, 1.0f}});
+            registry.emplace<Associated>(treeBaseInteraction, Associated{{tree}, true});
+            registry.emplace<CollisionAction>(treeBaseInteraction);
+            registry.emplace<Flag>(treeBaseInteraction, Flag{});
+            registry.get<Flag>(treeBaseInteraction).flags["Test"] = std::string("Hello World");
+            registry.emplace<Test>(treeBaseInteraction, Test{"Tree Base Interaction"});
+        }
+    }
+
+    // Create rooms with doors and add random moveable entities inside each
+    std::vector<entt::entity> rooms;
+    auto outerRoom = createRoom(registry, -20, -20, 0.0f, 25, 25, Color{180, 180, 180, 1.0f}, entt::null, true, 52, rand() % 4 + 1);
+    rooms.push_back(outerRoom);
+    
+    // Create a slightly smaller room inside the first room
+    float innerWidth = 15;
+    float innerHeight = 15;
+    float innerX = -20 + (25 - innerWidth) / 2;  // Center the inner room horizontally
+    float innerY = -20 + (25 - innerHeight) / 2;  // Center the inner room vertically
+    auto innerRoom = createRoom(registry, innerX, innerY, 0.0f, innerWidth, innerHeight, Color{200, 200, 200, 1.0f}, outerRoom, true, -1, rand() % 4 + 1);
+    rooms.push_back(innerRoom);
+
+    // create another room above the first room, not inside, but the same size and position as the inside room
+    auto aboveRoom = createRoom(registry, innerX, -10, 25/4, innerWidth, innerHeight, Color{200, 200, 200, 1.0f}, entt::null, true, 0, rand() % 4 + 1);
+    rooms.push_back(aboveRoom);
+
+    float doorX, doorY;
+    
+    float doorWidth = 1.5;
+    float doorHeight = 0.25;
+    
+    // Randomly choose horizontal position along the top wall
+    doorX = -15; 
+    doorY = -20 + 25;
+
+    auto door = registry.create();
+    registry.emplace<Position>(door, Position{doorX, doorY - doorHeight, 0});
+    registry.emplace<Shape>(door, Shape{doorWidth, doorHeight});
+    registry.emplace<InteriorPortal>(door, InteriorPortal{rooms[0], entt::null});
+    registry.emplace<Collidable>(door);
+    // Associate component
+
+    // Add a door texture entitiy using the Teleport Component with .disabled = true
+    auto doorTexture = registry.create();
+    registry.emplace<Position>(doorTexture, Position{doorX, doorY - 2, 0});
+    registry.emplace<Shape>(doorTexture, Shape{1.5, 2});
+    Color doorTextureColor{static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), 1.0f};
+    registry.emplace<Color>(doorTexture, doorTextureColor);
+    registry.emplace<Texture>(doorTexture, Texture{"door", 0, 0, 1, 1});
+    registry.emplace<RenderPriority>(doorTexture, RenderPriority{10});
+    registry.emplace<Associated>(doorTexture, Associated{{door}});
+
+    // Add a door to the interior room
+    doorX = innerX + innerWidth;
+    doorY = innerY + innerHeight / 2 - doorHeight / 2;
+
+    auto innerDoor = registry.create();
+    registry.emplace<Position>(innerDoor, Position{doorX, doorY, 0});
+    registry.emplace<Shape>(innerDoor, Shape{doorWidth, doorHeight});
+    registry.emplace<InteriorPortal>(innerDoor, InteriorPortal{innerRoom, outerRoom});
+    registry.emplace<Collidable>(innerDoor);
+    registry.emplace<Inside>(innerDoor, Inside{outerRoom});
+
+    // Add a door texture entitiy using the Teleport Component with .disabled = true
+    auto innerDoorTexture = registry.create();
+    registry.emplace<Position>(innerDoorTexture, Position{doorX, doorY, 0});
+    registry.emplace<Shape>(innerDoorTexture, Shape{2, 1});
+    Color innerDoorTextureColor{static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), 1.0f};
+    registry.emplace<Color>(innerDoorTexture, innerDoorTextureColor);
+    registry.emplace<Texture>(innerDoorTexture, Texture{"door", 0, 0, 1, 1});
+    registry.emplace<RenderPriority>(innerDoorTexture, RenderPriority{-7});
+    registry.emplace<Associated>(innerDoorTexture, Associated{{innerDoor}});
+    registry.emplace<Inside>(innerDoorTexture, Inside{outerRoom});
+
+    // Add another to inside room, but place inside the inside room at the center and make it go to the above room
+    doorX = innerX + innerWidth / 2 - doorWidth / 2;
+    doorY = innerY + 1;
+    auto innerDoor2 = registry.create();
+    registry.emplace<Position>(innerDoor2, Position{doorX, doorY, 0});
+    registry.emplace<Shape>(innerDoor2, Shape{doorWidth, doorHeight});
+    registry.emplace<InteriorPortal>(innerDoor2, InteriorPortal{aboveRoom, innerRoom});
+    registry.emplace<Collidable>(innerDoor2);
+    // Associate component
+    registry.emplace<Inside>(innerDoor2, Inside{innerRoom});
+    
+    // Add a door texture entitiy using the Teleport Component with .disabled = true
+    auto innerDoorTexture2 = registry.create();
+    registry.emplace<Position>(innerDoorTexture2, Position{doorX, doorY, 0});
+    registry.emplace<Shape>(innerDoorTexture2, Shape{2, 1});
+    Color innerDoorTextureColor2{static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), 1.0f};
+    registry.emplace<Color>(innerDoorTexture2, innerDoorTextureColor2);
+    registry.emplace<Texture>(innerDoorTexture2, Texture{"door", 0, 0, 1, 1});
+    registry.emplace<RenderPriority>(innerDoorTexture2, RenderPriority{-7});
+    registry.emplace<Associated>(innerDoorTexture2, Associated{{innerDoor2}});
+    registry.emplace<Inside>(innerDoorTexture2, Inside{innerRoom});
+    
 }
+
+
+
+
+
+
+
+
+
 
 // /**
 //  * @brief Creates a basic entity with position and shape components.
