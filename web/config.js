@@ -41,6 +41,14 @@ var CONFIG = {
         {
             "name": "treeset2",
             "path": "resources/treeset2.png"
+        },
+        {
+            "name": "ladder_up",
+            "path": "resources/ladder_up.png"
+        },
+        {
+            "name": "ladder_down",
+            "path": "resources/ladder_down.png"
         }
     ]
 };

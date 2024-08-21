@@ -161,6 +161,17 @@ struct Linked {
 struct Associated {
     std::vector<entt::entity> entities;
     bool destroy;
+
+    template<typename... Components>
+    std::vector<entt::entity> filterByComponents(entt::registry &registry) const {
+        std::vector<entt::entity> filteredEntities;
+        for (auto entity : entities) {
+            if (registry.all_of<Components...>(entity)) {
+                filteredEntities.push_back(entity);
+            }
+        }
+        return filteredEntities;
+    }
 };
 
 struct Flag {
@@ -217,4 +228,8 @@ struct TextureAlts {
 struct CollideColorAlt {
     Color inactive;
     Color active;
+};
+
+struct InteriorPortalTexture {
+    entt::entity portal;
 };

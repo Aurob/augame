@@ -133,15 +133,15 @@ void updateFrame(context *ctx)
 
     // Update entity movement and interactions
     updateFlags(registry);
-    updateTeleporters(registry);
+    updateCollisions(registry);
+    updateMovement(registry);
     updateShapes(registry);
+    updatePositions(registry);
+    updateTeleporters(registry);
     updateLinkedEntities(registry);
     updateOther(registry);
     updatePaths(registry);
     updateInteractions(registry);
-    updatePositions(registry);
-    updateMovement(registry);
-    updateCollisions(registry);
 }
 
 bool js_loaded() {
@@ -366,8 +366,8 @@ void mainloop(void *arg)
 
             updateUniformsDebug(shaderProgramMap["debug_entity"],
                 color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a,
-                position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y + shape.scaled_size.z,
-                shape.scaled_size.x, shape.scaled_size.y + shape.scaled_size.z, angle);
+                position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
+                shape.scaled_size.x, shape.scaled_size.y, angle);
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         }
         else if(isTeleport) {

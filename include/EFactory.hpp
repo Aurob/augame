@@ -113,16 +113,9 @@ Color color, entt::entity parent = entt::null, bool createDoor = false, int prio
     createWall(x, y + height-(height/4), z, width, height / 4, 1.0f, parent, false, basePriority + priority - 1, darkerColor); // front wall
 
     // back wall inner
-    createWall(x, y - (height/4), z + 0.1f, width, height / 4, 1.0f, room, false, basePriority + priority  +  1, color); // back wall
-
-
+    createWall(x, y - (height/4), z, width, height / 4, 1.0f, room, false, basePriority + priority  +  1, darkerColor); // back wall
     // front wall inner
-    auto front_inner = createWall(x, y + height-(height/4), z + 0.1f, width, height / 4, 1.0f, room, false, basePriority + priority + 1, darkerColor); // front wall
-    // Add CollideColorAlt
-    auto _darkerColor = darkerColor;
-    _darkerColor.a = 0.0f;
-    registry.emplace_or_replace<CollideColorAlt>(front_inner, CollideColorAlt{darkerColor, _darkerColor});
-
+    auto front_inner = createWall(x, y + height-(height/4), z, width, height / 4, 1.0f, room, false, basePriority + priority + 1, darkerColor); // front wall
     // Create the lower part of the roof (3/4 height, opaque)
     auto roof_lower = registry.create();
     registry.emplace_or_replace<Position>(roof_lower, Position{x, y, z});
@@ -180,6 +173,23 @@ void runFactories(entt::registry& registry) {
         innerWidth, innerHeight, Color{200, 200, 200, 1.0f}, entt::null, true, 10);
     rooms.push_back(aboveRoom);
 
+    // add 10 entities into the above room
+    for (int i = 0; i < 10; ++i) {
+        float x = innerX + rand_float(0, innerWidth);
+        float y = -20 + (20 - innerHeight) / 2 + rand_float(0, innerHeight);
+        auto entity = registry.create();
+        registry.emplace_or_replace<Position>(entity, Position{x, y, 25/4});
+        registry.emplace_or_replace<Shape>(entity, Shape{1, 1});
+        registry.emplace_or_replace<Color>(entity, Color{255, 0, 0, 1.0f});
+        registry.emplace_or_replace<RenderPriority>(entity, RenderPriority{playerPriority - 1});
+        registry.emplace_or_replace<Debug>(entity, Debug{Color{0, 0, 0, 1.0f}});
+        registry.emplace_or_replace<Inside>(entity, Inside{aboveRoom});
+        registry.emplace_or_replace<Collidable>(entity);
+        registry.emplace_or_replace<Moveable>(entity);
+        registry.emplace_or_replace<Movement>(entity, Movement{100, 1000, Vector2f{0, 0}, Vector2f{0, 0}, 10, 1, 0});
+        registry.emplace_or_replace<Test>(entity, Test{"test entity"});
+    }
+
     float doorX, doorY;
     
     float doorWidth = 1.5;
@@ -203,6 +213,7 @@ void runFactories(entt::registry& registry) {
     Color doorTextureColor{static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), 1.0f};
     registry.emplace_or_replace<Color>(doorTexture, doorTextureColor);
     registry.emplace_or_replace<Texture>(doorTexture, Texture{"door", 0, 0, 1, 1});
+    registry.emplace<InteriorPortalTexture>(doorTexture, InteriorPortalTexture{door});
     registry.emplace_or_replace<RenderPriority>(doorTexture, RenderPriority{2});
     registry.emplace_or_replace<Associated>(doorTexture, Associated{{door}});
 
@@ -224,6 +235,7 @@ void runFactories(entt::registry& registry) {
     Color innerDoorTextureColor{static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), 1.0f};
     registry.emplace_or_replace<Color>(innerDoorTexture, innerDoorTextureColor);
     registry.emplace_or_replace<Texture>(innerDoorTexture, Texture{"door", 0, 0, 1, 1});
+    registry.emplace<InteriorPortalTexture>(innerDoorTexture, InteriorPortalTexture{innerDoor});
     registry.emplace_or_replace<RenderPriority>(innerDoorTexture, RenderPriority{3});
     registry.emplace_or_replace<Associated>(innerDoorTexture, Associated{{innerDoor}});
     registry.emplace_or_replace<Inside>(innerDoorTexture, Inside{outerRoom});
@@ -236,18 +248,19 @@ void runFactories(entt::registry& registry) {
     registry.emplace_or_replace<Shape>(innerDoor2, Shape{doorWidth, doorHeight});
     registry.emplace_or_replace<InteriorPortal>(innerDoor2, InteriorPortal{aboveRoom, innerRoom});
     registry.emplace_or_replace<Collidable>(innerDoor2);
-    // Associate component
     registry.emplace_or_replace<Inside>(innerDoor2, Inside{innerRoom});
     
-    // Add a door texture entitiy using the Teleport Component with .disabled = true
     auto innerDoorTexture2 = registry.create();
     registry.emplace_or_replace<Position>(innerDoorTexture2, Position{doorX, doorY, 0});
-    registry.emplace_or_replace<Shape>(innerDoorTexture2, Shape{2, 1});
+    registry.emplace_or_replace<Shape>(innerDoorTexture2, Shape{2, 2});
     Color innerDoorTextureColor2{static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), static_cast<float>(rand() % 256), 1.0f};
     registry.emplace_or_replace<Color>(innerDoorTexture2, innerDoorTextureColor2);
-    registry.emplace_or_replace<Texture>(innerDoorTexture2, Texture{"door", 0, 0, 1, 1});
+    registry.emplace_or_replace<Textures>(innerDoorTexture2, Textures{{{"ladder_up", 0, 0, 1, 1}, {"ladder_down", 0, 0, 1, 1}}, 0});
+    registry.emplace<InteriorPortalTexture>(innerDoorTexture2, InteriorPortalTexture{innerDoor2});
     registry.emplace_or_replace<RenderPriority>(innerDoorTexture2, RenderPriority{playerPriority - 1});
     registry.emplace_or_replace<Associated>(innerDoorTexture2, Associated{{innerDoor2}});
     registry.emplace_or_replace<Inside>(innerDoorTexture2, Inside{innerRoom});
+
+    registry.emplace_or_replace<Associated>(innerDoor2, Associated{{innerDoorTexture2}});
     
 }

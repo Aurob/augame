@@ -16,7 +16,7 @@ extern entt::entity _player;
 
 void updateMovement(entt::registry &registry)
 {
-    auto view = registry.view<Movement, Position>();
+    auto view = registry.view<Movement, Position, InView>();
 
     for (auto entity : view)
     {
@@ -72,7 +72,7 @@ void checkCollisions(entt::registry &registry, entt::entity entity, Position &en
 
         Vector2f overlap = positionsCollide(entityPosition, entityShape, _entityPosition, _entityShape, invert);
 
-        if (overlap.x != 0 || overlap.y != 0 && entityPosition.z >= _entityPosition.z)
+        if (overlap.x != 0 || overlap.y != 0)
         {
             if (registry.any_of<Interior>(_entity))
             {
@@ -117,11 +117,26 @@ void checkCollisions(entt::registry &registry, entt::entity entity, Position &en
                     auto newInterior = (interiorPortal.A != currentInterior) ? interiorPortal.A : interiorPortal.B;
                     if (newInterior != entt::null)
                     {
+                        printf("Entering interior %d\n", newInterior);
                         registry.emplace_or_replace<Inside>(entity, Inside{newInterior});
                     }
                     else
                     {
+                        printf("Exiting interior %d\n", currentInterior);
                         registry.remove<Inside>(entity);
+                    }
+                    if (entity == _player && registry.any_of<Associated>(_entity))
+                    {
+                        auto &associated = registry.get<Associated>(_entity);
+                        for (auto assoc_entity : associated.entities)
+                        {
+                            if (registry.any_of<InteriorPortalTexture>(assoc_entity) && registry.any_of<Textures>(assoc_entity))
+                            {
+                                printf("Changing texture\n");
+                                auto &textures = registry.get<Textures>(assoc_entity);
+                                textures.current = (textures.current + 1) % textures.textures.size();
+                            }
+                        }
                     }
                 }
                 skipCollide = true;
@@ -199,6 +214,28 @@ void updateCollisions(entt::registry &registry)
                 entityPosition.x += overlap.x;
                 entityPosition.y += overlap.y;
             }
+
+            // Apply movement to colliding entities
+            for (auto _entity : _collidables)
+            {
+                if (registry.any_of<Movement>(_entity))
+                {
+                    auto &movement = registry.get<Movement>(entity);
+                    auto &_movement = registry.get<Movement>(_entity);
+
+                    // if (registry.any_of<Moveable>(entity))
+                    // {
+                    //     movement.velocity += _movement.velocity * 0.5f;
+                    //     movement.acceleration += _movement.acceleration * 0.5f;
+                    // }
+
+                    if (registry.any_of<Moveable>(_entity))
+                    {
+                        _movement.velocity += movement.velocity * 0.5f;
+                        _movement.acceleration += movement.acceleration * 0.5f;
+                    }
+                }
+            }
         }
         else
         {
@@ -230,7 +267,7 @@ void updatePositions(entt::registry &registry)
         position.sx = (2 * posX / width - 1) / defaultGSV - shape.scaled_size.x * 0.999f;
         position.sz = (2 * posZ / height - 1) / defaultGSV - shape.scaled_size.z * 0.999f;
         position.sy = (2 * posY / height - 1) / defaultGSV - shape.scaled_size.y * 0.999f;
-        position.sy -= position.sz;
+        // position.sy -= position.sz;
 
         bool isWithinBounds = (entity == _player) || (position.sx + shape.scaled_size.x * 4 >= -1 && position.sx - shape.scaled_size.x * 4 <= 1 &&
                                                       position.sy + shape.scaled_size.y * 4 >= -1 && position.sy - shape.scaled_size.y * 4 <= 1);
@@ -253,62 +290,89 @@ void updatePositions(entt::registry &registry)
 
                 else if (registry.all_of<Inside>(entity))
                 {
-
                     
-                    auto entityInterior = registry.get<Inside>(entity).interior;
-                    if (playerInterior == entityInterior)
-                    {
+                    if (registry.all_of<InteriorPortal>(entity)) {
+                        auto &portal = registry.get<InteriorPortal>(entity);
                         shouldBeVisible = true;
-                    }
-                    else if (registry.all_of<Associated>(entity))
-                    {
-                        auto &associated = registry.get<Associated>(entity);
-                        for (auto &assoc_entity : associated.entities)
-                        {
-                            if (registry.all_of<InteriorPortal>(assoc_entity))
-                            {
-                                auto &portal = registry.get<InteriorPortal>(assoc_entity);
-                                if (portal.A == playerInterior || portal.B == playerInterior)
-                                {
-                                    shouldBeVisible = true;
-                                }
-                                else {
-                                    shouldBeInView = false;
-                                }
-                            }
+                        if (portal.A == playerInterior || portal.B == playerInterior) {
+                            // No additional action needed
+                        } else {
+                            shouldBeInView = false;
+                        }
+                    } else if (registry.all_of<InteriorPortalTexture>(entity)) {
+                        auto &portalTexture = registry.get<InteriorPortalTexture>(entity);
+                        auto &portal = registry.get<InteriorPortal>(portalTexture.portal);
+                        if (portal.A == playerInterior || portal.B == playerInterior) {
+                            shouldBeVisible = true;
+                        } else {
+                            shouldBeInView = false;
+                        }
+                    } else {
+                        auto entityInterior = registry.get<Inside>(entity).interior;
+                        if (playerInterior == entityInterior) {
+                            shouldBeVisible = true;
+                        }
+                        else {
+                            shouldBeInView = false;
                         }
                     }
+                    // else {
+                    //     auto entityInterior = registry.get<Inside>(entity).interior;
+                    //     if (playerInterior == entityInterior)
+                    //     {
+                    //         shouldBeVisible = true;
+                    //     }
+                    // }
+                    
+                    // else if (registry.all_of<Associated>(entity))
+                    // {
+                    //     auto &associated = registry.get<Associated>(entity);
+                    //     for (auto &assoc_entity : associated.entities)
+                    //     {
+                    //         if (registry.all_of<InteriorPortal>(assoc_entity))
+                    //         {
+                    //             auto &portal = registry.get<InteriorPortal>(assoc_entity);
+                    //             if (portal.A == playerInterior || portal.B == playerInterior)
+                    //             {
+                    //                 shouldBeVisible = true;
+                    //             }
+                    //             else {
+                    //                 shouldBeInView = false;
+                    //             }
+                    //         }
+                    //     }
+                    // }
                 }
 
-                else if (registry.all_of<InteriorPortal>(entity))
-                {
-                    auto &portal = registry.get<InteriorPortal>(entity);
-                    if (portal.A == playerInterior || portal.B == playerInterior)
-                    {
-                        shouldBeVisible = true;
-                    }
-                }
-                else if (registry.all_of<Associated>(entity))
-                {
-                    auto &associated = registry.get<Associated>(entity);
-                    for (auto &assoc_entity : associated.entities)
-                    {
-                        if (registry.all_of<InteriorPortal>(assoc_entity))
-                        {
-                            auto &portal = registry.get<InteriorPortal>(assoc_entity);
-                            if (portal.A == playerInterior || portal.B == playerInterior)
-                            {
-                                shouldBeVisible = true;
-                            }
-                            else {
-                                shouldBeInView = false;
-                            }
-                        }
-                    }
-                }
-                else {
-                    shouldBeInView = false;
-                }
+                // else if (registry.all_of<InteriorPortal>(entity))
+                // {
+                //     auto &portal = registry.get<InteriorPortal>(entity);
+                //     if (portal.A == playerInterior || portal.B == playerInterior)
+                //     {
+                //         shouldBeVisible = true;
+                //     }
+                //     else {
+                //         shouldBeInView = false;
+                //     }
+                // }
+                // else if (registry.all_of<Associated>(entity))
+                // {
+                //     auto &associated = registry.get<Associated>(entity);
+                //     for (auto &assoc_entity : associated.entities)
+                //     {
+                //         if (registry.all_of<InteriorPortal>(assoc_entity))
+                //         {
+                //             auto &portal = registry.get<InteriorPortal>(assoc_entity);
+                //             if (portal.A == playerInterior || portal.B == playerInterior)
+                //             {
+                //                 shouldBeVisible = true;
+                //             }
+                //         }
+                //     }
+                // }
+                // else {
+                //     shouldBeInView = false;
+                // }
             }
             else
             {
