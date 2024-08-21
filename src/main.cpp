@@ -256,16 +256,16 @@ void mainloop(void *arg)
         );
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     }
-    registry.sort<Position>([&](const entt::entity lhs, const entt::entity rhs) {
-        const auto& pos1 = registry.get<Position>(lhs);
-        const auto& shape1 = registry.get<Shape>(lhs);
-        const auto& pos2 = registry.get<Position>(rhs);
-        const auto& shape2 = registry.get<Shape>(rhs);
-        
-        float lhsY = pos1.sy + shape1.scaled_size.y + shape1.scaled_size.z;
-        float rhsY = pos2.sy + shape2.scaled_size.y + shape2.scaled_size.z;
-        
-        return lhsY > rhsY;
+    registry.sort<Visible>([&](const entt::entity lhs, const entt::entity rhs) {
+        if (registry.all_of<RenderPriority>(lhs) && registry.all_of<RenderPriority>(rhs)) {
+            const auto& priority1 = registry.get<RenderPriority>(lhs);
+            const auto& priority2 = registry.get<RenderPriority>(rhs);
+            if (priority1.priority != priority2.priority) {
+                return priority1.priority < priority2.priority;
+            }
+        }
+
+        return lhs < rhs;
     });
 
 
@@ -348,9 +348,12 @@ void mainloop(void *arg)
 
             updateUniformsTexture(shaderProgramMap["texture"], 
                 textureIDMap[current_texture.name],
-                position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
-                shape.scaled_size.x * current_texture.scalex, shape.scaled_size.y * current_texture.scaley,
-                current_texture.x, current_texture.y, current_texture.w, current_texture.h);
+                position.sx + playerShape.scaled_size.x,
+                position.sy + playerShape.scaled_size.y,
+                shape.scaled_size.x * current_texture.scalex, 
+                shape.scaled_size.y * current_texture.scaley,
+                current_texture.x, current_texture.y, 
+                current_texture.w, current_texture.h);
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         }
         else if(registry.all_of<Color>(entity)) {
