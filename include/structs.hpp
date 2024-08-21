@@ -206,9 +206,15 @@ struct Texture {
 struct Textures {
     std::vector<Texture> textures;
     int current;
+    Texture metadata;
 };
 
 struct TextureAlts {
     std::unordered_map<std::string, Textures> alts;
     std::string current;
+};
+
+struct CollideColorAlt {
+    Color inactive;
+    Color active;
 };

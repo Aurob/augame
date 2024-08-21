@@ -253,10 +253,30 @@ void updatePositions(entt::registry &registry)
 
                 else if (registry.all_of<Inside>(entity))
                 {
+
+                    
                     auto entityInterior = registry.get<Inside>(entity).interior;
                     if (playerInterior == entityInterior)
                     {
                         shouldBeVisible = true;
+                    }
+                    else if (registry.all_of<Associated>(entity))
+                    {
+                        auto &associated = registry.get<Associated>(entity);
+                        for (auto &assoc_entity : associated.entities)
+                        {
+                            if (registry.all_of<InteriorPortal>(assoc_entity))
+                            {
+                                auto &portal = registry.get<InteriorPortal>(assoc_entity);
+                                if (portal.A == playerInterior || portal.B == playerInterior)
+                                {
+                                    shouldBeVisible = true;
+                                }
+                                else {
+                                    shouldBeInView = false;
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -268,18 +288,21 @@ void updatePositions(entt::registry &registry)
                         shouldBeVisible = true;
                     }
                 }
-                else if (registry.all_of<Associated>(entity) && registry.all_of<Texture>(entity))
+                else if (registry.all_of<Associated>(entity))
                 {
                     auto &associated = registry.get<Associated>(entity);
                     for (auto &assoc_entity : associated.entities)
                     {
                         if (registry.all_of<InteriorPortal>(assoc_entity))
                         {
-                            // auto &portal = registry.get<InteriorPortal>(assoc_entity);
-                            // if (portal.A == playerInterior || portal.B == playerInterior)
-                            // {
-                            shouldBeVisible = true;
-                            // }
+                            auto &portal = registry.get<InteriorPortal>(assoc_entity);
+                            if (portal.A == playerInterior || portal.B == playerInterior)
+                            {
+                                shouldBeVisible = true;
+                            }
+                            else {
+                                shouldBeInView = false;
+                            }
                         }
                     }
                 }
@@ -507,7 +530,6 @@ void updateShapes(entt::registry &registry)
         auto &shape = entities.get<Shape>(entity);
         shape.scaled_size.x = (shape.size.x / defaultGSV) * gridSpacingValue / width;
         shape.scaled_size.y = (shape.size.y / defaultGSV) * gridSpacingValue / height;
-        shape.scaled_size.z = (shape.size.z / defaultGSV) * gridSpacingValue / height;
     }
 }
 
