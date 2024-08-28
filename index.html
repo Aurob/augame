@@ -6,7 +6,11 @@
     <title>AuGame - Prototype</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta property="og:title" content="Gaming">
+    <meta name="description" content="Tilesh - Explore your world with interactive maps and tiles">
+    <meta property="og:title" content="Tilesh - Explore Your World">
+    <meta property="og:description" content="Discover and interact with your world using Tilesh's innovative map system">
+    <meta property="og:image" content="https://tilesh.com/og-image.jpg">
+    <link rel="shortcut icon" href="favicon.ico">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/2.0.3/marked.min.js"></script>
     <style>
         :root {
@@ -142,6 +146,22 @@
             white-space: pre-wrap;
             word-wrap: break-word;
         }
+
+        #footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background-color: var(--header-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 10px;
+            z-index: 1000;
+            color: var(--text-color);
+            font-size: 0.9em;
+        }
     </style>
 </head>
 
@@ -172,6 +192,9 @@
         <button class="mobile-btn" id="btnF">Zoom In</button>
         <button class="mobile-btn" id="btnG">Zoom Out</button>
     </div>
+
+    <div id="footer">
+        Controls: WASD for movement, Scroll/Zoom to change scale, Cursor/Touch to interact
     </div>
 
     <script>
@@ -311,6 +334,7 @@
     </script>
     </script>
     <script src="web/config.js"></script>
+    <script src="web/econfig.js"></script>
     <script src="web/scripts.js"></script>
     <script src="web/module.js"></script>
     <script src="build/main.js"></script>
