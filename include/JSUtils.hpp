@@ -5,7 +5,6 @@
 #include "shaders.hpp"
 #include "../include/entt.hpp"
 #include "../include/structs.hpp"
-#include "../include/ComponentConfig.hpp"
 #include <sstream>
 
 using namespace std;
@@ -16,19 +15,6 @@ extern float gridSpacingValue;
 extern bool ready;
 extern entt::entity _player;
 extern entt::registry registry;
-extern unordered_map<int, bool> keys;
-
-// Flush the log buffer
-void flush_log()
-{
-    static stringstream log_buffer;
-    if (!log_buffer.str().empty())
-    {
-        printf("%s", log_buffer.str().c_str());
-        log_buffer.str("");
-        log_buffer.clear();
-    }
-}
 
 // key, float value
 void _js__kvdata(string k, float v)
@@ -165,25 +151,6 @@ extern "C"
                 if (_el.is_object())
                 {
 
-                    // Check if "New" key or "Update" key is present
-                    if (_el.contains("New") && _el["New"].is_boolean())
-                    {
-                        // Create a new entity
-                        entt::entity entity = registry.create();
-                        printf("Created entity %d\n", entity);
-                        process_entity(0, _el, entity);
-                    }
-                    else if (_el.contains("Update") && _el["Update"].is_boolean() && 
-                    _el.contains("Info") && _el["Info"].is_object() && _el["Info"].contains("id") && _el["Info"]["id"].is_number())
-                    {
-                        int entity_id = _el["Info"]["id"];
-                        if (registry.valid(entt::entity(entity_id)))
-                        {
-                            // Update an existing entity
-                            process_entity(1, _el, entt::entity(entity_id));
-                        }
-                    }
-
                     // Check if the Player key is present
                     if (_el.contains("Player") && _el["Player"].is_boolean())
                     {
@@ -200,8 +167,8 @@ extern "C"
                                     if (act == "interact")
                                     {
                                         // Trigger interaction for player
-                                        // You might want to implement an interaction system or event
-                                        keys[SDL_BUTTON_LEFT] = true;
+                                        auto &playerKeys = registry.get<Keys>(_player).keys;
+                                        playerKeys[SDL_BUTTON_LEFT] = true;
                                     }
                                 }
                             }
@@ -228,15 +195,151 @@ extern "C"
                             auto &mobileMovement = _el["MobileMovement"];
                             if (mobileMovement.contains("w") && mobileMovement["w"].is_number() && mobileMovement.contains("a") && mobileMovement["a"].is_number() && mobileMovement.contains("s") && mobileMovement["s"].is_number() && mobileMovement.contains("d") && mobileMovement["d"].is_number())
                             {
-                                float w = mobileMovement["w"];
-                                float a = mobileMovement["a"];
-                                float s = mobileMovement["s"];
-                                float d = mobileMovement["d"];
+                                auto &keys = registry.get<Keys>(_player).keys;
+                                keys[SDLK_a] = mobileMovement["a"];
+                                keys[SDLK_w] = mobileMovement["w"];
+                                keys[SDLK_s] = mobileMovement["s"];
+                                keys[SDLK_d] = mobileMovement["d"];
+                            }
+                        }
+                    }
+                    
+                    else if (_el.contains("New") && _el["New"].is_boolean())
+                    {
+                        // Create a new entity
+                        entt::entity entity = registry.create();
+                        printf("Created entity %d\n", entity);
 
-                                keys[SDLK_a] = a;
-                                keys[SDLK_w] = w;
-                                keys[SDLK_s] = s;
-                                keys[SDLK_d] = d;
+                        if (_el.contains("Components") && _el["Components"].is_object())
+                        {
+                            auto &components = _el["Components"];
+
+                            // Id
+                            if (components.contains("Id")) 
+                            {
+                                registry.emplace<Id>(entity, components["Id"].get<int>());
+                            }
+
+                            if (components.contains("Position") && components["Position"].is_object())
+                            {
+                                auto &pos = components["Position"];
+                                registry.emplace<Position>(entity, pos["x"], pos["y"], pos["z"]);
+                            }
+
+                            if (components.contains("Shape") && components["Shape"].is_object())
+                            {
+                                auto &shape = components["Shape"];
+                                registry.emplace<Shape>(entity, shape["size"][0], shape["size"][1], shape["size"][2]);
+                            }
+
+                            if (components.contains("Color") && components["Color"].is_object())
+                            {
+                                auto &color = components["Color"];
+                                registry.emplace<Color>(entity, color["r"], color["g"], color["b"], color["a"]);
+                            }
+
+                            if (components.contains("RenderPriority") && components["RenderPriority"].is_object())
+                            {
+                                auto &renderPriority = components["RenderPriority"];
+                                registry.emplace<RenderPriority>(entity, renderPriority["priority"]);
+                            }
+
+                            if (components.contains("Collidable") && components["Collidable"].is_boolean())
+                            {
+                                registry.emplace<Collidable>(entity);
+                            }
+
+                            if (components.contains("Interior") && components["Interior"].is_object())
+                            {
+                                bool hideInside = components["Interior"]["hideInside"];
+                                registry.emplace<Interior>(entity, Interior{hideInside});
+                            }
+
+                            if (components.contains("Test") && components["Test"].is_object())
+                            {
+                                auto &test = components["Test"];
+                                registry.emplace<Test>(entity, test["value"]);
+                            }
+
+                            if (components.contains("InteriorPortal") && components["InteriorPortal"].is_object())
+                            {
+                                auto &interiorPortal = components["InteriorPortal"];
+                                auto portalAId = interiorPortal["A"].get<int>();
+                                auto portalBId = interiorPortal["B"].get<int>();
+
+                                auto view = registry.view<Id>();
+                                entt::entity portalA = entt::null;
+                                entt::entity portalB = entt::null;
+
+                                for (auto entity : view)
+                                {
+                                    int entity_id = view.get<Id>(entity).id;
+
+                                    if(entity_id == portalAId) portalA = entity;
+                                    else if(entity_id == portalBId) portalB = entity;
+                                    
+                                    if((portalA != entt::null || portalAId == -1) 
+                                        && (portalB != entt::null || portalBId == -1))
+                                        break;
+                                }
+
+
+                                printf("%d %d\n", portalA, portalB);
+                                registry.emplace<InteriorPortal>(entity, InteriorPortal{portalA, portalB});
+                            }
+                            if (components.contains("Inside") && components["Inside"].is_object())
+                            {
+                                auto &inside = components["Inside"];
+                                auto interiorEntityId = inside["interiorEntity"].get<int>();
+
+                                auto view = registry.view<Id>();
+                                entt::entity interiorEntity = entt::null;
+                                for (auto entity : view)
+                                {
+                                    if (view.get<Id>(entity).id == interiorEntityId)
+                                    {
+                                        printf("Found interior entity, eid: %d\n", interiorEntityId);
+                                        interiorEntity = entity;
+                                        break;
+                                    }
+                                }
+
+                                if (inside.contains("showOutside") && inside["showOutside"].is_boolean()) {
+                                    registry.emplace<Inside>(entity, Inside{interiorEntity, inside["showOutside"].get<bool>()});
+                                } else {
+                                    registry.emplace<Inside>(entity, Inside{interiorEntity, false});
+                                }
+                            }
+
+                            if (components.contains("Moveable") && components["Moveable"].is_object())
+                            {
+                                registry.emplace<Moveable>(entity);
+                            }
+
+                            if (components.contains("Movement") && components["Movement"].is_object())
+                            {
+                                auto &movement = components["Movement"];
+                                registry.emplace<Movement>(entity, Movement{
+                                    movement["speed"].get<float>(),
+                                    movement["maxSpeed"].get<float>(),
+                                    {movement["acceleration"]["x"].get<float>(), movement["acceleration"]["y"].get<float>()},
+                                    {movement["velocity"]["x"].get<float>(), movement["velocity"]["y"].get<float>()},
+                                    movement["friction"].get<float>(),
+                                    movement["mass"].get<float>(),
+                                    movement["drag"].get<float>()
+                                });
+                            }
+
+                            // Hoverable
+                            if (components.contains("Hoverable") && components["Hoverable"].is_boolean())
+                            {
+                                registry.emplace<Hoverable>(entity);
+                            }
+
+                            // Interactable
+                            if (components.contains("Interactable") && components["Interactable"].is_boolean())
+                            {
+                                registry.emplace<Interactable>(entity);
                             }
                         }
                     }
