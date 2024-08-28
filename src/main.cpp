@@ -145,14 +145,11 @@ bool js_loaded() {
         loadGL1(shaderProgramMap["texture"], "texture");
         // Load textures from textureMap
         for(auto& [name, src] : textureMap) {
-            // printf("Loading texture: %s\n", src.c_str());
             int width{0}, height{0};
             textureIDMap[name] = loadGLTexture(shaderProgramMap["texture"], src.c_str(), width, height);
             
             // Set the shape of the texture
             textureShapeMap[name] = {width, height};
-
-            // printf("Texture: %s, ID: %d, Width: %d, Height: %d\n", name.c_str(), textureIDMap[name], width, height);
         }
         // set defaultMoveSpeed
         Movement &playerMovement = registry.get<Movement>(_player);

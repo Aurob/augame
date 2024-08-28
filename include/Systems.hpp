@@ -112,8 +112,6 @@ void checkCollisions(entt::registry &registry, entt::entity entity, Position &en
                     {
                         skipCollide = true;
                     }
-
-                    printf("Portal interior %d\n", portalInterior);
                 }
             }
 
@@ -127,12 +125,10 @@ void checkCollisions(entt::registry &registry, entt::entity entity, Position &en
                     auto newInterior = (interiorPortal.A != currentInterior) ? interiorPortal.A : interiorPortal.B;
                     if (newInterior != entt::null)
                     {
-                        printf("Entering interior %d\n", newInterior);
                         registry.emplace_or_replace<Inside>(entity, Inside{newInterior});
                     }
                     else
                     {
-                        printf("Exiting interior %d\n", currentInterior);
                         registry.remove<Inside>(entity);
                     }
                     if (entity == _player && registry.any_of<Associated>(_entity))
@@ -142,7 +138,6 @@ void checkCollisions(entt::registry &registry, entt::entity entity, Position &en
                         {
                             if (registry.any_of<InteriorPortalTexture>(assoc_entity) && registry.any_of<Textures>(assoc_entity))
                             {
-                                printf("Changing texture\n");
                                 auto &textures = registry.get<Textures>(assoc_entity);
                                 textures.current = (textures.current + 1) % textures.textures.size();
                             }
@@ -548,13 +543,9 @@ void updateFlags(entt::registry &registry)
         {
             if (flagName == "Destroy" && std::any_cast<bool>(flagValue))
             {
-
-                printf("Destroying entity %d\n", entity);
-
                 // printf if has InteractionAction
                 if (registry.all_of<InteractionAction>(entity))
                 {
-                    printf("Has InteractionAction\n");
                 }
                 // Mark associated entities for destruction
                 auto associatedView = registry.view<Associated>();

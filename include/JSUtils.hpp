@@ -208,7 +208,6 @@ extern "C"
                     {
                         // Create a new entity
                         entt::entity entity = registry.create();
-                        printf("Created entity %d\n", entity);
 
                         if (_el.contains("Components") && _el["Components"].is_object())
                         {
@@ -282,9 +281,6 @@ extern "C"
                                         && (portalB != entt::null || portalBId == -1))
                                         break;
                                 }
-
-
-                                printf("%d %d\n", portalA, portalB);
                                 registry.emplace<InteriorPortal>(entity, InteriorPortal{portalA, portalB});
                             }
                             if (components.contains("Inside") && components["Inside"].is_object())
@@ -298,7 +294,6 @@ extern "C"
                                 {
                                     if (view.get<Id>(entity).id == interiorEntityId)
                                     {
-                                        printf("Found interior entity, eid: %d\n", interiorEntityId);
                                         interiorEntity = entity;
                                         break;
                                     }

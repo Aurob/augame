@@ -90,6 +90,9 @@ var Module = {
         this.js_to_c(ECONFIG);
         this.start();
       });
+    } else {
+      this.js_to_c(ECONFIG);
+      this.start();
     }
 
     Object.keys(json).forEach(key => {
