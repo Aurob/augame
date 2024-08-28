@@ -8,6 +8,9 @@ var Module = {
   start() {
     console.log("Starting...");
     this._isready();
+
+    this.js_to_c(CONFIG);
+    this.js_to_c(ECONFIG);
   },
 
   onRuntimeInitialized() {
