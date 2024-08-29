@@ -130,7 +130,6 @@ void loadGL1(GLuint &shaderProgram, std::string program_name)
     GLint success;
     GLchar infoLog[512];
     glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    // printf("Vertex: %s %s\n", program_name.c_str(), shaderGLSLMap[program_name][0]);
     if (!success)
     {   
         glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
@@ -138,7 +137,6 @@ void loadGL1(GLuint &shaderProgram, std::string program_name)
     }
 
     // Create and compile fragment shader
-    // printf("Fragment: %s %s\n", program_name.c_str(), shaderGLSLMap[program_name][1]);
     GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragmentShader, 1, &shaderGLSLMap[program_name][1], NULL);
     glCompileShader(fragmentShader);
@@ -153,11 +151,11 @@ void loadGL1(GLuint &shaderProgram, std::string program_name)
 
     shaderProgram = glCreateProgram();
 
-    printf("Attaching shaders...\n");
+    // printf("Attaching shaders...\n");
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
     glLinkProgram(shaderProgram);
-    printf("Linking shaders...\n");
+    // printf("Linking shaders...\n");
 
     // Check for linking errors
     glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
@@ -265,10 +263,10 @@ GLuint createProgram(const char* vertexShaderSrc, const char* fragmentShaderSrc)
 void loadImageAndCreateTexture(const char* imagePath, GLuint &textureID) {
     SDL_Surface* image = IMG_Load(imagePath);
     if (!image) {
-        printf("IMG_Load: %s\n", IMG_GetError());
+        // printf("IMG_Load: %s\n", IMG_GetError());
         return;
     }
-    printf("Image loaded successfully\n");
+    // printf("Image loaded successfully\n");
 
     glGenTextures(1, &textureID);
     glBindTexture(GL_TEXTURE_2D, textureID);
