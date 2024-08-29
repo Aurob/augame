@@ -49,6 +49,22 @@ var CONFIG = {
         {
             "name": "ladder_down",
             "path": "resources/ladder_down.png"
+        },
+        {
+            "name": "table",
+            "path": "resources/table.png"
+        },
+        {
+            "name": "bed1",
+            "path": "resources/bed1.png"
+        },
+        {
+            "name": "chair1",
+            "path": "resources/chair1.png"
+        },
+        {
+            "name": "shelf1",
+            "path": "resources/shelf1.png"
         }
     ]
 };

@@ -80,12 +80,10 @@ int main(int argc, char *argv[])
     }
 
     loadGl(mpWindow);
-    makePlayer(registry);
 
     // Trigger JS functions
     _js__fetch_configs();   
     _js__ready();
-
     srand(time(NULL));
     // seed = rand() % 100000;
     seed = 85582;
@@ -145,17 +143,22 @@ bool js_loaded() {
         loadGL1(shaderProgramMap["texture"], "texture");
         // Load textures from textureMap
         for(auto& [name, src] : textureMap) {
+
+            printf("Loading texture: %s\n", name.c_str());
             int width{0}, height{0};
             textureIDMap[name] = loadGLTexture(shaderProgramMap["texture"], src.c_str(), width, height);
             
             // Set the shape of the texture
             textureShapeMap[name] = {width, height};
         }
+
+    
+        makePlayer(registry);
+        runFactories(registry);
+        
         // set defaultMoveSpeed
         Movement &playerMovement = registry.get<Movement>(_player);
         defaultMoveSpeed = playerMovement.speed;
-
-        runFactories(registry);
         
     }
     return true; 
@@ -276,30 +279,21 @@ void mainloop(void *arg)
 
  
         if (registry.all_of<Texture>(entity)) {
+
             const auto& texture = registry.get<Texture>(entity);
 
-            // Check if the entity has RenderDebug
-            if (registry.all_of<RenderDebug>(entity)) {
-                // Render a small transparent square to indicate bounding box
-                float offsetY = position.sy + playerPos.z;
 
-                updateUniformsDebug(shaderProgramMap["debug_entity"],
-                    1.0f, 1.0f, 1.0f, 0.2f, // White color with 20% opacity
-                    position.sx + playerShape.scaled_size.x, 
-                    offsetY,
-                    shape.scaled_size.x, shape.scaled_size.y, 0.0f);
-                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-            }
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-            float offsetY = position.sy + playerShape.scaled_size.y;
-            if (registry.all_of<Player>(entity)) {
-                offsetY += position.sz;
-            }
             updateUniformsTexture(shaderProgramMap["texture"], 
                 textureIDMap[texture.name],
-                position.sx + playerShape.scaled_size.x, offsetY,
-                shape.scaled_size.x * texture.scalex, shape.scaled_size.y * texture.scaley,
-                texture.x, texture.y, texture.w, texture.h);
+                position.sx + playerShape.scaled_size.x,
+                position.sy + playerShape.scaled_size.y + position.sz + playerShape.scaled_size.z,
+                shape.scaled_size.x,
+                shape.scaled_size.y,
+                0, 0, 1, 1
+            );
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
         } else if (registry.all_of<Textures>(entity)) {
@@ -341,7 +335,7 @@ void mainloop(void *arg)
             updateUniformsTexture(shaderProgramMap["texture"], 
                 textureIDMap[current_texture.name],
                 position.sx + playerShape.scaled_size.x,
-                position.sy + playerShape.scaled_size.y + position.sz*2 + playerShape.scaled_size.z,
+                position.sy + playerShape.scaled_size.y + position.sz + playerShape.scaled_size.z,
                 shape.scaled_size.x * current_texture.scalex, 
                 shape.scaled_size.y * current_texture.scaley,
                 current_texture.x, current_texture.y, 

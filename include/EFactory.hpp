@@ -13,7 +13,7 @@ extern entt::entity _player;
 void makePlayer(entt::registry &registry)
 {
     // Player
-    float px = 0.0f, py = 25.0f, pz = 0.0f;
+    float px = 12.05, py = 13.83, pz = 0.0;
     float pw = 1.0f, ph = 1.0f, pd = 1.0f;
     auto player = registry.create();
     registry.emplace_or_replace<Player>(player);
@@ -28,6 +28,19 @@ void makePlayer(entt::registry &registry)
     registry.emplace_or_replace<Test>(player, Test{"Player"});
     registry.emplace_or_replace<RenderDebug>(player);
     registry.emplace<Keys>(player);
+
+    // place inside Interior with Id of 0, look up hy compomnent Id
+    auto view = registry.view<Id>();
+    entt::entity interiorEntity = entt::null;
+    for (auto entity : view)
+    {
+        if (view.get<Id>(entity).id == 6)
+        {
+            interiorEntity = entity;
+            break;
+        }
+    }
+    registry.emplace_or_replace<Inside>(player, Inside{interiorEntity});
 
     // Add textures to the player
     std::vector<Textures> textureAlts;
@@ -60,12 +73,12 @@ void makePlayer(entt::registry &registry)
 
     // TickAction to animate the player, increment the texture index of the current TextureAlts
     registry.emplace_or_replace<TickAction>(player, TickAction{[](entt::registry &registry, entt::entity entity)
-                                                               {
-                                                                   auto &textureAlts = registry.get<TextureAlts>(entity);
-                                                                   auto &currentTextures = textureAlts.alts[textureAlts.current];
-                                                                   currentTextures.current = (currentTextures.current + 1) % currentTextures.textures.size();
-                                                               },
-                                                               0.1f});
+        {
+            auto &textureAlts = registry.get<TextureAlts>(entity);
+            auto &currentTextures = textureAlts.alts[textureAlts.current];
+            currentTextures.current = (currentTextures.current + 1) % currentTextures.textures.size();
+        },
+        0.1f});
 
     _player = player;
 }
