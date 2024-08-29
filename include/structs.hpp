@@ -3,7 +3,9 @@
 #include <vector>
 #include <functional>
 #include <any>
+#include <optional>
 #include <unordered_map>
+#include "entt.hpp"
 
 using namespace std;
 
@@ -12,6 +14,11 @@ struct context
     SDL_Event event;
     int iteration;
     SDL_Window *window;
+};
+
+struct Id {
+    int id;
+    string name;
 };
 
 struct Vector2f {
@@ -63,7 +70,7 @@ struct Position {
 };
 
 struct Shape {
-    Vector3f size{10, 10, 10};
+    Vector3f size{1, 1, .1};
     Vector3f scaled_size;
 };
 
@@ -87,6 +94,7 @@ struct AlwaysInView {};
 
 struct Debug {
     Color defaultColor;
+    std::string value1;
 };
 struct RenderDebug {};
 
@@ -106,11 +114,13 @@ struct Interacted {
 };
 
 struct InteractionAction {
-    std::function<void(entt::registry&, entt::entity)> action;
+    std::function<void(entt::registry&, entt::entity, std::optional<entt::entity>)> action;
 };
+
 struct CollisionAction {
     std::function<void(entt::registry&, entt::entity)> action;
 };
+
 struct TickAction {
     std::function<void(entt::registry&, entt::entity)> action;
     float interval;
@@ -124,7 +134,7 @@ struct Interactable {
 
 struct Colliding{
     std::vector<entt::entity> collidables;
-    std::vector<Vector2f> overlaps;
+    std::vector<Vector3f> overlaps;
 };
 struct Collidable {
     std::vector<entt::entity> colliding_with;
@@ -161,6 +171,17 @@ struct Linked {
 struct Associated {
     std::vector<entt::entity> entities;
     bool destroy;
+
+    template<typename... Components>
+    std::vector<entt::entity> filterByComponents(entt::registry &registry) const {
+        std::vector<entt::entity> filteredEntities;
+        for (auto entity : entities) {
+            if (registry.all_of<Components...>(entity)) {
+                filteredEntities.push_back(entity);
+            }
+        }
+        return filteredEntities;
+    }
 };
 
 struct Flag {
@@ -168,12 +189,15 @@ struct Flag {
 };
 
 // Interiors
-struct Interior {}; // consider making this a var on Shape{} instead
+struct Interior {
+    bool hideInside;
+};
 struct InteriorColliding {
     entt::entity interior;
 };
 struct Inside {
     entt::entity interior;
+    bool showOutside;
 };
 struct InteriorPortal {
     entt::entity A;
@@ -206,9 +230,27 @@ struct Texture {
 struct Textures {
     std::vector<Texture> textures;
     int current;
+    Texture metadata;
 };
 
 struct TextureAlts {
     std::unordered_map<std::string, Textures> alts;
     std::string current;
+};
+
+struct CollideColorAlt {
+    Color inactive;
+    Color active;
+};
+
+struct InteriorPortalTexture {
+    entt::entity portal;
+};
+
+struct Elevate {
+    int direction{1};
+};
+
+struct Keys {
+    std::unordered_map<SDL_Keycode, bool> keys;
 };
