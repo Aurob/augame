@@ -336,6 +336,22 @@ extern "C"
                             {
                                 registry.emplace<Interactable>(entity);
                             }
+
+                            // Texture
+                            if (components.contains("Texture") && components["Texture"].is_object())
+                            {
+                                auto &texture = components["Texture"];
+                                std::string textureName = texture["name"];
+                                float scalex = texture.value("scalex", 1.0f);
+                                float scaley = texture.value("scaley", 1.0f);
+                                float x = texture.value("x", 0.0f);
+                                float y = texture.value("y", 0.0f);
+                                float w = texture.value("w", 1.0f);
+                                float h = texture.value("h", 1.0f);
+                                registry.emplace<Texture>(entity, textureName, scalex, scaley, x, y, w, h);
+
+                                printf("Texture: %s\n", textureName.c_str());
+                            }
                         }
                     }
                 }
