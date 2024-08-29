@@ -468,18 +468,19 @@ void updateInteractions(entt::registry &registry)
     for (auto entity : tickAction_entities)
     {
         auto &action = tickAction_entities.get<TickAction>(entity);
-        
+
+        float interval = action.interval;
         if(entity == _player) {
             
             auto &movement = tickAction_entities.get<Movement>(entity);
             
             if (std::abs(movement.velocity.x) < 0.01f && std::abs(movement.velocity.y) < 0.01f) {
-                action.interval *= 4.0f; // Increase interval if player is not moving
+                interval *= 4.0f; // Increase interval if player is not moving
             }
         }
 
         action.time += deltaTime;
-        if (action.time >= action.interval) {
+        if (action.time >= interval) {
             action.action(registry, entity);
             action.time = 0.0f; // Reset the time after triggering the action
         }
