@@ -78,7 +78,7 @@ void makePlayer(entt::registry &registry)
             auto &currentTextures = textureAlts.alts[textureAlts.current];
             currentTextures.current = (currentTextures.current + 1) % currentTextures.textures.size();
         },
-        0.1f});
+        0.12f});
 
     _player = player;
 }
