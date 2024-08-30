@@ -65,6 +65,14 @@ var CONFIG = {
         {
             "name": "shelf1",
             "path": "resources/shelf1.png"
+        },
+        {
+            "name": "wall1",
+            "path": "resources/wall1.png"
+        },
+        {
+            "name": "wall2",
+            "path": "resources/wall2.png"
         }
     ]
 };
