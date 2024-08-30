@@ -73,7 +73,12 @@ var CONFIG = {
         {
             "name": "wall2",
             "path": "resources/wall2.png"
+        },
+        {
+            "name": "roomtiles",
+            "path": "resources/roomtiles.png"
         }
+    
     ]
 };
 

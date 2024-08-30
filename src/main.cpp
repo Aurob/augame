@@ -292,7 +292,7 @@ void mainloop(void *arg)
                 position.sy + playerShape.scaled_size.y + position.sz + playerShape.scaled_size.z,
                 shape.scaled_size.x,
                 shape.scaled_size.y,
-                0, 0, 1, 1
+                texture.x, texture.y, texture.w, texture.h
             );
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
