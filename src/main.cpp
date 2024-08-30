@@ -144,7 +144,7 @@ bool js_loaded() {
         // Load textures from textureMap
         for(auto& [name, src] : textureMap) {
 
-            printf("Loading texture: %s\n", name.c_str());
+            // printf("Loading texture: %s\n", name.c_str());
             int width{0}, height{0};
             textureIDMap[name] = loadGLTexture(shaderProgramMap["texture"], src.c_str(), width, height);
             
@@ -155,7 +155,7 @@ bool js_loaded() {
     
         makePlayer(registry);
         runFactories(registry);
-        
+
         // set defaultMoveSpeed
         Movement &playerMovement = registry.get<Movement>(_player);
         defaultMoveSpeed = playerMovement.speed;
