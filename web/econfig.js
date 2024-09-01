@@ -1,5 +1,5 @@
 
-const configstr = `id 18 test texTest position 0 0 0 shape 1 1 1 color 1 1 1 renderPriority 3 texture roomtiles 0.5 1.0 0.5 0 .1 .1`;
+const configstr = `id 18 test texTest position 0 0 0 shape 1 1 1 color 1 1 1 renderPriority 3 texture roomtiles 0.5 1.0 0.5 0 .1 .1
 
 // id 0 test Room position 0 10 -1 shape 15 15 1 color 0.5 0.5 0.5 renderPriority 1 collidable interior
 // id 1 test Door position 2 25 0.1 shape 1 0.1 1 color 0.6 0.3 0.1 renderPriority 2 collidable interiorPortal 0 -1 inside 0 associated 0
@@ -21,7 +21,7 @@ const configstr = `id 18 test texTest position 0 0 0 shape 1 1 1 color 1 1 1 ren
 // id 16 test Wall position 14 6 0 shape 3 3 3 color 0.15 0.15 0.15 renderPriority 1 collidable inside 6 texture wall1 1.0 2.0 0 0 1 1
 // id 15 test Wall position 8 9 0 shape 1 3 3 color 0.15 0.15 0.15 renderPriority 2 collidable inside 6 texture wall2 1.0 2.0 0 0 1 1
 // id 17 test Wall position 8 12 0 shape 1 3 3 color 0.15 0.15 0.15 renderPriority 2 collidable inside 6 texture wall2 1.0 2.0 0 0.5 1 1
-
+`;
 const inputs = configstr.split("\n");
 ECONFIG = {
     "Entities": inputs.map(input => new EntityBuilder().parseInput(input).build())
