@@ -150,6 +150,17 @@ bool js_loaded() {
             
             // Set the shape of the texture
             textureShapeMap[name] = {width, height};
+
+            // Normalize TextureGroupPart if necessary
+            if (textureGroupMap.find(name) != textureGroupMap.end()) {
+                for (auto& [partName, part] : textureGroupMap[name]) {
+                    printf("Part: %s\n", partName.c_str());
+                    if (part.x > 1) part.x /= width;
+                    if (part.y > 1) part.y /= height;
+                    if (part.w > 1) part.w /= width;
+                    if (part.h > 1) part.h /= height;
+                }
+            }
         }
 
     
@@ -296,7 +307,26 @@ void mainloop(void *arg)
             );
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-        } else if (registry.all_of<Textures>(entity)) {
+        }
+        else if (registry.all_of<TextureGroupPart>(entity)) {
+            const auto& textureGroupPart = registry.get<TextureGroupPart>(entity);
+            auto groupName = textureGroupPart.groupName;
+            auto partName = textureGroupPart.partName;
+
+            // if (textureGroupMap.find(groupName) != textureGroupMap.end() && textureGroupMap[groupName].find(partName) != textureGroupMap[groupName].end()) {
+            auto rootTexture = textureIDMap[groupName];
+            const auto& texture = textureGroupMap[groupName].at(partName);
+            updateUniformsTexture(shaderProgramMap["texture"], 
+                rootTexture,
+                position.sx + playerShape.scaled_size.x,
+                position.sy + playerShape.scaled_size.y + position.sz + playerShape.scaled_size.z,
+                shape.scaled_size.x,
+                shape.scaled_size.y,
+                texture.x, texture.y, texture.w, texture.h
+            );
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        } 
+        else if (registry.all_of<Textures>(entity)) {
             const auto& textures = registry.get<Textures>(entity);
             const auto& current_texture = textures.textures[textures.current];
 

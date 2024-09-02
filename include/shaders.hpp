@@ -11,3 +11,4 @@ std::unordered_map<std::string, GLuint> shaderProgramMap;
 std::unordered_map<std::string, std::string> textureMap;
 std::unordered_map<std::string, GLuint> textureIDMap;
 std::unordered_map<std::string, std::pair<int, int>> textureShapeMap;
+std::unordered_map<std::string, std::unordered_map<std::string, Texture>> textureGroupMap;

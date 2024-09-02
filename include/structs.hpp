@@ -238,6 +238,13 @@ struct TextureAlts {
     std::string current;
 };
 
+struct TextureGroupPart {
+    std::string groupName;
+    std::string partName;
+    Texture texture;
+};
+
+
 struct CollideColorAlt {
     Color inactive;
     Color active;
