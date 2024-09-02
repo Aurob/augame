@@ -406,7 +406,7 @@ extern "C"
                                     float y = texture.value("y", 0.0f);
                                     float w = texture.value("w", 1.0f);
                                     float h = texture.value("h", 1.0f);
-                                    registry.emplace<Texture>(entity, textureName, scalex, scaley, x, y, w, h);
+                                    registry.emplace<Texture>(entity, textureName, x, y, w, h, scalex, scaley);
 
                                     printf("Texture: %s\n", textureName.c_str());
                                 }
