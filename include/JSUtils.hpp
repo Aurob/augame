@@ -133,6 +133,7 @@ extern "C"
             auto texture = js_json["texture"];
             if (texture.contains("name") && texture["name"].is_string())
             {
+                // printf("Texture: %s\n", texture["name"].get<std::string>().c_str());
                 bool texture_exists = textureMap.find(texture["name"]) != textureMap.end();
                 if (!texture_exists)
                 {
@@ -140,6 +141,36 @@ extern "C"
                     {
                         textureMap[texture["name"]] = texture["path"];
                     }
+                }
+            }
+        }
+
+        if (js_json.contains("textureGroups") && js_json["textureGroups"].is_array())
+        {
+            for (const auto &group : js_json["textureGroups"])
+            {
+                if (group.contains("name") && group["name"].is_string() && group.contains("parts") && group["parts"].is_array())
+                {
+                    std::string groupName = group["name"];
+                    std::unordered_map<std::string, Texture> textureParts;
+                    for (const auto &part : group["parts"])
+                    {
+                        if (part.contains("name") && part["name"].is_string() &&
+                            part.contains("x") && part["x"].is_number() &&
+                            part.contains("y") && part["y"].is_number() &&
+                            part.contains("w") && part["w"].is_number() &&
+                            part.contains("h") && part["h"].is_number())
+                        {
+                            Texture texturePart;
+                            texturePart.name = part["name"];
+                            texturePart.x = part["x"];
+                            texturePart.y = part["y"];
+                            texturePart.w = part["w"];
+                            texturePart.h = part["h"];
+                            textureParts[part["name"]] = texturePart;
+                        }
+                    }
+                    textureGroupMap[groupName] = textureParts;
                 }
             }
         }
@@ -203,7 +234,7 @@ extern "C"
                             }
                         }
                     }
-                    
+
                     else if (_el.contains("New") && _el["New"].is_boolean())
                     {
                         // Create a new entity
@@ -214,85 +245,110 @@ extern "C"
                             auto &components = _el["Components"];
 
                             // Id
-                            try {
-                                if (components.contains("Id")) 
+                            try
+                            {
+                                if (components.contains("Id"))
                                 {
                                     registry.emplace<Id>(entity, components["Id"].get<int>());
                                 }
-                            } catch (const std::exception &e) {
+                            }
+                            catch (const std::exception &e)
+                            {
                                 printf("Error adding Id component: %s\n", e.what());
                             }
 
-                            try {
+                            try
+                            {
                                 if (components.contains("Position") && components["Position"].is_object())
                                 {
                                     auto &pos = components["Position"];
                                     registry.emplace<Position>(entity, pos["x"], pos["y"], pos["z"]);
                                 }
-                            } catch (const std::exception &e) {
+                            }
+                            catch (const std::exception &e)
+                            {
                                 printf("Error adding Position component: %s\n", e.what());
                             }
 
-                            try {
+                            try
+                            {
                                 if (components.contains("Shape") && components["Shape"].is_object())
                                 {
                                     auto &shape = components["Shape"];
                                     registry.emplace<Shape>(entity, shape["size"][0], shape["size"][1], shape["size"][2]);
                                 }
-                            } catch (const std::exception &e) {
+                            }
+                            catch (const std::exception &e)
+                            {
                                 printf("Error adding Shape component: %s\n", e.what());
                             }
 
-                            try {
+                            try
+                            {
                                 if (components.contains("Color") && components["Color"].is_object())
                                 {
                                     auto &color = components["Color"];
                                     registry.emplace<Color>(entity, color["r"], color["g"], color["b"], color["a"]);
                                 }
-                            } catch (const std::exception &e) {
+                            }
+                            catch (const std::exception &e)
+                            {
                                 printf("Error adding Color component: %s\n", e.what());
                             }
 
-                            try {
+                            try
+                            {
                                 if (components.contains("RenderPriority") && components["RenderPriority"].is_object())
                                 {
                                     auto &renderPriority = components["RenderPriority"];
                                     registry.emplace<RenderPriority>(entity, renderPriority["priority"]);
                                 }
-                            } catch (const std::exception &e) {
+                            }
+                            catch (const std::exception &e)
+                            {
                                 printf("Error adding RenderPriority component: %s\n", e.what());
                             }
 
-                            try {
+                            try
+                            {
                                 if (components.contains("Collidable") && components["Collidable"].is_boolean())
                                 {
                                     registry.emplace<Collidable>(entity);
                                 }
-                            } catch (const std::exception &e) {
+                            }
+                            catch (const std::exception &e)
+                            {
                                 printf("Error adding Collidable component: %s\n", e.what());
                             }
 
-                            try {
+                            try
+                            {
                                 if (components.contains("Interior") && components["Interior"].is_object())
                                 {
                                     bool hideInside = components["Interior"]["hideInside"];
                                     registry.emplace<Interior>(entity, Interior{hideInside});
                                 }
-                            } catch (const std::exception &e) {
+                            }
+                            catch (const std::exception &e)
+                            {
                                 printf("Error adding Interior component: %s\n", e.what());
                             }
 
-                            try {
+                            try
+                            {
                                 if (components.contains("Test") && components["Test"].is_object())
                                 {
                                     auto &test = components["Test"];
                                     registry.emplace<Test>(entity, test["value"]);
                                 }
-                            } catch (const std::exception &e) {
+                            }
+                            catch (const std::exception &e)
+                            {
                                 printf("Error adding Test component: %s\n", e.what());
                             }
 
-                            try {
+                            try
+                            {
                                 if (components.contains("InteriorPortal") && components["InteriorPortal"].is_object())
                                 {
                                     auto &interiorPortal = components["InteriorPortal"];
@@ -307,20 +363,24 @@ extern "C"
                                     {
                                         int entity_id = view.get<Id>(entity).id;
 
-                                        if(entity_id == portalAId) portalA = entity;
-                                        else if(entity_id == portalBId) portalB = entity;
-                                        
-                                        if((portalA != entt::null || portalAId == -1) 
-                                            && (portalB != entt::null || portalBId == -1))
+                                        if (entity_id == portalAId)
+                                            portalA = entity;
+                                        else if (entity_id == portalBId)
+                                            portalB = entity;
+
+                                        if ((portalA != entt::null || portalAId == -1) && (portalB != entt::null || portalBId == -1))
                                             break;
                                     }
                                     registry.emplace<InteriorPortal>(entity, InteriorPortal{portalA, portalB});
                                 }
-                            } catch (const std::exception &e) {
+                            }
+                            catch (const std::exception &e)
+                            {
                                 printf("Error adding InteriorPortal component: %s\n", e.what());
                             }
 
-                            try {
+                            try
+                            {
                                 if (components.contains("Inside") && components["Inside"].is_object())
                                 {
                                     auto &inside = components["Inside"];
@@ -337,65 +397,82 @@ extern "C"
                                         }
                                     }
 
-                                    if (inside.contains("showOutside") && inside["showOutside"].is_boolean()) {
+                                    if (inside.contains("showOutside") && inside["showOutside"].is_boolean())
+                                    {
                                         registry.emplace<Inside>(entity, Inside{interiorEntity, inside["showOutside"].get<bool>()});
-                                    } else {
+                                    }
+                                    else
+                                    {
                                         registry.emplace<Inside>(entity, Inside{interiorEntity, false});
                                     }
                                 }
-                            } catch (const std::exception &e) {
+                            }
+                            catch (const std::exception &e)
+                            {
                                 printf("Error adding Inside component: %s\n", e.what());
                             }
 
-                            try {
+                            try
+                            {
                                 if (components.contains("Moveable") && components["Moveable"].is_object())
                                 {
                                     registry.emplace<Moveable>(entity);
                                 }
-                            } catch (const std::exception &e) {
+                            }
+                            catch (const std::exception &e)
+                            {
                                 printf("Error adding Moveable component: %s\n", e.what());
                             }
 
-                            try {
+                            try
+                            {
                                 if (components.contains("Movement") && components["Movement"].is_object())
                                 {
                                     auto &movement = components["Movement"];
                                     registry.emplace<Movement>(entity, Movement{
-                                        movement["speed"].get<float>(),
-                                        movement["maxSpeed"].get<float>(),
-                                        {movement["acceleration"]["x"].get<float>(), movement["acceleration"]["y"].get<float>()},
-                                        {movement["velocity"]["x"].get<float>(), movement["velocity"]["y"].get<float>()},
-                                        movement["friction"].get<float>(),
-                                        movement["mass"].get<float>(),
-                                        movement["drag"].get<float>()
-                                    });
+                                                                           movement["speed"].get<float>(),
+                                                                           movement["maxSpeed"].get<float>(),
+                                                                           {movement["acceleration"]["x"].get<float>(), movement["acceleration"]["y"].get<float>()},
+                                                                           {movement["velocity"]["x"].get<float>(), movement["velocity"]["y"].get<float>()},
+                                                                           movement["friction"].get<float>(),
+                                                                           movement["mass"].get<float>(),
+                                                                           movement["drag"].get<float>()});
                                 }
-                            } catch (const std::exception &e) {
+                            }
+                            catch (const std::exception &e)
+                            {
                                 printf("Error adding Movement component: %s\n", e.what());
                             }
 
                             // Hoverable
-                            try {
+                            try
+                            {
                                 if (components.contains("Hoverable") && components["Hoverable"].is_boolean())
                                 {
                                     registry.emplace<Hoverable>(entity);
                                 }
-                            } catch (const std::exception &e) {
+                            }
+                            catch (const std::exception &e)
+                            {
                                 printf("Error adding Hoverable component: %s\n", e.what());
                             }
 
                             // Interactable
-                            try {
+                            try
+                            {
                                 if (components.contains("Interactable") && components["Interactable"].is_boolean())
                                 {
                                     registry.emplace<Interactable>(entity);
                                 }
-                            } catch (const std::exception &e) {
+                            }
+                            catch (const std::exception &e)
+                            {
                                 printf("Error adding Interactable component: %s\n", e.what());
                             }
 
                             // Texture
-                            try {
+                            try
+                            {
                                 if (components.contains("Texture") && components["Texture"].is_object())
                                 {
                                     auto &texture = components["Texture"];
@@ -407,11 +484,30 @@ extern "C"
                                     float w = texture.value("w", 1.0f);
                                     float h = texture.value("h", 1.0f);
                                     registry.emplace<Texture>(entity, textureName, x, y, w, h, scalex, scaley);
-
-                                    printf("Texture: %s\n", textureName.c_str());
                                 }
-                            } catch (const std::exception &e) {
+                            }
+                            catch (const std::exception &e)
+                            {
                                 printf("Error adding Texture component: %s\n", e.what());
+                            }
+
+                            // TextureGroupPart
+                            try
+                            {
+                                if (components.contains("TextureGroupPart") && components["TextureGroupPart"].is_object())
+                                {
+                                    auto &textureGroupPart = components["TextureGroupPart"];
+                                    std::string groupName = textureGroupPart["groupName"];
+                                    std::string partName = textureGroupPart["partName"];
+                                    if (textureGroupMap.find(groupName) != textureGroupMap.end() && textureGroupMap[groupName].find(partName) != textureGroupMap[groupName].end())
+                                    {
+                                        registry.emplace<TextureGroupPart>(entity, TextureGroupPart{groupName, partName});
+                                    }
+                                }
+                            }
+                            catch (const std::exception &e)
+                            {
+                                printf("Error adding TextureGroupPart component: %s\n", e.what());
                             }
                         }
                     }

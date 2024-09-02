@@ -2,6 +2,7 @@
 class EntityBuilder {
     static componentParameterCounts = {
         texture: 8,
+        textureGroupPart: 3,
         position: 4,
         shape: 4,
         color: 4,
@@ -44,6 +45,12 @@ class EntityBuilder {
                 y: parseFloat(parts[i+4]) || 0.0,
                 w: parseFloat(parts[i+5]) || 1.0,
                 h: parseFloat(parts[i+6]) || 1.0
+            }
+        }),
+        textureGroupPart: (parts, i) => ({
+            TextureGroupPart: {
+                groupName: parts[i],
+                partName: parts[i+1],
             }
         }),
         moveable: () => ({ Moveable: {} }),

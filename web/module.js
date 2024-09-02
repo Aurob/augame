@@ -8,9 +8,6 @@ var Module = {
   start() {
     console.log("Starting...");
     this._isready();
-
-    this.js_to_c(CONFIG);
-    this.js_to_c(ECONFIG);
   },
 
   onRuntimeInitialized() {
@@ -80,9 +77,12 @@ var Module = {
 
   fetch_configs() {
     const json = CONFIG;
-
     if (Array.isArray(json.textures)) {
       this.processTextures(json.textures);
+    }
+    if (Array.isArray(json.textureGroups)) {
+      console.log("Texture groups found");
+      this.js_to_c({ textureGroups: json.textureGroups });
     }
 
     if (Array.isArray(json.shaders)) {
@@ -95,10 +95,10 @@ var Module = {
       this.start();
     }
 
-    Object.keys(json).forEach(key => {
-      if (key !== 'textures' && key !== 'shaders') {
-        this.js_to_c({ [key]: json[key] });
-      }
-    });
+    // Object.keys(json).forEach(key => {
+    //   if (key !== 'textures' && key !== 'shaders') {
+    //     this.js_to_c({ [key]: json[key] });
+    //   }
+    // });
   }
 }

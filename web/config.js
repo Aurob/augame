@@ -79,8 +79,43 @@ var CONFIG = {
             "path": "resources/roomtiles.png"
         }
     
-    ]
+    ],
+    "textureGroups": []
 };
+
+var textureGroups = {
+    name: 'roomtiles',
+    parts: [ 
+    ]
+}
+
+let tileset1 = {
+    'name': 'tileset1',
+    'path': 'resources/roomtiles.png',
+    'width': 160,
+    'height': 144,
+    'tileWidth': 16,
+    'tileHeight': 16,
+}
+
+let c = 1; // Start from 1 to match the tilemap checker IDs
+for (let j = 0; j < tileset1.height / tileset1.tileHeight; j++) {
+    for (let i = 0; i < tileset1.width / tileset1.tileWidth; i++) {
+        console.log(`tile${c} ${i * tileset1.tileWidth} ${j * tileset1.tileHeight} ${tileset1.tileWidth} ${tileset1.tileHeight}`);
+        let part = {
+            'name': `tile${c}`,
+            'x': i * tileset1.tileWidth,
+            'y': j * tileset1.tileHeight,
+            'w': tileset1.tileWidth,
+            'h': tileset1.tileHeight
+        }
+        textureGroups.parts.push(part);
+
+        c++;
+    }
+}
+
+CONFIG.textureGroups.push(textureGroups);
 
 const actions = ["Idle", "Run"];
 const directions = ["Down", "Left", "Right", "Up"];
