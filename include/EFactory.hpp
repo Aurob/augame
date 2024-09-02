@@ -30,17 +30,17 @@ void makePlayer(entt::registry &registry)
     registry.emplace<Keys>(player);
 
     // place inside Interior with Id of 0, look up hy compomnent Id
-    // auto view = registry.view<Id>();
-    // entt::entity interiorEntity = entt::null;
-    // for (auto entity : view)
-    // {
-    //     if (view.get<Id>(entity).id == 6)
-    //     {
-    //         interiorEntity = entity;
-    //         break;
-    //     }
-    // }
-    // registry.emplace_or_replace<Inside>(player, Inside{interiorEntity});
+    auto view = registry.view<Id>();
+    entt::entity interiorEntity = entt::null;
+    for (auto entity : view)
+    {
+        if (view.get<Id>(entity).id == 6)
+        {
+            interiorEntity = entity;
+            break;
+        }
+    }
+    registry.emplace_or_replace<Inside>(player, Inside{interiorEntity});
 
     // Add textures to the player
     std::vector<Textures> textureAlts;
