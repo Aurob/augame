@@ -41,7 +41,7 @@ GLfloat toplefttile[2] = {0.0f, 0.0f};
 bool windowResized = false;
 bool ready = false;
 int lastTime = 0;
-float defaultGSV = 8.0f;
+float defaultGSV = 16.0f;
 GLfloat generationSize[2] = {defaultGSV*2, defaultGSV*2};
 GLfloat gridSpacingValue = 1024.0f;
 bool first_start = false;
@@ -312,6 +312,9 @@ void mainloop(void *arg)
             auto groupName = textureGroupPart.groupName;
             auto partName = textureGroupPart.partName;
 
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             // if (textureGroupMap.find(groupName) != textureGroupMap.end() && textureGroupMap[groupName].find(partName) != textureGroupMap[groupName].end()) {
             auto rootTexture = textureIDMap[groupName];
             const auto& texture = textureGroupMap[groupName].at(partName);
@@ -329,6 +332,9 @@ void mainloop(void *arg)
             const auto& textures = registry.get<Textures>(entity);
             const auto& current_texture = textures.textures[textures.current];
 
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             // Check if the entity has RenderDebug
             if (registry.all_of<RenderDebug>(entity)) {
                 // Render a small transparent square to indicate bounding box
@@ -350,6 +356,9 @@ void mainloop(void *arg)
             const auto& currentTextures = textureAlts.alts.at(textureAlts.current);
             const auto& current_texture = currentTextures.textures[currentTextures.current];
 
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             // Check if the entity has RenderDebug
             if (registry.all_of<RenderDebug, Player>(entity)) {
                 // Render a small transparent square to indicate bounding box
@@ -371,13 +380,6 @@ void mainloop(void *arg)
                 current_texture.w, current_texture.h);
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-            // Add a shadow at z 0
-            updateUniformsDebug(shaderProgramMap["debug_entity"],
-                0.0f, 0.0f, 0.0f, 0.2f, // Black color with 20% opacity
-                position.sx + playerShape.scaled_size.x, 
-                position.sy + playerShape.scaled_size.y,
-                shape.scaled_size.x, shape.scaled_size.y, 0.0f);
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         }
         else if(registry.all_of<Color>(entity)) {
             auto color = registry.get<Color>(entity);

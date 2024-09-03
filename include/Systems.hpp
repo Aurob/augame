@@ -23,9 +23,9 @@ void updateMovement(entt::registry &registry)
         auto &movement = view.get<Movement>(entity);
         auto &position = view.get<Position>(entity);
 
-        if (registry.any_of<Player>(entity))
+        if (registry.any_of<Keys>(entity))
         {
-            auto keys = registry.get<Keys>(_player).keys;
+            auto keys = registry.get<Keys>(entity).keys;
             Vector3f input{static_cast<float>(keys[SDLK_d]) - static_cast<float>(keys[SDLK_a]),
                            static_cast<float>(keys[SDLK_s]) - static_cast<float>(keys[SDLK_w])};
             float length = std::sqrt(input.x * input.x + input.y * input.y);
@@ -538,6 +538,41 @@ void updateOther(entt::registry &registry)
             color.r = color.defaultR;
             color.g = color.defaultG;
             color.b = color.defaultB;
+        }
+    }
+
+    auto collidable_entities = registry.view<Position, Shape, Collidable, InView, Teleportable>();
+    for (auto &entity : collidable_entities)
+    {
+        auto &position = collidable_entities.get<Position>(entity);
+        auto &shape = collidable_entities.get<Shape>(entity);
+
+        auto teleport_entities = registry.view<Position, Shape, Teleport, InView>();
+        for (auto &tentity : teleport_entities)
+        {
+
+            printf("Checking teleport\n");
+            auto &tposition = teleport_entities.get<Position>(tentity);
+            auto &tshape = teleport_entities.get<Shape>(tentity);
+            auto &teleport = teleport_entities.get<Teleport>(tentity);
+
+            Vector3f collides = positionsCollide(position, shape, tposition, tshape, false);
+            if (collides.x != 0 || collides.y != 0 || collides.z != 0)
+            {
+                position.x = teleport.destination.x;
+                position.y = teleport.destination.y;
+                position.z = teleport.destination.z;
+
+                if (teleport.reverse)
+                {
+                    if (registry.all_of<Movement>(entity))
+                    {
+                        auto &movement = registry.get<Movement>(entity);
+                        movement.velocity.x = 0;
+                        movement.velocity.y = 0;
+                    }
+                }
+            }
         }
     }
 }

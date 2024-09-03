@@ -13,7 +13,7 @@ extern entt::entity _player;
 void makePlayer(entt::registry &registry)
 {
     // Player
-    float px = 12.05, py = 13.83, pz = 0.0;
+    float px = 13.05, py = 12.45, pz = 5.0;
     float pw = 1.0f, ph = 1.0f, pd = 1.0f;
     auto player = registry.create();
     registry.emplace_or_replace<Player>(player);
@@ -26,7 +26,7 @@ void makePlayer(entt::registry &registry)
     registry.emplace_or_replace<Teleportable>(player);
     registry.emplace_or_replace<RenderPriority>(player, RenderPriority{0});
     registry.emplace_or_replace<Test>(player, Test{"Player"});
-    registry.emplace_or_replace<RenderDebug>(player);
+    // registry.emplace_or_replace<RenderDebug>(player);
     registry.emplace<Keys>(player);
 
     // place inside Interior with Id of 0, look up hy compomnent Id
