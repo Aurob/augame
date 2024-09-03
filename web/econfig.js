@@ -1,8 +1,8 @@
 
 const configstr = `
 id 9 test Other position 10 10 1 shape 1 1 1 color 0.1 0.3 0.8 renderPriority 4 textureGroupPart roomtiles tile78
-id 9 test Other position 10 10 0 shape 1 1 1 color 0.1 0.3 0.8 renderPriority 0 collidable textureGroupPart roomtiles tile88`;
-
+id 9 test Other position 10 11 0 shape 1 .25 1 color 0.1 0.3 0.8 hoverable interactable renderPriority 0 collidable configurable`;
+//textureGroupPart roomtiles tile88 
 // id 18 test texTest position 0 0 0 shape 1 1 1 color 1 1 1 renderPriority 3 texture roomtiles 0.5 1.0 0.5 0 .1 .1
 // id 0 test Room position 0 10 -1 shape 15 15 1 color 0.5 0.5 0.5 renderPriority 1 collidable interior
 // id 1 test Door position 2 25 0.1 shape 1 0.1 1 color 0.6 0.3 0.1 renderPriority 2 collidable interiorPortal 0 -1 inside 0 associated 0

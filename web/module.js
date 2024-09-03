@@ -81,7 +81,6 @@ var Module = {
       this.processTextures(json.textures);
     }
     if (Array.isArray(json.textureGroups)) {
-      console.log("Texture groups found");
       this.js_to_c({ textureGroups: json.textureGroups });
     }
 

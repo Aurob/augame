@@ -101,7 +101,7 @@ let tileset1 = {
 let c = 1; // Start from 1 to match the tilemap checker IDs
 for (let j = 0; j < tileset1.height / tileset1.tileHeight; j++) {
     for (let i = 0; i < tileset1.width / tileset1.tileWidth; i++) {
-        console.log(`tile${c} ${i * tileset1.tileWidth} ${j * tileset1.tileHeight} ${tileset1.tileWidth} ${tileset1.tileHeight}`);
+        // console.log(`tile${c} ${i * tileset1.tileWidth} ${j * tileset1.tileHeight} ${tileset1.tileWidth} ${tileset1.tileHeight}`);
         let part = {
             'name': `tile${c}`,
             'x': i * tileset1.tileWidth,

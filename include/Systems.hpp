@@ -419,7 +419,7 @@ void updateInteractions(entt::registry &registry)
                 else
                 {
                     interactable.interactions++;
-                    interactable.toggle = !interactable.toggle;
+                    // interactable.toggle = !interactable.toggle;
                 }
 
                 keys[SDL_BUTTON_LEFT] = false;
@@ -453,7 +453,16 @@ void updateInteractions(entt::registry &registry)
 
         // get the interacting entity put in _entity
         auto _entity = interacted.interactor;
-        action.action(registry, entity, _entity);
+        if(action.toggle) {
+            auto interaction = registry.get<Interactable>(entity);
+            if(interaction.toggle()) {
+                action.action(registry, entity, _entity);
+            }
+        }
+        else {
+            action.action(registry, entity, _entity);
+        }
+        
     }
 
 
