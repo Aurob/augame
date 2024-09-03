@@ -6,6 +6,7 @@
 #include "../include/entt.hpp"
 #include "../include/structs.hpp"
 #include <sstream>
+#include <functional>    // For lambda functions
 
 using namespace std;
 
@@ -21,6 +22,12 @@ void _js__kvdata(string k, float v)
 {
     // Send a float to JS
     EM_ASM_({ Module.setkv(UTF8ToString($0), $1); }, k.c_str(), v);
+}
+
+void _js__log(string str)
+{
+    // Send a log to JS
+    EM_ASM_({ console.log(UTF8ToString($0)); }, str.c_str());
 }
 
 void _js__ready()
@@ -508,6 +515,26 @@ extern "C"
                             catch (const std::exception &e)
                             {
                                 printf("Error adding TextureGroupPart component: %s\n", e.what());
+                            }
+
+                            // Configurable
+                            //  - if has this flag, add an InteractionAction that logs its Id
+                            try
+                            {
+                                if (components.contains("Configurable") && components["Configurable"].is_boolean())
+                                {
+                                    printf("Adding Configurable component to entity %d\n", static_cast<int>(entity));
+                                    registry.emplace<Configurable>(entity);
+                                    registry.emplace<InteractionAction>(entity, InteractionAction{
+                                        [](entt::registry& registry, entt::entity entity, std::optional<entt::entity> optEntity) {
+                                            _js__log("Configurable entity: " + std::to_string(registry.get<Id>(entity).id));
+                                        },
+                                    true});
+                                }
+                            }
+                            catch (const std::exception &e)
+                            {
+                                printf("Error adding Configurable component: %s\n", e.what());
                             }
                         }
                     }

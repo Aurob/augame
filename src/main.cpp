@@ -154,7 +154,6 @@ bool js_loaded() {
             // Normalize TextureGroupPart if necessary
             if (textureGroupMap.find(name) != textureGroupMap.end()) {
                 for (auto& [partName, part] : textureGroupMap[name]) {
-                    printf("Part: %s\n", partName.c_str());
                     if (part.x > 1) part.x /= width;
                     if (part.y > 1) part.y /= height;
                     if (part.w > 1) part.w /= width;
@@ -302,7 +301,7 @@ void mainloop(void *arg)
                 position.sx + playerShape.scaled_size.x,
                 position.sy + playerShape.scaled_size.y + position.sz + playerShape.scaled_size.z,
                 shape.scaled_size.x,
-                shape.scaled_size.y,
+                shape.scaled_size.y + shape.scaled_size.z,
                 texture.x, texture.y, texture.w, texture.h
             );
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);

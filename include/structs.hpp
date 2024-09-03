@@ -115,6 +115,7 @@ struct Interacted {
 
 struct InteractionAction {
     std::function<void(entt::registry&, entt::entity, std::optional<entt::entity>)> action;
+    bool toggle;
 };
 
 struct CollisionAction {
@@ -129,7 +130,12 @@ struct TickAction {
 
 struct Interactable {
     int interactions;
-    bool toggle;
+    bool toggleState;
+
+    bool toggle() {
+        toggleState = !toggleState;
+        return toggleState;
+    }
 };
 
 struct Colliding{
@@ -261,3 +267,5 @@ struct Elevate {
 struct Keys {
     std::unordered_map<SDL_Keycode, bool> keys;
 };
+
+struct Configurable {};

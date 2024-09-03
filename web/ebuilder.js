@@ -17,7 +17,8 @@ class EntityBuilder {
         interior: 1,
         moveable: 1,
         hoverable: 1,
-        interactable: 1
+        interactable: 1,
+        configurable: 1
     };
     
     static componentParsers = {
@@ -66,7 +67,8 @@ class EntityBuilder {
             }
         }),
         hoverable: () => ({ Hoverable: true }),
-        interactable: () => ({ Interactable: true })
+        interactable: () => ({ Interactable: true }),
+        configurable: () => ({ Configurable: true })
     };
 
     constructor() {
