@@ -1,0 +1,19 @@
+id 9 test Other position 10 10 1 shape 1 1 1 color 0.1 0.3 0.8 renderPriority 4 textureGroupPart roomtiles tile78
+id 9 test Other position 10 10 0 shape 1 1 1 color 0.1 0.3 0.8 renderPriority 0 textureGroupPart roomtiles tile88
+id 9 test Other position 10 10 3 shape 1 1 1 color 0.1 0.3 0.8 renderPriority 4 textureGroupPart roomtiles tile17 collidable
+id 9 test Other position 10 10 2 shape 1 1 1 color 0.1 0.3 0.8 renderPriority 0 textureGroupPart roomtiles tile27 collidable
+id 9 test Other position 10 10 5 shape 1 1 1 color 0.1 0.3 0.8 renderPriority 4 textureGroupPart roomtiles tile17 collidable
+id 9 test Other position 10 10 4 shape 1 1 1 color 0.1 0.3 0.8 renderPriority 0 textureGroupPart roomtiles tile27 collidable
+
+id 9 test Other position 9 10 1 shape 1 1 1 color 0.1 0.3 0.8 renderPriority 4 textureGroupPart roomtiles tile73 collidable
+id 9 test Other position 9 10 0 shape 1 1 1 color 0.1 0.3 0.8 renderPriority 0 textureGroupPart roomtiles tile83 collidable
+id 9 test Other position 9 10.5 4 shape 1 1 1 color 0.1 0.3 0.8 renderPriority 4 textureGroupPart roomtiles tile4 collidable
+id 9 test Other position 9 10.5 3 shape 1 1 1 color 0.1 0.3 0.8 renderPriority 0 textureGroupPart roomtiles tile14 collidable
+id 9 test Other position 9 10.5 2 shape 1 1 1 color 0.1 0.3 0.8 renderPriority 0 textureGroupPart roomtiles tile24 collidable
+
+id 9 test Other position 11 10 1 shape 1 1 1 color 0.1 0.3 0.8 renderPriority 4 textureGroupPart roomtiles tile73 collidable
+id 9 test Other position 11 10 0 shape 1 1 1 color 0.1 0.3 0.8 renderPriority 0 textureGroupPart roomtiles tile83 collidable
+id 9 test Other position 11 10.5 3 shape 1 1 1 color 0.1 0.3 0.8 renderPriority 4 textureGroupPart roomtiles tile73 collidable
+id 9 test Other position 11 10.5 2 shape 1 1 1 color 0.1 0.3 0.8 renderPriority 0 textureGroupPart roomtiles tile83 collidable
+
+id 9 test Other position 13 14 1 shape 1 1 1 color 0.1 0.3 0.8 renderPriority 4 textureGroupPart tileset1 tile27 collidable

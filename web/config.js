@@ -77,45 +77,67 @@ var CONFIG = {
         {
             "name": "roomtiles",
             "path": "resources/roomtiles.png"
+        },
+        {
+            "name": "tileset1",
+            "path": "resources/tileset1.png"
         }
     
     ],
     "textureGroups": []
 };
 
-var textureGroups = {
-    name: 'roomtiles',
-    parts: [ 
-    ]
-}
-
-let tileset1 = {
-    'name': 'tileset1',
+let roomtiles = {
+    'name': 'roomtiles',
     'path': 'resources/roomtiles.png',
     'width': 160,
     'height': 144,
     'tileWidth': 16,
     'tileHeight': 16,
-}
+    'parts': []
+};
 
 let c = 1; // Start from 1 to match the tilemap checker IDs
-for (let j = 0; j < tileset1.height / tileset1.tileHeight; j++) {
-    for (let i = 0; i < tileset1.width / tileset1.tileWidth; i++) {
-        // console.log(`tile${c} ${i * tileset1.tileWidth} ${j * tileset1.tileHeight} ${tileset1.tileWidth} ${tileset1.tileHeight}`);
+for (let j = 0; j < roomtiles.height / roomtiles.tileHeight; j++) {
+    for (let i = 0; i < roomtiles.width / roomtiles.tileWidth; i++) {
         let part = {
             'name': `tile${c}`,
+            'x': i * roomtiles.tileWidth,
+            'y': j * roomtiles.tileHeight,
+            'w': roomtiles.tileWidth,
+            'h': roomtiles.tileHeight
+        }
+        roomtiles.parts.push(part);
+        c++;
+    }
+}
+
+let tileset1 = {
+    'name': 'tileset1',
+    'path': 'resources/tileset1.png',
+    'width': 207,
+    'height': 153,
+    'tileWidth': 8,
+    'tileHeight': 8,
+    'parts': []
+};
+
+c = 1; // Start from 1 to match the tilemap checker IDs
+for (let j = 0; j < tileset1.height / tileset1.tileHeight; j++) {
+    for (let i = 0; i < tileset1.width / tileset1.tileWidth; i++) {
+        let part = {
+            'name': `s${c}`,
             'x': i * tileset1.tileWidth,
             'y': j * tileset1.tileHeight,
             'w': tileset1.tileWidth,
             'h': tileset1.tileHeight
         }
-        textureGroups.parts.push(part);
-
+        tileset1.parts.push(part);
         c++;
     }
 }
 
-CONFIG.textureGroups.push(textureGroups);
+CONFIG.textureGroups.push(roomtiles, tileset1);
 
 const actions = ["Idle", "Run"];
 const directions = ["Down", "Left", "Right", "Up"];

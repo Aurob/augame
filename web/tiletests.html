@@ -16,8 +16,6 @@
         canvas {
             border: 1px solid black;
             margin-top: 20px;
-            width: calc(100% - 40px);
-            height: calc(100vh - 100px);
             max-width: 100%;
             max-height: 100%;
         }
@@ -39,6 +37,8 @@
         <input type="number" id="tileWidth" value="50">
         <label for="tileHeight">Tile Height:</label>
         <input type="number" id="tileHeight" value="50">
+        <label for="zoomLevel">Zoom Level:</label>
+        <input type="range" id="zoomLevel" min="1" max="3" step="0.1" value="1">
     </div>
     <canvas id="canvas"></canvas>
 <script>
@@ -47,12 +47,15 @@
     const ctx = canvas.getContext('2d');
     const tileWidthInput = document.getElementById('tileWidth');
     const tileHeightInput = document.getElementById('tileHeight');
+    const zoomLevelInput = document.getElementById('zoomLevel');
 
     let currentImage = null;
+    let zoomLevel = 1;
 
     fileInput.addEventListener('change', handleFileSelect);
     tileWidthInput.addEventListener('input', handleTileSizeChange);
     tileHeightInput.addEventListener('input', handleTileSizeChange);
+    zoomLevelInput.addEventListener('input', handleZoomChange);
     canvas.addEventListener('click', handleCanvasClick);
 
     // Load image and tile sizes from localStorage if exists
@@ -60,8 +63,10 @@
         const storedImage = localStorage.getItem('storedImage');
         const storedTileWidth = localStorage.getItem('tileWidth');
         const storedTileHeight = localStorage.getItem('tileHeight');
+        const storedZoomLevel = localStorage.getItem('zoomLevel');
         if (storedTileWidth) tileWidthInput.value = storedTileWidth;
         if (storedTileHeight) tileHeightInput.value = storedTileHeight;
+        if (storedZoomLevel) zoomLevelInput.value = storedZoomLevel;
         if (storedImage) {
             const img = new Image();
             img.onload = function() {
@@ -98,14 +103,21 @@
         redraw();
     }
 
+    function handleZoomChange() {
+        zoomLevel = parseFloat(zoomLevelInput.value);
+        localStorage.setItem('zoomLevel', zoomLevel);
+        resizeCanvas();
+        redraw();
+    }
+
     function resizeCanvas() {
         if (currentImage) {
             const aspectRatio = currentImage.width / currentImage.height;
             if (window.innerWidth / window.innerHeight > aspectRatio) {
-                canvas.height = window.innerHeight - 100;
+                canvas.height = (window.innerHeight - 100) * zoomLevel;
                 canvas.width = canvas.height * aspectRatio;
             } else {
-                canvas.width = window.innerWidth - 40;
+                canvas.width = (window.innerWidth - 40) * zoomLevel;
                 canvas.height = canvas.width / aspectRatio;
             }
         }
@@ -155,7 +167,7 @@
         const scaleX = canvas.width / currentImage.width;
         const scaleY = canvas.height / currentImage.height;
 
-        const col = Math.floor(x / (tileWidth * scaleX*2));
+        const col = Math.floor(x / (tileWidth * scaleX * 2));
         const row = Math.floor(y / (tileHeight * scaleY));
         const cols = Math.floor(currentImage.width / tileWidth);
         const cellNumber = row * cols + col + 1;

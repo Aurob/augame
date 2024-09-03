@@ -178,6 +178,9 @@ extern "C"
                         }
                     }
                     textureGroupMap[groupName] = textureParts;
+
+                    // print group name and part count
+                    printf("Group: %s, Parts: %zu\n", groupName.c_str(), textureParts.size());
                 }
             }
         }
@@ -508,6 +511,7 @@ extern "C"
                                     std::string partName = textureGroupPart["partName"];
                                     if (textureGroupMap.find(groupName) != textureGroupMap.end() && textureGroupMap[groupName].find(partName) != textureGroupMap[groupName].end())
                                     {
+                                        printf("Adding %d to %s\n", static_cast<int>(entity), groupName.c_str());
                                         registry.emplace<TextureGroupPart>(entity, TextureGroupPart{groupName, partName});
                                     }
                                 }
@@ -535,6 +539,36 @@ extern "C"
                             catch (const std::exception &e)
                             {
                                 printf("Error adding Configurable component: %s\n", e.what());
+                            }
+
+                            // Teleporter
+                            try
+                            {
+                                if (components.contains("Teleporter") && components["Teleporter"].is_object())
+                                {
+                                    printf("Adding Teleporter component to entity %d\n", static_cast<int>(entity));
+                                    auto &teleporter = components["Teleporter"];
+                                    Position destination{teleporter["destination"]["x"], teleporter["destination"]["y"], teleporter["destination"]["z"]};
+                                    registry.emplace<Teleport>(entity, Teleport{.destination = destination});
+                                }
+                            }
+                            catch (const std::exception &e)
+                            {
+                                printf("Error adding Teleporter component: %s\n", e.what());
+                            }
+
+                            // Teleportable
+                            try
+                            {
+                                if (components.contains("Teleportable") && components["Teleportable"].is_boolean())
+                                {
+                                    printf("Adding Teleportable component to entity %d\n", static_cast<int>(entity));
+                                    registry.emplace<Teleportable>(entity);
+                                }
+                            }
+                            catch (const std::exception &e)
+                            {
+                                printf("Error adding Teleportable component: %s\n", e.what());
                             }
                         }
                     }

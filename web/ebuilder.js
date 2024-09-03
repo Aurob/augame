@@ -5,7 +5,7 @@ class EntityBuilder {
         textureGroupPart: 3,
         position: 4,
         shape: 4,
-        color: 4,
+        color: 5,
         movement: 10,
         interiorPortal: 3,
         inside: 2,
@@ -18,7 +18,10 @@ class EntityBuilder {
         moveable: 1,
         hoverable: 1,
         interactable: 1,
-        configurable: 1
+        configurable: 1,
+        teleporter: 4,
+        teleportable: 1,
+
     };
     
     static componentParsers = {
@@ -28,7 +31,7 @@ class EntityBuilder {
         shape: (parts, i) => ({ Shape: { size: [parseFloat(parts[i]), parseFloat(parts[i+1]), parseFloat(parts[i+2])] } }),
         color: (parts, i) => {
             const color = { r: parseFloat(parts[i]), g: parseFloat(parts[i+1]), b: parseFloat(parts[i+2]) };
-            color.a = 1.0; //parts[i+3] !== undefined ? parseFloat(parts[i+3]) : 1.0;
+            color.a = parts[i+3] !== undefined ? parseFloat(parts[i+3]) : 1.0;
             return { Color: color };
         },
         renderPriority: (parts, i) => ({ RenderPriority: { priority: parseInt(parts[i], 10) } }),
@@ -68,7 +71,9 @@ class EntityBuilder {
         }),
         hoverable: () => ({ Hoverable: true }),
         interactable: () => ({ Interactable: true }),
-        configurable: () => ({ Configurable: true })
+        configurable: () => ({ Configurable: true }),
+        teleporter: (parts, i) => ({ Teleporter: { destination: { x: parseFloat(parts[i]), y: parseFloat(parts[i+1]), z: parseFloat(parts[i+2]) }, interiorEntity: parseInt(parts[i+3], 10) } }),
+        teleportable: () => ({ Teleportable: true }),
     };
 
     constructor() {
