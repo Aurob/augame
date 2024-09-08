@@ -143,6 +143,8 @@ struct Interactable {
     }
 };
 
+struct Dragable {};
+
 struct Colliding{
     std::vector<entt::entity> collidables;
     std::vector<Vector3f> overlaps;

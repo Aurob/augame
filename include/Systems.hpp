@@ -404,11 +404,14 @@ void updateInteractions(entt::registry &registry)
         float normalizedCursorX = -((cursorPos[0] / width) * 2.0f - 1.0f) - playerShape.scaled_size.x;
         float normalizedCursorY = (1.0f - (cursorPos[1] / height) * 2.0f) - playerShape.scaled_size.y;
 
-        // Check for boundary collision extended by interactable.radius
-        if (normalizedCursorX >= position.sx - shape.scaled_size.x - interactable.radius &&
-            normalizedCursorX <= position.sx + shape.scaled_size.x + interactable.radius &&
-            normalizedCursorY >= position.sy - shape.scaled_size.y - interactable.radius &&
-            normalizedCursorY <= position.sy + shape.scaled_size.y + interactable.radius)
+        // Normalize interactable radius using the average of the scaled sizes
+        float normalizedRadius = interactable.radius * (shape.scaled_size.x + shape.scaled_size.y) / 2.0f;
+
+        // Check for boundary collision extended by normalized interactable.radius
+        if (normalizedCursorX >= position.sx - shape.scaled_size.x - normalizedRadius &&
+            normalizedCursorX <= position.sx + shape.scaled_size.x + normalizedRadius &&
+            normalizedCursorY >= position.sy - shape.scaled_size.y - normalizedRadius &&
+            normalizedCursorY <= position.sy + shape.scaled_size.y + normalizedRadius)
         {
             mouseCollides = true;
         }
@@ -582,7 +585,7 @@ void updateOther(entt::registry &registry)
     }
 
     // Handle Interacted
-    auto interacted_entities = registry.view<Interacted>();
+    auto interacted_entities = registry.view<Interacted, Dragable>();
     for (auto entity : interacted_entities)
     {
         auto &interacted = interacted_entities.get<Interacted>(entity);
