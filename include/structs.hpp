@@ -68,6 +68,10 @@ struct Position {
     float sy;
     float sz;
 };
+struct CursorPosition {
+    float x;
+    float y;
+};
 
 struct Shape {
     Vector3f size{1, 1, .1};
@@ -111,6 +115,7 @@ struct Hovered {};
 
 struct Interacted {
     entt::entity interactor;
+    int interactions;
 };
 
 struct InteractionAction {
@@ -130,8 +135,8 @@ struct TickAction {
 
 struct Interactable {
     int interactions;
+    float radius;
     bool toggleState;
-
     bool toggle() {
         toggleState = !toggleState;
         return toggleState;
@@ -269,3 +274,9 @@ struct Keys {
 };
 
 struct Configurable {};
+
+// UI
+struct UIElement {
+    std::string content;
+    bool visible;
+};

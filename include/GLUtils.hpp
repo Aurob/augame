@@ -5,7 +5,8 @@
 
 extern GLfloat cursorPos[2];
 extern float seed;
-void loadGl(SDL_Window *mpWindow)
+
+SDL_GLContext loadGl(SDL_Window *mpWindow)
 {
     // Create OpenGLES 2 context on SDL window
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
@@ -16,6 +17,7 @@ void loadGl(SDL_Window *mpWindow)
     SDL_GLContext glc = SDL_GL_CreateContext(mpWindow);
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    return glc;
 }
 
 void updateUniforms(GLuint &shaderProgram,

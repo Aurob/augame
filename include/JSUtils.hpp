@@ -215,18 +215,22 @@ extern "C"
                             }
                         }
 
-                        // Check for Position:x:y
+                        // Check for Position:x:y:z
                         if (_el.contains("Position") && _el["Position"].is_object())
                         {
                             auto &position = _el["Position"];
-                            if (position.contains("x") && position["x"].is_number() && position.contains("y") && position["y"].is_number())
+                            if (position.contains("x") && position["x"].is_number() && 
+                                position.contains("y") && position["y"].is_number() && 
+                                position.contains("z") && position["z"].is_number())
                             {
                                 float x = position["x"];
                                 float y = position["y"];
+                                float z = position["z"];
 
                                 Position &playerPos = registry.get<Position>(_player);
                                 playerPos.x = x;
                                 playerPos.y = y;
+                                playerPos.z = z;
                             }
                         }
 

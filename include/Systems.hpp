@@ -60,7 +60,7 @@ void checkCollisions(entt::registry &registry, entt::entity entity, Position &en
 
     for (auto _entity : collidables)
     {
-        if (_entity == entity || (registry.any_of<Linked>(_entity) && registry.get<Linked>(_entity).parent == entity))
+        if (_entity == entity)
             continue;
 
         Position &_entityPosition = registry.get<Position>(_entity);
@@ -75,6 +75,16 @@ void checkCollisions(entt::registry &registry, entt::entity entity, Position &en
             if (interior == _entity)
             {
                 invert = true;
+            }
+        }
+
+        // If Collidable.ignorePlayer or Collidable.ignoreCollideAll is true, skip collision
+        if (registry.any_of<Collidable>(_entity))
+        {
+            auto &collidable = registry.get<Collidable>(_entity);
+            if (collidable.ignoreCollideAll || (collidable.ignorePlayer && entity == _player))
+            {
+                continue;
             }
         }
 
@@ -191,9 +201,6 @@ void updateCollisions(entt::registry &registry)
 
     for (auto entity : collidables)
     {
-        if (!registry.any_of<Movement>(entity))
-            continue;
-
         std::vector<entt::entity> _collidables;
         std::vector<Vector3f> overlaps;
 
@@ -213,17 +220,20 @@ void updateCollisions(entt::registry &registry)
                 registry.emplace<Colliding>(entity, Colliding{_collidables, overlaps});
             }
             
-            // offset entity position by overlaps
-            for (auto &overlap : overlaps)
-            {
-                entityPosition.x += overlap.x;
-                entityPosition.y += overlap.y;
+            if (registry.any_of<Movement>(entity)) {
+
+                // offset entity position by overlaps
+                for (auto &overlap : overlaps)
+                {
+                    entityPosition.x += overlap.x;
+                    entityPosition.y += overlap.y;
+                }
             }
 
             // Apply movement to colliding entities
             for (auto _entity : _collidables)
             {
-                if (registry.any_of<Movement>(_entity))
+                if (registry.any_of<Movement>(_entity) && registry.any_of<Movement>(entity))
                 {
                     auto &movement = registry.get<Movement>(entity);
                     auto &_movement = registry.get<Movement>(_entity);
@@ -233,17 +243,17 @@ void updateCollisions(entt::registry &registry)
                         _movement.velocity += movement.velocity * 0.5f;
                         _movement.acceleration += movement.acceleration * 0.5f;
                     }
-
-                    if (registry.any_of<Collidable>(_entity))
-                    {
-                        auto &collidable = registry.get<Collidable>(_entity);
-                        if (!collidable.ignoreCollideAll)
-                        {
-                            collidable.colliding_with.push_back(entity);
-                        }
-                    }
-
                 }
+
+                if (registry.any_of<Collidable>(_entity))
+                {
+                    auto &collidable = registry.get<Collidable>(_entity);
+                    if (!collidable.ignoreCollideAll)
+                    {
+                        collidable.colliding_with.push_back(entity);
+                    }
+                }
+
             }
         }
         else
@@ -394,11 +404,11 @@ void updateInteractions(entt::registry &registry)
         float normalizedCursorX = -((cursorPos[0] / width) * 2.0f - 1.0f) - playerShape.scaled_size.x;
         float normalizedCursorY = (1.0f - (cursorPos[1] / height) * 2.0f) - playerShape.scaled_size.y;
 
-        // Check for exact boundary collision
-        if (normalizedCursorX >= position.sx - shape.scaled_size.x &&
-            normalizedCursorX <= position.sx + shape.scaled_size.x &&
-            normalizedCursorY >= position.sy - shape.scaled_size.y &&
-            normalizedCursorY <= position.sy + shape.scaled_size.y)
+        // Check for boundary collision extended by interactable.radius
+        if (normalizedCursorX >= position.sx - shape.scaled_size.x - interactable.radius &&
+            normalizedCursorX <= position.sx + shape.scaled_size.x + interactable.radius &&
+            normalizedCursorY >= position.sy - shape.scaled_size.y - interactable.radius &&
+            normalizedCursorY <= position.sy + shape.scaled_size.y + interactable.radius)
         {
             mouseCollides = true;
         }
@@ -419,6 +429,8 @@ void updateInteractions(entt::registry &registry)
                 else
                 {
                     interactable.interactions++;
+                    auto &interaction = registry.get<Interacted>(entity);
+                    interaction.interactions++;
                     // interactable.toggle = !interactable.toggle;
                 }
 
@@ -453,16 +465,10 @@ void updateInteractions(entt::registry &registry)
 
         // get the interacting entity put in _entity
         auto _entity = interacted.interactor;
-        if(action.toggle) {
-            auto interaction = registry.get<Interactable>(entity);
-            if(interaction.toggle()) {
-                action.action(registry, entity, _entity);
-            }
-        }
-        else {
+        
+        if(interacted.interactions < 1) {
             action.action(registry, entity, _entity);
         }
-        
     }
 
 
@@ -551,7 +557,6 @@ void updateOther(entt::registry &registry)
         for (auto &tentity : teleport_entities)
         {
 
-            printf("Checking teleport\n");
             auto &tposition = teleport_entities.get<Position>(tentity);
             auto &tshape = teleport_entities.get<Shape>(tentity);
             auto &teleport = teleport_entities.get<Teleport>(tentity);
@@ -575,7 +580,45 @@ void updateOther(entt::registry &registry)
             }
         }
     }
-}
+
+    // Handle Interacted
+    auto interacted_entities = registry.view<Interacted>();
+    for (auto entity : interacted_entities)
+    {
+        auto &interacted = interacted_entities.get<Interacted>(entity);
+        if (interacted.interactor == _player)
+        {
+            if (registry.all_of<CursorPosition, Shape>(_player))
+            {
+                auto &cursorPos = registry.get<CursorPosition>(_player);
+                auto &cursorShape = registry.get<Shape>(_player);
+                auto &position = registry.get<Position>(entity);
+                auto &shape = registry.get<Shape>(entity);
+                auto &playerPos = registry.get<Position>(_player);
+
+                float newX = cursorPos.x - (shape.size.x / 2) + (cursorShape.size.x / 2);
+                float newY = cursorPos.y - (shape.size.y / 2) + (cursorShape.size.y / 2);
+
+                float distanceToCursor = std::sqrt(std::pow(newX - playerPos.x, 2) + std::pow(newY - playerPos.y, 2));
+                float distanceToEntity = std::sqrt(std::pow(position.x - playerPos.x, 2) + std::pow(position.y - playerPos.y, 2));
+
+                if (distanceToEntity <= 2.0f)
+                {
+                    if (distanceToCursor > 2.0f)
+                    {
+                        float scale = 2.0f / distanceToCursor;
+                        newX = playerPos.x + (newX - playerPos.x) * scale;
+                        newY = playerPos.y + (newY - playerPos.y) * scale;
+                    }
+
+                    position.x = newX;
+                    position.y = newY;
+                }
+            }
+        }
+    }
+
+}   
 
 void updateFlags(entt::registry &registry)
 {

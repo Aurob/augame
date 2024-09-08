@@ -83,16 +83,22 @@ var Module = {
     if (Array.isArray(json.textureGroups)) {
       this.js_to_c({ textureGroups: json.textureGroups });
     }
-
-    if (Array.isArray(json.shaders)) {
-      this.processShaders(json.shaders).then(() => {
-        this.js_to_c(ECONFIG);
-        this.start();
-      });
-    } else {
+    const shadersPromise = Array.isArray(json.shaders) ? this.processShaders(json.shaders) : Promise.resolve();
+    shadersPromise.then(() => {
       this.js_to_c(ECONFIG);
       this.start();
-    }
+      setTimeout(() => {
+        this.js_to_c(
+          {"Entities": [  {
+            "Player": true,
+            "Position": {
+                "x": 1,
+                "y": 1,
+                "z": 0
+            }
+          }]});
+      }, 10);
+    });
 
     // Object.keys(json).forEach(key => {
     //   if (key !== 'textures' && key !== 'shaders') {
