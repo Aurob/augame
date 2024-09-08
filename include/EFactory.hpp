@@ -26,6 +26,7 @@ void makePlayer(entt::registry &registry)
     registry.emplace_or_replace<Teleportable>(player);
     registry.emplace_or_replace<RenderPriority>(player, RenderPriority{0});
     registry.emplace_or_replace<Test>(player, Test{"Player"});
+    registry.emplace<CursorPosition>(player);
     // registry.emplace_or_replace<RenderDebug>(player);
     registry.emplace<Keys>(player);
 
@@ -170,6 +171,53 @@ float rand_float(float min = 0.0f, float max = 1.0f)
 void runFactories(entt::registry &registry)
 {
     // testing_v2();
+    // Entity with a collision action that prints hello on action trigger
+    auto entity = registry.create();
+    printf("Entity: %d\n", entity);
+    registry.emplace_or_replace<Position>(entity, Position{4, -1, 0});
+    registry.emplace_or_replace<Shape>(entity, Shape{2, 1, 3});
+    registry.emplace_or_replace<Color>(entity, Color{128, 0, 32, 1.0f});
+    registry.emplace_or_replace<RenderPriority>(entity, RenderPriority{-2});
+    registry.emplace_or_replace<Debug>(entity, Debug{Color{0, 0, 0, 1.0f}});
+    registry.emplace_or_replace<Collidable>(entity);
+    registry.emplace<Test>(entity, Test{"test entity"});
+
+    auto key = registry.create();
+    registry.emplace<Position>(key, Position{5, 10, 0});
+    registry.emplace<Shape>(key, Shape{.25, .25, .1});
+    registry.emplace<Color>(key, Color{250, 255, 0, 1.0f});
+    registry.emplace<RenderPriority>(key, RenderPriority{0});
+    registry.emplace<Debug>(key, Debug{Color{0, 1.0, 0, 1.0f}});
+    registry.emplace<Test>(key, Test{"key entity"});
+    registry.emplace<Interactable>(key, Interactable{.radius = .1f});
+    registry.emplace<Collidable>(key, Collidable{.ignorePlayer = true});
+    registry.emplace<Hoverable>(key);
+    registry.emplace_or_replace<CollisionAction>(key, CollisionAction{[](entt::registry &registry, entt::entity entity)
+    {
+        auto &colliding = registry.get<Colliding>(entity);
+        for (auto collidingEntity : colliding.collidables)
+        {
+            if (registry.all_of<Test>(collidingEntity))
+            {
+                auto &testComponent = registry.get<Test>(collidingEntity);
+                if (testComponent.value == "test entity")
+                {
+                    // remove the Collidable
+                    auto &collidable = registry.get<Collidable>(collidingEntity);
+                    collidable.ignoreCollideAll = true;
+                    // change color to grassy green
+                    auto &color = registry.get<Color>(collidingEntity);
+                    color = Color{124, 252, 0, 1.0f}; // grassy green
+                    // add destroy flag to the key
+                    auto &flag = registry.get_or_emplace<Flag>(entity);
+                    flag.flags["Destroy"] = true;
+
+                    break;
+                }
+            }
+        }
+    }});
+
 }
 
 // std::vector<entt::entity> rooms;

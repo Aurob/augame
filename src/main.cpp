@@ -13,6 +13,9 @@
 #include "../include/Utils.hpp"
 #include "../include/EFactory.hpp"
 #include "../include/Systems.hpp"
+#include "../include/imgui/imgui.h"
+#include "../include/imgui/imgui_impl_sdl.h"
+#include "../include/imgui/imgui_impl_opengl3.h"
 
 using namespace std;
 
@@ -65,7 +68,7 @@ int main(int argc, char *argv[])
         return -1;
     }
     if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
-        printf("SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError());
+        printf("SDL_image could not initialize! SDL_image Error: %s\n", SDL_GetError());
         return -1;
     }
 
@@ -79,7 +82,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    loadGl(mpWindow);
+    SDL_GLContext gl_context = loadGl(mpWindow);
 
     // Trigger JS functions
     _js__fetch_configs();   
@@ -89,12 +92,31 @@ int main(int argc, char *argv[])
     seed = 85582;
     printf("Seed: %f\n", seed);
 
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
+
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
+
+    // Setup Platform/Renderer bindings
+    ImGui_ImplSDL2_InitForOpenGL(mpWindow, gl_context);
+    ImGui_ImplOpenGL3_Init("#version 100");
+
+
     // Set the main loop
     ctx.window = mpWindow;
     emscripten_set_main_loop_arg(mainloop, &ctx, 0, 1);
     emscripten_set_main_loop_timing(EM_TIMING_RAF, 1);
 
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
+    ImGui::DestroyContext();
+
     // Quit
+    SDL_GL_DeleteContext(gl_context);
     SDL_Quit();
     IMG_Quit();
 
@@ -114,6 +136,7 @@ void updateFrame(context *ctx)
     // Update player-based calculations
     Position &playerPos = registry.get<Position>(_player);
     Shape &playerShape = registry.get<Shape>(_player);
+    CursorPosition &playerCursorPos = registry.get<CursorPosition>(_player);
 
     // Set view offset
     offsetValue[0] = ((fmod(playerPos.x, defaultGSV) * gridSpacingValue) / defaultGSV) - (playerShape.size.x / 2);
@@ -123,6 +146,12 @@ void updateFrame(context *ctx)
     toplefttile[0] = static_cast<int>(playerPos.x / defaultGSV) - (width / gridSpacingValue / 2);
     toplefttile[1] = static_cast<int>(playerPos.y / defaultGSV) - (height / gridSpacingValue / 2);
 
+    // Determine cursor position using toplefttile and offset, factoring in defaultGSV
+    playerCursorPos.x = playerPos.x + ((cursorPos[0] - width / 2) * defaultGSV / gridSpacingValue);
+    playerCursorPos.y = playerPos.y + ((cursorPos[1] - height / 2) * defaultGSV / gridSpacingValue);
+
+    // printf("Cursor: %f, %f\n", playerCursorPos.x, playerCursorPos.y);
+    
     // Update entity movement and interactions
     updateFlags(registry);
     updateCollisions(registry);
@@ -131,6 +160,19 @@ void updateFrame(context *ctx)
     updatePositions(registry);
     updateOther(registry);
     updateInteractions(registry);
+}
+
+
+void test_imgui(const std::string& displayText)
+{
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplSDL2_NewFrame();
+    ImGui::NewFrame();
+    ImGui::Begin("Hello, world!", nullptr, ImGuiWindowFlags_AlwaysAutoResize );
+    ImGui::Text("%s", displayText.c_str());
+    ImGui::End();
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
 bool js_loaded() {
@@ -166,6 +208,23 @@ bool js_loaded() {
         makePlayer(registry);
         runFactories(registry);
 
+        
+        auto key = registry.create();
+        registry.emplace<Position>(key, Position{15, 10, 0});
+        registry.emplace<Shape>(key, Shape{.25, .25, .1});
+        registry.emplace<Color>(key, Color{250, 255, 0, 1.0f});
+        registry.emplace<RenderPriority>(key, RenderPriority{0});
+        registry.emplace<Debug>(key, Debug{Color{0, 1.0, 0, 1.0f}});
+        registry.emplace<Test>(key, Test{"key entity"});
+        registry.emplace<Interactable>(key, Interactable{.radius = .1f});
+        registry.emplace<Collidable>(key, Collidable{.ignorePlayer = true});
+        registry.emplace<Hoverable>(key);
+        registry.emplace<UIElement>(key, UIElement{"Key", false});
+        registry.emplace_or_replace<InteractionAction>(key, InteractionAction{[](entt::registry &registry, entt::entity entity, std::optional<entt::entity> opt_entity) {
+            auto& uiElement = registry.get<UIElement>(entity);
+            uiElement.visible = !uiElement.visible;
+        }, true});
+
         // set defaultMoveSpeed
         Movement &playerMovement = registry.get<Movement>(_player);
         defaultMoveSpeed = playerMovement.speed;
@@ -185,6 +244,7 @@ void mainloop(void *arg)
 
     while (SDL_PollEvent(&ctx->event))
     {
+        ImGui_ImplSDL2_ProcessEvent(&ctx->event);
         EventHandler(0, &ctx->event);
     }
 
@@ -203,14 +263,12 @@ void mainloop(void *arg)
     if(keys[SDLK_b]) {
         auto& playerPos = registry.get<Position>(_player);
         playerPos.z += 1;
-        // playerPos.y -= 1;
         keys[SDLK_b] = false;
     }
     // If N decrease player z
     if(keys[SDLK_n]) {
         auto& playerPos = registry.get<Position>(_player);
         playerPos.z -= 1;
-        // playerPos.y += 1;
         keys[SDLK_n] = false;
     }
     
@@ -315,7 +373,6 @@ void mainloop(void *arg)
 
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            // if (textureGroupMap.find(groupName) != textureGroupMap.end() && textureGroupMap[groupName].find(partName) != textureGroupMap[groupName].end()) {
             auto rootTexture = textureIDMap[groupName];
             const auto& texture = textureGroupMap[groupName].at(partName);
             updateUniformsTexture(shaderProgramMap["texture"], 
@@ -335,11 +392,9 @@ void mainloop(void *arg)
 
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            // Check if the entity has RenderDebug
             if (registry.all_of<RenderDebug>(entity)) {
-                // Render a small transparent square to indicate bounding box
                 updateUniformsDebug(shaderProgramMap["debug_entity"],
-                    1.0f, 1.0f, 1.0f, 0.2f, // White color with 20% opacity
+                    1.0f, 1.0f, 1.0f, 0.2f,
                     position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
                     shape.scaled_size.x, shape.scaled_size.y, 0.0f);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -355,12 +410,8 @@ void mainloop(void *arg)
             const auto& textureAlts = registry.get<TextureAlts>(entity);
             const auto& currentTextures = textureAlts.alts.at(textureAlts.current);
             const auto& current_texture = currentTextures.textures[currentTextures.current];
-
-
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             // Check if the entity has RenderDebug
-            if (registry.all_of<RenderDebug, Player>(entity)) {
+            // if (registry.all_of<RenderDebug, Player>(entity)) {
                 // Render a small transparent square to indicate bounding box
                 updateUniformsDebug(shaderProgramMap["debug_entity"],
                     1.0f, 1.0f, 1.0f, 0.2f, // White color with 20% opacity
@@ -368,17 +419,17 @@ void mainloop(void *arg)
                     position.sy + playerShape.scaled_size.y,
                     shape.scaled_size.x, shape.scaled_size.y, 0.0f);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-            }
+            // }
 
-            updateUniformsTexture(shaderProgramMap["texture"], 
-                textureIDMap[current_texture.name],
-                position.sx + playerShape.scaled_size.x,
-                position.sy + playerShape.scaled_size.y + position.sz + playerShape.scaled_size.z,
-                shape.scaled_size.x * current_texture.scalex, 
-                shape.scaled_size.y * current_texture.scaley,
-                current_texture.x, current_texture.y, 
-                current_texture.w, current_texture.h);
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            // updateUniformsTexture(shaderProgramMap["texture"], 
+            //     textureIDMap[current_texture.name],
+            //     position.sx + playerShape.scaled_size.x,
+            //     position.sy + playerShape.scaled_size.y + position.sz + playerShape.scaled_size.z/2,
+            //     shape.scaled_size.x * current_texture.scalex, 
+            //     shape.scaled_size.y * current_texture.scaley,
+            //     current_texture.x, current_texture.y, 
+            //     current_texture.w, current_texture.h);
+            // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
         }
         else if(registry.all_of<Color>(entity)) {
@@ -389,12 +440,11 @@ void mainloop(void *arg)
                 angle = registry.get<Rotation>(entity).angle;
             }
 
-            // Draw with z offset
             updateUniformsDebug(shaderProgramMap["debug_entity"],
                 color.r, color.g, color.b, color.a,
                 position.sx + playerShape.scaled_size.x, 
-                position.sy + playerShape.scaled_size.y + shape.scaled_size.z,
-                shape.scaled_size.x, shape.scaled_size.y + shape.scaled_size.z, 
+                position.sy + playerShape.scaled_size.y,
+                shape.scaled_size.x, shape.scaled_size.y, 
                 angle);
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         }
@@ -406,13 +456,25 @@ void mainloop(void *arg)
         toplefttile);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     
+    // Handle UIElement Components
+    auto ui_elements = registry.view<UIElement>();
+    for(auto& entity : ui_elements) {
+        auto& uiElement = registry.get<UIElement>(entity);
+        if(uiElement.visible) {
+            test_imgui(uiElement.content);
+        }
+    }
+
     // Swap buffers
     SDL_GL_SwapWindow(ctx->window);
 
     // Update info on front end
+    auto& playerCursorPos = registry.get<CursorPosition>(_player);
     _js__kvdata("x", playerPos.x);
     _js__kvdata("y", playerPos.y);
     _js__kvdata("z", playerPos.z);
     _js__kvdata("gridSpacingValue", gridSpacingValue);
+    _js__kvdata("cursorX", playerCursorPos.x);
+    _js__kvdata("cursorY", playerCursorPos.y);
     ctx->iteration++;
 }

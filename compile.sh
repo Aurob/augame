@@ -2,6 +2,9 @@
 echo "compile commenced at:" $(date)
 start_time=$(date +%s)
   em++ -std=c++1z src/$1.cpp \
+  src/imgui/imgui.cpp src/imgui/imgui_draw.cpp src/imgui/imgui_impl_sdlrenderer.cpp \
+  src/imgui/imgui_tables.cpp src/imgui/imgui_impl_sdl.cpp src/imgui/imgui_widgets.cpp \
+  src/imgui/imgui_demo.cpp src/imgui/imgui_impl_opengl3.cpp \
   -s WASM=1 -s USE_SDL=2 -s USE_WEBGL2=1\
   --embed-file resources\
   -s USE_SDL_IMAGE=2\
