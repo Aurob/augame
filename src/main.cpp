@@ -163,12 +163,21 @@ void updateFrame(context *ctx)
 }
 
 
-void test_imgui(const std::string& displayText)
+void test_imgui(const std::string& displayText, float screenX, float screenY, float scaleX, float scaleY)
 {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
-    ImGui::Begin("Hello, world!", nullptr, ImGuiWindowFlags_AlwaysAutoResize );
+    ImGui::SetNextWindowPos(ImVec2(screenX, screenY), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(scaleX, scaleY), ImGuiCond_Always);
+    ImGui::Begin("Hello, world!", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+    
+    // Center the text
+    ImVec2 windowSize = ImGui::GetWindowSize();
+    ImVec2 textSize = ImGui::CalcTextSize(displayText.c_str());
+    ImGui::SetCursorPosX((windowSize.x - textSize.x) * 0.5f);
+    ImGui::SetCursorPosY((windowSize.y - textSize.y) * 0.5f);
+    
     ImGui::Text("%s", displayText.c_str());
     ImGui::End();
     ImGui::Render();
@@ -216,7 +225,7 @@ bool js_loaded() {
         registry.emplace<RenderPriority>(key, RenderPriority{0});
         registry.emplace<Debug>(key, Debug{Color{0, 1.0, 0, 1.0f}});
         registry.emplace<Test>(key, Test{"key entity"});
-        registry.emplace<Interactable>(key, Interactable{.radius = .1f});
+        registry.emplace<Interactable>(key, Interactable{.radius = 1.0f});
         registry.emplace<Collidable>(key, Collidable{.ignorePlayer = true});
         registry.emplace<Hoverable>(key);
         registry.emplace<UIElement>(key, UIElement{"Key", false});
@@ -461,7 +470,14 @@ void mainloop(void *arg)
     for(auto& entity : ui_elements) {
         auto& uiElement = registry.get<UIElement>(entity);
         if(uiElement.visible) {
-            test_imgui(uiElement.content);
+            auto position = registry.get<Position>(entity);
+            auto shape = registry.get<Shape>(entity);
+            test_imgui(uiElement.content, 
+                ( (1 - ((position.sx + playerShape.scaled_size.x*1.25 + shape.scaled_size.x*0.1) + 1) / 2) * width),
+                ( (1 - ((position.sy + playerShape.scaled_size.y*1.25 + shape.scaled_size.y*0.1) + 1) / 2) * height),
+                (shape.scaled_size.x + shape.scaled_size.x*.1) * width,
+                (shape.scaled_size.y + shape.scaled_size.y*.1) * height
+            );
         }
     }
 
@@ -473,6 +489,8 @@ void mainloop(void *arg)
     _js__kvdata("x", playerPos.x);
     _js__kvdata("y", playerPos.y);
     _js__kvdata("z", playerPos.z);
+    _js__kvdata("sx", playerPos.sx);
+    _js__kvdata("sy", playerPos.sy);
     _js__kvdata("gridSpacingValue", gridSpacingValue);
     _js__kvdata("cursorX", playerCursorPos.x);
     _js__kvdata("cursorY", playerCursorPos.y);

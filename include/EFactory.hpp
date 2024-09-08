@@ -85,76 +85,6 @@ void makePlayer(entt::registry &registry)
 }
 
 /**
- * @brief Creates a room entity with optional door.
- */
-entt::entity createRoom(entt::registry &registry, float x, float y, float z, float width, float height,
-                        Color color, entt::entity parent = entt::null, bool createDoor = false, int priority = 0, int doorPosition = 0)
-{
-    auto room = registry.create();
-    registry.emplace_or_replace<Position>(room, Position{x, y, z});
-    registry.emplace_or_replace<Shape>(room, Shape{width, height, 1});
-    registry.emplace_or_replace<Color>(room, color);
-    registry.emplace_or_replace<Interior>(room);
-    registry.emplace_or_replace<Collidable>(room);
-    registry.emplace_or_replace<Debug>(room, Debug{color});
-
-    int basePriority = registry.get<RenderPriority>(_player).priority;
-    registry.emplace_or_replace<RenderPriority>(room, RenderPriority{basePriority - 2});
-
-    if (parent != entt::null)
-    {
-        registry.emplace_or_replace<Inside>(room, Inside{parent});
-    }
-
-    auto createWall = [&](float posX, float posY, float posZ, float shapeWidth,
-                          float shapeHeight, float colorAlpha, entt::entity inside, bool isCollidable = false, int prio = 0, Color wallColor = Color{0, 0, 0, 1.0f})
-    {
-        wallColor.a = colorAlpha; // Override wallColor alpha with colorAlpha
-        auto wall = registry.create();
-        registry.emplace_or_replace<Position>(wall, Position{posX, posY, posZ});
-        registry.emplace_or_replace<Shape>(wall, Shape{shapeWidth, shapeHeight, 1});
-        registry.emplace_or_replace<Color>(wall, wallColor);
-        registry.emplace_or_replace<RenderPriority>(wall, RenderPriority{prio});
-        registry.emplace_or_replace<Debug>(wall, Debug{wallColor});
-        if (inside != entt::null)
-        {
-            registry.emplace_or_replace<Inside>(wall, Inside{inside});
-        }
-        if (isCollidable)
-        {
-            registry.emplace_or_replace<Collidable>(wall);
-        }
-        registry.emplace_or_replace<Associated>(wall, Associated{{room}});
-
-        return wall;
-    };
-
-    // back wall outer
-    createWall(x, y - (height / 4), z, width, height / 4, 1.0f, parent, false, basePriority + priority + 1, color); // back wall
-    // front wall outer
-    Color darkerColor = {color.r * 0.8f, color.g * 0.8f, color.b * 0.8f, color.a};
-    createWall(x, y + height - (height / 4), z, width, height / 4, 1.0f, parent, false, basePriority + priority - 1, darkerColor); // front wall
-
-    // back wall inner
-    createWall(x, y - (height / 4), z, width, height / 4, 1.0f, room, false, basePriority + priority + 1, darkerColor); // back wall
-    // front wall inner
-    auto front_inner = createWall(x, y + height - (height / 4), z, width, height / 4, 1.0f, room, false, basePriority + priority + 1, darkerColor); // front wall
-    // Create the lower part of the roof (3/4 height, opaque)
-    auto roof_lower = registry.create();
-    registry.emplace_or_replace<Position>(roof_lower, Position{x, y, z});
-    registry.emplace_or_replace<Shape>(roof_lower, Shape{width, height * 3 / 4});
-    registry.emplace_or_replace<Color>(roof_lower, color);
-    registry.emplace_or_replace<RenderPriority>(roof_lower, RenderPriority{basePriority + priority + 2});
-    registry.emplace_or_replace<Debug>(roof_lower, Debug{color});
-    if (parent != entt::null)
-    {
-        registry.emplace_or_replace<Inside>(roof_lower, Inside{parent});
-    }
-
-    return room;
-}
-
-/**
  * @brief Generates a random float between min and max.
  */
 float rand_float(float min = 0.0f, float max = 1.0f)
@@ -190,6 +120,7 @@ void runFactories(entt::registry &registry)
     registry.emplace<Debug>(key, Debug{Color{0, 1.0, 0, 1.0f}});
     registry.emplace<Test>(key, Test{"key entity"});
     registry.emplace<Interactable>(key, Interactable{.radius = .1f});
+    registry.emplace<Dragable>(key);
     registry.emplace<Collidable>(key, Collidable{.ignorePlayer = true});
     registry.emplace<Hoverable>(key);
     registry.emplace_or_replace<CollisionAction>(key, CollisionAction{[](entt::registry &registry, entt::entity entity)
@@ -219,6 +150,77 @@ void runFactories(entt::registry &registry)
     }});
 
 }
+
+
+// /**
+//  * @brief Creates a room entity with optional door.
+//  */
+// entt::entity createRoom(entt::registry &registry, float x, float y, float z, float width, float height,
+//                         Color color, entt::entity parent = entt::null, bool createDoor = false, int priority = 0, int doorPosition = 0)
+// {
+//     auto room = registry.create();
+//     registry.emplace_or_replace<Position>(room, Position{x, y, z});
+//     registry.emplace_or_replace<Shape>(room, Shape{width, height, 1});
+//     registry.emplace_or_replace<Color>(room, color);
+//     registry.emplace_or_replace<Interior>(room);
+//     registry.emplace_or_replace<Collidable>(room);
+//     registry.emplace_or_replace<Debug>(room, Debug{color});
+
+//     int basePriority = registry.get<RenderPriority>(_player).priority;
+//     registry.emplace_or_replace<RenderPriority>(room, RenderPriority{basePriority - 2});
+
+//     if (parent != entt::null)
+//     {
+//         registry.emplace_or_replace<Inside>(room, Inside{parent});
+//     }
+
+//     auto createWall = [&](float posX, float posY, float posZ, float shapeWidth,
+//                           float shapeHeight, float colorAlpha, entt::entity inside, bool isCollidable = false, int prio = 0, Color wallColor = Color{0, 0, 0, 1.0f})
+//     {
+//         wallColor.a = colorAlpha; // Override wallColor alpha with colorAlpha
+//         auto wall = registry.create();
+//         registry.emplace_or_replace<Position>(wall, Position{posX, posY, posZ});
+//         registry.emplace_or_replace<Shape>(wall, Shape{shapeWidth, shapeHeight, 1});
+//         registry.emplace_or_replace<Color>(wall, wallColor);
+//         registry.emplace_or_replace<RenderPriority>(wall, RenderPriority{prio});
+//         registry.emplace_or_replace<Debug>(wall, Debug{wallColor});
+//         if (inside != entt::null)
+//         {
+//             registry.emplace_or_replace<Inside>(wall, Inside{inside});
+//         }
+//         if (isCollidable)
+//         {
+//             registry.emplace_or_replace<Collidable>(wall);
+//         }
+//         registry.emplace_or_replace<Associated>(wall, Associated{{room}});
+
+//         return wall;
+//     };
+
+//     // back wall outer
+//     createWall(x, y - (height / 4), z, width, height / 4, 1.0f, parent, false, basePriority + priority + 1, color); // back wall
+//     // front wall outer
+//     Color darkerColor = {color.r * 0.8f, color.g * 0.8f, color.b * 0.8f, color.a};
+//     createWall(x, y + height - (height / 4), z, width, height / 4, 1.0f, parent, false, basePriority + priority - 1, darkerColor); // front wall
+
+//     // back wall inner
+//     createWall(x, y - (height / 4), z, width, height / 4, 1.0f, room, false, basePriority + priority + 1, darkerColor); // back wall
+//     // front wall inner
+//     auto front_inner = createWall(x, y + height - (height / 4), z, width, height / 4, 1.0f, room, false, basePriority + priority + 1, darkerColor); // front wall
+//     // Create the lower part of the roof (3/4 height, opaque)
+//     auto roof_lower = registry.create();
+//     registry.emplace_or_replace<Position>(roof_lower, Position{x, y, z});
+//     registry.emplace_or_replace<Shape>(roof_lower, Shape{width, height * 3 / 4});
+//     registry.emplace_or_replace<Color>(roof_lower, color);
+//     registry.emplace_or_replace<RenderPriority>(roof_lower, RenderPriority{basePriority + priority + 2});
+//     registry.emplace_or_replace<Debug>(roof_lower, Debug{color});
+//     if (parent != entt::null)
+//     {
+//         registry.emplace_or_replace<Inside>(roof_lower, Inside{parent});
+//     }
+
+//     return room;
+// }
 
 // std::vector<entt::entity> rooms;
 // auto outerRoom = createRoom(registry, -20, -20, 0.1f, 25, 25, Color{180, 180, 180, 1.0f}, entt::null, true, 0, rand() % 4 + 1);
