@@ -5,14 +5,27 @@ var Module = {
   c_kv_elements: {},
   canvas: document.getElementById('canvas'),
 
+  fetch_configs() {
+    const json = CONFIG;
+    if (Array.isArray(json.textures)) {
+      this.processTextures(json.textures);
+    }
+    if (Array.isArray(json.textureGroups)) {
+      this.js_to_c({ textureGroups: json.textureGroups });
+    }
+    const shadersPromise = Array.isArray(json.shaders) ? this.processShaders(json.shaders) : Promise.resolve();
+    shadersPromise.then(() => {
+      this.js_to_c(ECONFIG);
+      this.start();
+    });
+  },
+  
   start() {
     console.log("Starting...");
     this._isready();
   },
 
   onRuntimeInitialized() {
-    console.log("Runtime initialized");
-
     this.canvas.width = window.innerWidth;
     this.canvas.height = window.innerHeight;
 
@@ -20,7 +33,6 @@ var Module = {
   },
 
   ready() {
-    console.log("Ready");
     loadInputs();
   },
 
@@ -75,35 +87,4 @@ var Module = {
     return Promise.all(fetchPromises);
   },
 
-  fetch_configs() {
-    const json = CONFIG;
-    if (Array.isArray(json.textures)) {
-      this.processTextures(json.textures);
-    }
-    if (Array.isArray(json.textureGroups)) {
-      this.js_to_c({ textureGroups: json.textureGroups });
-    }
-    const shadersPromise = Array.isArray(json.shaders) ? this.processShaders(json.shaders) : Promise.resolve();
-    shadersPromise.then(() => {
-      this.js_to_c(ECONFIG);
-      this.start();
-      setTimeout(() => {
-        this.js_to_c(
-          {"Entities": [  {
-            "Player": true,
-            "Position": {
-                "x": 1,
-                "y": 1,
-                "z": 0
-            }
-          }]});
-      }, 10);
-    });
-
-    // Object.keys(json).forEach(key => {
-    //   if (key !== 'textures' && key !== 'shaders') {
-    //     this.js_to_c({ [key]: json[key] });
-    //   }
-    // });
-  }
 }

@@ -110,8 +110,11 @@ struct Teleport {
 };
 struct Teleportable {};
 
-struct Hoverable {};
-struct Hovered {};
+struct Hoverable {
+    int duration;
+};
+struct Hovered {
+};
 
 struct Interacted {
     entt::entity interactor;
@@ -121,6 +124,10 @@ struct Interacted {
 struct InteractionAction {
     std::function<void(entt::registry&, entt::entity, std::optional<entt::entity>)> action;
     bool toggle;
+};
+
+struct HoverAction {
+    std::function<void(entt::registry&, entt::entity)> action;
 };
 
 struct CollisionAction {
@@ -281,4 +288,13 @@ struct Configurable {};
 struct UIElement {
     std::string content;
     bool visible;
+};
+
+
+struct Tone {
+    std::string note;
+    std::string duration;
+    float volume;
+    bool playing{false};
+    int iterations{0};
 };

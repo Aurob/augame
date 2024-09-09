@@ -31,8 +31,90 @@
 // id 2 test test1 position 0 -8 4 shape 15 4 1 color 0.1 0.2 0.4 1.0 renderPriority 3 collidable
 
 var configstr = `
-    id 1 wall back position 0 -10 0 shape 10 1 3 color 0.5 0.5 0.5 1.0 renderPriority -1 collidable
+    id 1 room position 0 -10 0 shape 10 10 0 color 0.5 0.5 0.5 1.0 renderPriority -1 collidable interior
+    id 0 player position 4.5 -1 0 shape 1 1 1 color 0.1 0.2 0.3 1.0 renderPriority 0 collidable inside 1
+
+    id 9 test1 position 4.5 -10 -1 shape 1 1 1 color 0.1 0.3 0.8 1.0 renderPriority -1 textureGroupPart tileset1 s215 inside 1
+    id 9 test1 position 3.5 -9 -1 shape 1 1 1 color 0.1 0.3 0.8 1.0 renderPriority -1 textureGroupPart tileset1 s240 inside 1
+    id 9 test1 position 4.5 -7 1 shape 1 1 1 color 0.1 0.3 0.8 1.0 renderPriority 3 textureGroupPart tileset1 s241 collidable inside 1
+    id 9 test1 position 5.5 -9 -1 shape 1 1 1 color 0.1 0.3 0.8 1.0 renderPriority -1 textureGroupPart tileset1 s242 inside 1
+    id 9 test1 position 4.5 -8 -1 shape 1 1 1 color 0.1 0.3 0.8 1.0 renderPriority -1 textureGroupPart tileset1 s267 inside 1
+    id 2 room2 position 0 -10 0 shape 10 10 0 color 0.5 0.5 0.5 1.0 renderPriority 0 collidable interior
+    id 10 door position 4.5 -7 0 shape 1 0.4 1 color 0.0 0.0 0.0 1.0 renderPriority 2 collidable interiorPortal 1 2 inside 1 associated 0
+
+    id 3 room3 position 0 -10 0 shape 10 10 0 color 0.4 0.4 0.4 1.0 renderPriority 0 collidable interior
+    id 11 door position 4.5 -4 0 shape 1 0.4 1 color 0.0 0.0 0.0 1.0 renderPriority 0 collidable interiorPortal 2 3 inside 2 associated 0
+    id 9 test1 position 4.5 -6 -1 shape 1 1 1 color 0.1 0.3 0.8 1.0 renderPriority 0 textureGroupPart tileset1 s215 inside 2
+    id 9 test1 position 3.5 -5 -1 shape 1 1 1 color 0.1 0.3 0.8 1.0 renderPriority 0 textureGroupPart tileset1 s240 inside 2
+    id 9 test1 position 4.5 -3 1 shape 1 1 1 color 0.1 0.3 0.8 1.0 renderPriority 0 textureGroupPart tileset1 s241 collidable inside 2
+    id 9 test1 position 5.5 -5 -1 shape 1 1 1 color 0.1 0.3 0.8 1.0 renderPriority 0 textureGroupPart tileset1 s242 inside 2
+    id 9 test1 position 4.5 -4 -1 shape 1 1 1 color 0.1 0.3 0.8 1.0 renderPriority 0 textureGroupPart tileset1 s267 inside 2
+
+    id 4 room4 position 0 -10 0 shape 10 10 0 color 0.3 0.3 0.3 1.0 renderPriority 0 collidable interior
+    id 12 door position 4.5 -1 0 shape 1 0.4 1 color 0.0 0.0 0.0 1.0 renderPriority 2 collidable interiorPortal 3 4 inside 3 associated 0
+    id 9 test1 position 4.5 -3 -1 shape 1 1 1 color 0.1 0.3 0.8 1.0 renderPriority -1 textureGroupPart tileset1 s215 inside 3
+    id 9 test1 position 3.5 -2 -1 shape 1 1 1 color 0.1 0.3 0.8 1.0 renderPriority -1 textureGroupPart tileset1 s240 inside 3
+    id 9 test1 position 4.5 0 1 shape 1 1 1 color 0.1 0.3 0.8 1.0 renderPriority 3 textureGroupPart tileset1 s241 collidable inside 3
+    id 9 test1 position 5.5 -2 -1 shape 1 1 1 color 0.1 0.3 0.8 1.0 renderPriority -1 textureGroupPart tileset1 s242 inside 3
+    id 9 test1 position 4.5 -1 -1 shape 1 1 1 color 0.1 0.3 0.8 1.0 renderPriority -1 textureGroupPart tileset1 s267 inside 3
+    
+    id 5 room5 position 0 -10 0 shape 10 10 0 color 0.2 0.2 0.2 1.0 renderPriority 0 collidable interior
 `.split("\n").filter(line => line.length > 0);
+
+
+function addToneEntity(id, position, shape, tone) {
+    const [posX, posY, posZ] = position;
+    const [shapeX, shapeY, shapeZ] = shape;
+    const [note, duration, volume] = tone;
+
+    const entityString = `
+        id ${id} toneobj position ${posX} ${posY} ${posZ} shape ${shapeX} ${shapeY} ${shapeZ} color 0.1 0.2 0.3 1.0 collidable renderPriority 4 inside 1 hoverable interactable tone ${note} ${duration} ${volume}
+    `.trim();
+
+    configstr.push(entityString);
+}
+
+const baseX = 4.5;
+const baseY = -5;
+const notes = ["C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5", "F5", "G5", "A5", "B5", "C6"];
+const durations = ["8n", "4n", "2n", "1n", "16n", "32n"];
+const volumes = [-20, -18, -16, -14, -12, -10, -8, -6, -4, -2, -12];
+
+function getRandomElement(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// for (let i = 0; i < 10; i++) {
+//     for (let j = 10; j >= 0; j--) {
+//         const id = 13 + i * 10 + j;
+//         const posX = baseX + j * 0.12;
+//         const posY = baseY + i * 0.12;
+//         const posZ = 1/2 * i;
+//         const note = getRandomElement(notes);
+//         const duration = .1; //getRandomElement(durations);
+//         const volume = getRandomElement(volumes);
+//         addToneEntity(id, [posX, posY, posZ], [0.1, 0.1, 0], [note, duration, volume]);
+//     }
+// }
+
+// Example usage:
+// addToneEntity(28, [4.5, -5.8, 0], [0.25, 0.25, 0], ["C4", "8n", -20]);
+
+
+// id 13 toneobj position 4.6 -5 0 shape .1 .5 .1 color 0.9 0.9 0.9 1.0 renderPriority 4 collidable inside 1 hoverable interactable tone D4 8n -20
+// id 14 toneobj position 4.7 -5 0 shape .1 .5 .1 color 0.1 0.2 0.3 1.0 renderPriority 4 collidable inside 1 hoverable interactable tone E4 8n -20
+// id 15 toneobj position 4.8 -5 0 shape .1 .5 .1 color 0.9 0.9 0.9 1.0 renderPriority 4 collidable inside 1 hoverable interactable tone F4 8n -20
+// id 16 toneobj position 4.9 -5 0 shape .1 .5 .1 color 0.1 0.2 0.3 1.0 renderPriority 4 collidable inside 1 hoverable interactable tone G4 8n -20
+// id 17 toneobj position 5.0 -5 0 shape .1 .5 .1 color 0.9 0.9 0.9 1.0 renderPriority 4 collidable inside 1 hoverable interactable tone A4 8n -20
+// id 18 toneobj position 5.1 -5 0 shape .1 .5 .1 color 0.1 0.2 0.3 1.0 renderPriority 4 collidable inside 1 hoverable interactable tone B4 8n -20
+// id 19 toneobj position 5.2 -5 0 shape .1 .5 .1 color 0.9 0.9 0.9 1.0 renderPriority 4 collidable inside 1 hoverable interactable tone C5 8n -20
+// id 20 toneobj position 5.3 -5 0 shape .1 .5 .1 color 0.1 0.2 0.3 1.0 renderPriority 4 collidable inside 1 hoverable interactable tone D5 8n -20
+// id 21 toneobj position 5.4 -5 0 shape .1 .5 .1 color 0.9 0.9 0.9 1.0 renderPriority 4 collidable inside 1 hoverable interactable tone E5 8n -20
+// id 22 toneobj position 5.5 -5 0 shape .1 .5 .1 color 0.1 0.2 0.3 1.0 renderPriority 4 collidable inside 1 hoverable interactable tone F5 8n -20
+// id 23 toneobj position 5.6 -5 0 shape .1 .5 .1 color 0.9 0.9 0.9 1.0 renderPriority 4 collidable inside 1 hoverable interactable tone G5 8n -20
+// id 24 toneobj position 5.7 -5 0 shape .1 .5 .1 color 0.1 0.2 0.3 1.0 renderPriority 4 collidable inside 1 hoverable interactable tone A5 8n -20
+// id 25 toneobj position 5.8 -5 0 shape .1 .5 .1 color 0.9 0.9 0.9 1.0 renderPriority 4 collidable inside 1 hoverable interactable tone B5 8n -20
+// id 26 toneobj position 5.9 -5 0 shape .1 .5 .1 color 0.1 0.2 0.3 1.0 renderPriority 4 collidable inside 1 hoverable interactable tone C6 8n -20
 
 ECONFIG = {
     "Entities": configstr.map(input => new EntityBuilder().parseInput(input).build())

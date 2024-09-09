@@ -9,10 +9,31 @@ extern float deltaTime;
 extern int width, height;
 extern GLfloat cursorPos[2];
 extern GLfloat toplefttile[2];
+extern GLfloat offsetValue[2];
 extern float gridSpacingValue;
 extern float defaultGSV;
 extern entt::entity _player;
 
+void updatePlayer(entt::registry &registry) {
+    
+    // Update player-based calculations
+    Position &playerPos = registry.get<Position>(_player);
+    Shape &playerShape = registry.get<Shape>(_player);
+    CursorPosition &playerCursorPos = registry.get<CursorPosition>(_player);
+
+    // Set view offset
+    offsetValue[0] = ((fmod(playerPos.x, defaultGSV) * gridSpacingValue) / defaultGSV) - (playerShape.size.x / 2);
+    offsetValue[1] = ((fmod(playerPos.y, defaultGSV) * gridSpacingValue) / defaultGSV) - (playerShape.size.y / 2);
+
+    // Set bounds
+    toplefttile[0] = static_cast<int>(playerPos.x / defaultGSV) - (width / gridSpacingValue / 2);
+    toplefttile[1] = static_cast<int>(playerPos.y / defaultGSV) - (height / gridSpacingValue / 2);
+
+    // Determine cursor position using toplefttile and offset, factoring in defaultGSV
+    playerCursorPos.x = playerPos.x + ((cursorPos[0] - width / 2) * defaultGSV / gridSpacingValue);
+    playerCursorPos.y = playerPos.y + ((cursorPos[1] - height / 2) * defaultGSV / gridSpacingValue);
+
+}
 
 void updateMovement(entt::registry &registry)
 {
@@ -422,6 +443,11 @@ void updateInteractions(entt::registry &registry)
             {
                 registry.emplace<Hovered>(entity);
             }
+            else
+            {
+                auto &hovered = registry.get<Hoverable>(entity);
+                hovered.duration += deltaTime;
+            }
 
             if (keys[SDL_BUTTON_LEFT])
             {
@@ -452,6 +478,8 @@ void updateInteractions(entt::registry &registry)
             if (registry.all_of<Hovered>(entity))
             {
                 registry.remove<Hovered>(entity);
+                auto &hovered = registry.get<Hoverable>(entity);
+                hovered.duration = 0;
             }
             if (registry.all_of<Interacted>(entity))
             {
@@ -472,6 +500,12 @@ void updateInteractions(entt::registry &registry)
         if(interacted.interactions < 1) {
             action.action(registry, entity, _entity);
         }
+    }
+
+    auto hovered_entities = registry.view<Hoverable, Hovered, HoverAction>();
+    for (auto entity : hovered_entities)
+    {
+        hovered_entities.get<HoverAction>(entity).action(registry, entity);
     }
 
 
@@ -503,6 +537,8 @@ void updateInteractions(entt::registry &registry)
             action.time = 0.0f; // Reset the time after triggering the action
         }
     }
+
+
 }
 
 void updateShapes(entt::registry &registry)
@@ -618,6 +654,19 @@ void updateOther(entt::registry &registry)
                     position.y = newY;
                 }
             }
+        }
+    }
+
+    // Handle playing Tones
+    auto tone_entities = registry.view<Tone>();
+    for (auto entity : tone_entities)
+    {
+        auto &tone = tone_entities.get<Tone>(entity);
+        if (tone.playing)
+        {
+            _js__play_tone(tone.note, tone.duration, tone.volume);
+            tone.playing = false;
+            
         }
     }
 

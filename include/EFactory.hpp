@@ -16,9 +16,20 @@ void makePlayer(entt::registry &registry)
     float px = 13.05, py = 12.45, pz = 5.0;
     float pw = 1.0f, ph = 1.0f, pd = 1.0f;
     auto player = registry.create();
+
+    auto player_id_view = registry.view<Id>();
+    for (auto entity : player_id_view)
+    {
+        if (player_id_view.get<Id>(entity).name == "player")
+        {
+            player = entity;
+            break;
+        }
+    }
+
     registry.emplace_or_replace<Player>(player);
-    registry.emplace_or_replace<Position>(player, Position{px, py, pz});
-    registry.emplace_or_replace<Shape>(player, Shape{{pw, ph, pd}});
+    // registry.emplace_or_replace<Position>(player, Position{px, py, pz});
+    // registry.emplace_or_replace<Shape>(player, Shape{{pw, ph, pd}});
     registry.emplace_or_replace<Color>(player, Color{0, 0, 255, 0.0f});
     registry.emplace_or_replace<Movement>(player, Movement{75, 1000, Vector2f{0, 0}, Vector2f{0, 0}, 10, 1, 0});
     registry.emplace_or_replace<Moveable>(player);
@@ -30,18 +41,19 @@ void makePlayer(entt::registry &registry)
     // registry.emplace_or_replace<RenderDebug>(player);
     registry.emplace<Keys>(player);
 
-    // place inside Interior with Id of 0, look up hy compomnent Id
-    // auto view = registry.view<Id>();
-    // entt::entity interiorEntity = entt::null;
-    // for (auto entity : view)
-    // {
-    //     if (view.get<Id>(entity).id == 6)
-    //     {
-    //         interiorEntity = entity;
-    //         break;
-    //     }
-    // }
-    // registry.emplace_or_replace<Inside>(player, Inside{interiorEntity});
+    auto view = registry.view<Tone>(entt::exclude<HoverAction>);
+    for (auto entity : view)
+    {
+        registry.emplace_or_replace<HoverAction>(entity, HoverAction{[](entt::registry &registry, entt::entity entity)
+            {
+                if (registry.get<Hoverable>(entity).duration == 0) {
+                    auto &tone = registry.get<Tone>(entity);
+                    tone.playing = true;
+                }
+            }});
+    }
+
+    
 
     // Add textures to the player
     std::vector<Textures> textureAlts;
@@ -100,54 +112,34 @@ float rand_float(float min = 0.0f, float max = 1.0f)
  */
 void runFactories(entt::registry &registry)
 {
-    // testing_v2();
-    // Entity with a collision action that prints hello on action trigger
-    auto entity = registry.create();
-    printf("Entity: %d\n", entity);
-    registry.emplace_or_replace<Position>(entity, Position{4, -1, 0});
-    registry.emplace_or_replace<Shape>(entity, Shape{2, 1, 3});
-    registry.emplace_or_replace<Color>(entity, Color{128, 0, 32, 1.0f});
-    registry.emplace_or_replace<RenderPriority>(entity, RenderPriority{-2});
-    registry.emplace_or_replace<Debug>(entity, Debug{Color{0, 0, 0, 1.0f}});
-    registry.emplace_or_replace<Collidable>(entity);
-    registry.emplace<Test>(entity, Test{"test entity"});
+    auto key2 = registry.create();
+    registry.emplace<Position>(key2, Position{1, -5, 0});
+    registry.emplace<Shape>(key2, Shape{.25, .25, .1});
+    registry.emplace<Color>(key2, Color{250, 255, 0, 1.0f});
+    registry.emplace<RenderPriority>(key2, RenderPriority{0});
+    registry.emplace<Debug>(key2, Debug{Color{0, 1.0, 0, 1.0f}});
+    registry.emplace<Test>(key2, Test{"key entity"});
+    registry.emplace<Interactable>(key2, Interactable{.radius = 1.0f});
+    registry.emplace<Collidable>(key2, Collidable{.ignorePlayer = true});
+    registry.emplace<Hoverable>(key2);
+    registry.emplace<UIElement>(key2, UIElement{"Key", false});
+    registry.emplace_or_replace<InteractionAction>(key2, InteractionAction{[](entt::registry &registry, entt::entity entity, std::optional<entt::entity> opt_entity) {
+        auto& uiElement = registry.get<UIElement>(entity);
+        uiElement.visible = !uiElement.visible;
+    }, true});
 
-    auto key = registry.create();
-    registry.emplace<Position>(key, Position{5, 10, 0});
-    registry.emplace<Shape>(key, Shape{.25, .25, .1});
-    registry.emplace<Color>(key, Color{250, 255, 0, 1.0f});
-    registry.emplace<RenderPriority>(key, RenderPriority{0});
-    registry.emplace<Debug>(key, Debug{Color{0, 1.0, 0, 1.0f}});
-    registry.emplace<Test>(key, Test{"key entity"});
-    registry.emplace<Interactable>(key, Interactable{.radius = .1f});
-    registry.emplace<Dragable>(key);
-    registry.emplace<Collidable>(key, Collidable{.ignorePlayer = true});
-    registry.emplace<Hoverable>(key);
-    registry.emplace_or_replace<CollisionAction>(key, CollisionAction{[](entt::registry &registry, entt::entity entity)
-    {
-        auto &colliding = registry.get<Colliding>(entity);
-        for (auto collidingEntity : colliding.collidables)
-        {
-            if (registry.all_of<Test>(collidingEntity))
-            {
-                auto &testComponent = registry.get<Test>(collidingEntity);
-                if (testComponent.value == "test entity")
-                {
-                    // remove the Collidable
-                    auto &collidable = registry.get<Collidable>(collidingEntity);
-                    collidable.ignoreCollideAll = true;
-                    // change color to grassy green
-                    auto &color = registry.get<Color>(collidingEntity);
-                    color = Color{124, 252, 0, 1.0f}; // grassy green
-                    // add destroy flag to the key
-                    auto &flag = registry.get_or_emplace<Flag>(entity);
-                    flag.flags["Destroy"] = true;
-
-                    break;
-                }
-            }
+    auto view = registry.view<Id>();
+    entt::entity room3 = entt::null;
+    for (auto entity : view) {
+        if (view.get<Id>(entity).name == "room3") {
+            room3 = entity;
+            break;
         }
-    }});
+    }
+
+    if (room3 != entt::null) {
+        registry.emplace_or_replace<Inside>(key2, Inside{room3});
+    }
 
 }
 
