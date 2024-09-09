@@ -3,6 +3,9 @@
 #include <SDL2/SDL.h>
 #include "entt.hpp"
 #include "structs.hpp"
+#include "../include/imgui/imgui.h"
+#include "../include/imgui/imgui_impl_sdl.h"
+#include "../include/imgui/imgui_impl_opengl3.h"
 
 using namespace std;
 
@@ -76,4 +79,57 @@ void EventHandler(int type, SDL_Event *event)
             }
         }
     }
+}
+
+void processEvents(void (*EventHandler)(int, SDL_Event*), context *ctx) {
+    while (SDL_PollEvent(&ctx->event))
+    {
+        ImGui_ImplSDL2_ProcessEvent(&ctx->event);
+        EventHandler(0, &ctx->event);
+    }
+
+    auto keys = registry.get<Keys>(_player).keys;
+
+    // If Shift is pressed, increase speed
+    auto& playerMovement = registry.get<Movement>(_player);
+    // if(keys[SDLK_LSHIFT]) {
+    //     playerMovement.speed = defaultMoveSpeed * 20;
+    // }
+    // else {
+    //     playerMovement.speed = defaultMoveSpeed;
+    // }
+    
+    // If B increase player z
+    if(keys[SDLK_b]) {
+        auto& playerPos = registry.get<Position>(_player);
+        playerPos.z += 1;
+        keys[SDLK_b] = false;
+    }
+    // If N decrease player z
+    if(keys[SDLK_n]) {
+        auto& playerPos = registry.get<Position>(_player);
+        playerPos.z -= 1;
+        keys[SDLK_n] = false;
+    }
+    
+    // Update player's TextureAlts based on direction and movement
+    if (registry.all_of<TextureAlts>(_player)) {
+        auto& textureAlts = registry.get<TextureAlts>(_player);
+        bool isMoving = keys[SDLK_w] || keys[SDLK_s] || keys[SDLK_a] || keys[SDLK_d];
+        std::string action = isMoving ? "Run" : "Idle";
+        static std::string lastDirection = "Down"; // Static variable to remember last direction
+
+        if (keys[SDLK_w]) {
+            lastDirection = "Up";
+        } else if (keys[SDLK_s]) {
+            lastDirection = "Down";
+        } else if (keys[SDLK_a]) {
+            lastDirection = "Left";
+        } else if (keys[SDLK_d]) {
+            lastDirection = "Right";
+        }
+
+        textureAlts.current = action + "_" + lastDirection;
+    }
+
 }
