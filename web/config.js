@@ -77,6 +77,14 @@ var CONFIG = {
         {
             "name": "tileset1",
             "path": "resources/tileset1.png"
+        },
+        {
+            "name": "slime",
+            "path": "resources/SlimeGreenIdle.png"
+        },
+        {
+            "name": "props",
+            "path": "resources/Props.png"
         }
     
     ],
@@ -108,7 +116,32 @@ for (let j = 0; j < tileset1.height / tileset1.tileHeight; j++) {
     }
 }
 
-CONFIG.textureGroups.push(tileset1);
+let slime = {
+    'name': 'slime',
+    'path': 'resources/slime.png',
+    'width': 256,
+    'height': 128,
+    'tileWidth': 32,
+    'tileHeight': 32,
+    'parts': []
+};
+
+c = 1; // Start from 1 to match the tilemap checker IDs
+for (let j = 0; j < slime.height / slime.tileHeight; j++) {
+    for (let i = 0; i < slime.width / slime.tileWidth; i++) {
+        let part = {
+            'name': `s${c}`,
+            'x': i * slime.tileWidth,
+            'y': j * slime.tileHeight,
+            'w': slime.tileWidth,
+            'h': slime.tileHeight
+        }
+        slime.parts.push(part);
+        c++;
+    }
+}   
+
+CONFIG.textureGroups.push(tileset1, slime); 
 
 const actions = ["Idle", "Run"];
 const directions = ["Down", "Left", "Right", "Up"];

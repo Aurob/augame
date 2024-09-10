@@ -41,16 +41,16 @@ void makePlayer(entt::registry &registry)
     // registry.emplace_or_replace<RenderDebug>(player);
     registry.emplace<Keys>(player);
 
-    auto view = registry.view<Tone>(entt::exclude<HoverAction>);
+    auto view = registry.view<Tone>(entt::exclude<InteractionAction>);
     for (auto entity : view)
     {
-        registry.emplace_or_replace<HoverAction>(entity, HoverAction{[](entt::registry &registry, entt::entity entity)
+        registry.emplace_or_replace<InteractionAction>(entity, InteractionAction{[](entt::registry &registry, entt::entity entity, std::optional<entt::entity> optEntity)
             {
                 if (registry.get<Hoverable>(entity).duration == 0) {
                     auto &tone = registry.get<Tone>(entity);
                     tone.playing = true;
                 }
-            }});
+            }, false});
     }
 
     

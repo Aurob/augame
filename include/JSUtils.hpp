@@ -50,15 +50,10 @@ void _js__play_tone(string note, string duration, float volume = 0.5)
 {
     // Play a tone
     EM_ASM_({
-        // Create a volume control and oscillator, then connect them to the main output (your speakers)
-        const vol = new Tone.Volume($2).toDestination();
-        const osc = new Tone.Oscillator().connect(vol).start();
-        
-        // Set the oscillator frequency to the specified note and duration
-        osc.frequency.value = UTF8ToString($0);
-        osc.stop("+" + UTF8ToString($1));
+        Module.play_tone(UTF8ToString($0), UTF8ToString($1), $2);
     }, note.c_str(), duration.c_str(), volume);
 }
+
 
 void _js__update_client() {
     Position &playerPos = registry.get<Position>(_player);
