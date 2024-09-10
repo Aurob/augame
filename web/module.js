@@ -49,6 +49,23 @@ var Module = {
     }
   },
 
+  play_tone(note, duration, volume) {
+    const synth = new Tone.Synth({
+      oscillator: {
+        type: "sine"
+      },
+      envelope: {
+        attack: 0.01,
+        decay: 0.5,
+        sustain: 0.3,
+        release: 1.5
+      }
+    }).toDestination();
+    
+    synth.volume.value = volume;
+    synth.triggerAttackRelease(note, duration);
+  },
+
   js_to_c(str) {
     if (typeof str === 'object') {
       str = JSON.stringify(str);

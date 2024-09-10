@@ -451,8 +451,8 @@ void renderAll(const context *ctx) {
             updateUniformsTexture(shaderProgramMap["texture"], 
                 textureIDMap[texture.name],
                 position.sx + playerShape.scaled_size.x,
-                position.sy + playerShape.scaled_size.y + position.sz + playerShape.scaled_size.z,
-                shape.scaled_size.x,
+                position.sy + playerShape.scaled_size.y + shape.scaled_size.z,
+                shape.scaled_size.x, 
                 shape.scaled_size.y + shape.scaled_size.z,
                 texture.x, texture.y, texture.w, texture.h
             );
