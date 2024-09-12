@@ -115,3 +115,31 @@ parseInput(input) {
         };
     }
 }
+
+fetch('/include/structs.hpp').then(res=>res.text()).then(e=>{
+    // Define the regex pattern to match structs and their fields with comments
+    const structRegex = /struct\s+(\w+)\s*\{([^}]*)\}/gs;
+    const fieldRegex = /\s*(\w+)\s+(\w+);\s*(\/\/.*)?/g;
+  
+    // Find all matches
+    const structs = [];
+    let match;
+    while ((match = structRegex.exec(e)) !== null) {
+        const structName = match[1];
+        const structBody = match[2];
+  
+        const fields = [];
+        let fieldMatch;
+        while ((fieldMatch = fieldRegex.exec(structBody)) !== null) {
+            const fieldType = fieldMatch[1];
+            const fieldName = fieldMatch[2];
+            const fieldComment = fieldMatch[3] ? fieldMatch[3].trim() : null;
+            fields.push({ name: fieldName, type: fieldType, comment: fieldComment });
+        }
+  
+        structs.push({ struct: structName, fields: fields });
+    }
+  
+    // Output the JSON
+    console.log(structs);
+  })
