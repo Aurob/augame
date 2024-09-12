@@ -213,31 +213,6 @@
                 element.innerText = `${key}: 0`;
                 document.querySelector('#data').appendChild(element);
                 Module.c_kv_elements[key] = id;
-
-                // Create input elements for keys that require them
-                if (hasInput) {
-                    let inputElement = document.createElement('input');
-                    inputElement.type = 'number';
-                    inputElement.id = `${id}_input`;
-                    inputElement.value = 0;
-                    inputElement.addEventListener('input', (event) => {
-                        const value = parseFloat(event.target.value);
-                        Module.setkv(key, value);
-                        if (key === 'x' || key === 'y') {
-                            console.log("Teleporting...");
-                            Module.js_to_c({
-                                "Entities": [{
-                                    "Player": true,
-                                    "Position": {
-                                        x: key === 'x' ? parseFloat(value.toFixed(2)) : Module.c_kv_data.x,
-                                        y: key === 'y' ? parseFloat(value.toFixed(2)) : Module.c_kv_data.y
-                                    }
-                                }]
-                            });
-                        }
-                    });
-                    document.querySelector('#data').appendChild(inputElement);
-                }
             }
         }
 

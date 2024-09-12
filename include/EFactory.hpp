@@ -28,18 +28,8 @@ void makePlayer(entt::registry &registry)
     }
 
     registry.emplace_or_replace<Player>(player);
-    // registry.emplace_or_replace<Position>(player, Position{px, py, pz});
-    // registry.emplace_or_replace<Shape>(player, Shape{{pw, ph, pd}});
-    registry.emplace_or_replace<Color>(player, Color{0, 0, 255, 0.0f});
-    registry.emplace_or_replace<Movement>(player, Movement{75, 1000, Vector2f{0, 0}, Vector2f{0, 0}, 10, 1, 0});
-    registry.emplace_or_replace<Moveable>(player);
-    registry.emplace_or_replace<Collidable>(player);
-    registry.emplace_or_replace<Teleportable>(player);
-    registry.emplace_or_replace<RenderPriority>(player, RenderPriority{0});
-    registry.emplace_or_replace<Test>(player, Test{"Player"});
-    registry.emplace<CursorPosition>(player);
-    // registry.emplace_or_replace<RenderDebug>(player);
     registry.emplace<Keys>(player);
+    registry.emplace<Cursor>(player);
 
     auto view = registry.view<Tone>(entt::exclude<InteractionAction>);
     for (auto entity : view)
@@ -50,7 +40,7 @@ void makePlayer(entt::registry &registry)
                     auto &tone = registry.get<Tone>(entity);
                     tone.playing = true;
                 }
-            }, false});
+            }, false});w
     }
 
     

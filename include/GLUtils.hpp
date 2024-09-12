@@ -9,7 +9,6 @@
 #include <string>
 #include "../include/UIUtils.hpp"
 
-extern GLfloat cursorPos[2];
 extern float seed;
 extern float gridSpacingValue;
 extern float offsetValue[2];
@@ -57,8 +56,9 @@ void updateUniforms(GLuint &shaderProgram,
     glUniform2fv(boundsLocation, 1, toplefttile);
 
     // cursorPos uniform
+    auto &cursor = registry.get<Cursor>(_player);
     GLint cursorPosLocation = glGetUniformLocation(shaderProgram, "cursorPos");
-    glUniform2f(cursorPosLocation, cursorPos[0], cursorPos[1]);
+    glUniform2f(cursorPosLocation, cursor.position.x, cursor.position.y);
 
     // time
     GLint timeLocation = glGetUniformLocation(shaderProgram, "time");
@@ -84,15 +84,16 @@ void updateUIShader(GLuint &shaderProgram, float _width, float _height, float gr
     // grid_spacing uniform
     GLint gridSpacingLocation = glGetUniformLocation(shaderProgram, "grid_spacing");
     glUniform1f(gridSpacingLocation, gridSpacingValue);
-
     // cursorPos uniform
+    auto &cursor = registry.get<Cursor>(_player);
     GLint cursorPosLocation = glGetUniformLocation(shaderProgram, "cursorPos");
-    glUniform2f(cursorPosLocation, cursorPos[0], cursorPos[1]);
+    glUniform2f(cursorPosLocation, cursor.position.x, cursor.position.y);
 
     // toplefttile uniform
     GLint toplefttileLocation = glGetUniformLocation(shaderProgram, "toplefttile");
     glUniform2fv(toplefttileLocation, 1, toplefttile);
 }
+
 void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, float x, float y, float scalex, float scaley, float startX = 0.0f, float startY = 0.0f, float sizeX = 1.0f, float sizeY = 1.0f) {
     glUseProgram(shaderProgram);
     glBindTexture(GL_TEXTURE_2D, textureID);
@@ -413,7 +414,7 @@ void renderAll(const context *ctx) {
     }
 
    registry.sort<Visible>([&](const entt::entity lhs, const entt::entity rhs) {
-        const auto& lhsPos = registry.get<Position>(lhs);
+        casonst auto& lhsPos = registry.get<Position>(lhs);
         const auto& rhsPos = registry.get<Position>(rhs);
         const auto& lhsShape = registry.get<Shape>(lhs);
         const auto& rhsShape = registry.get<Shape>(rhs);
@@ -431,7 +432,7 @@ void renderAll(const context *ctx) {
     });
 
     // Render visible entities
-    auto visible_entities = registry.view<Visible>();
+    auto visible_entities = registry.view<Visible, InView>();
     for(auto& entity : visible_entities) {
         auto position = registry.get<Position>(entity);
         auto shape = registry.get<Shape>(entity);
@@ -439,14 +440,9 @@ void renderAll(const context *ctx) {
         bool isDebug = registry.all_of<Debug>(entity);
         bool isTeleport = registry.all_of<Teleport>(entity);
 
- 
+
         if (registry.all_of<Texture>(entity)) {
-
             const auto& texture = registry.get<Texture>(entity);
-
-
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
             updateUniformsTexture(shaderProgramMap["texture"], 
                 textureIDMap[texture.name],
@@ -458,6 +454,25 @@ void renderAll(const context *ctx) {
             );
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
+            // if (registry.all_of<RenderDebug>(entity)) {
+            //     float r = 1.0f, g = 1.0f, b = 1.0f, a = 0.2f; // Default color
+            //     if (registry.all_of<Color>(entity)) {
+            //         const auto& color = registry.get<Color>(entity);
+            //         r = color.r;
+            //         g = color.g;
+            //         b = color.b;
+            //         a = color.a;
+            //     }
+            //     updateUniformsDebug(shaderProgramMap["debug_entity"],
+            //         r, g, b, a,
+            //         position.sx + playerShape.scaled_size.x, 
+            //         position.sy + playerShape.scaled_size.y,
+            //         shape.scaled_size.x, 
+            //         shape.scaled_size.y, 
+            //         0.0f
+            //     );
+            //     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            // }
         }
         else if (registry.all_of<TextureGroupPart>(entity)) {
             const auto& textureGroupPart = registry.get<TextureGroupPart>(entity);
@@ -507,8 +522,9 @@ void renderAll(const context *ctx) {
             // Check if the entity has RenderDebug
             // if (registry.all_of<RenderDebug, Player>(entity)) {
                 // Render a small transparent square to indicate bounding box
+                auto color = registry.get<Color>(entity);
                 updateUniformsDebug(shaderProgramMap["debug_entity"],
-                    1.0f, 1.0f, 1.0f, 0.2f, // White color with 20% opacity
+                    color.r, color.g, color.b, color.a, // Set color to Color
                     position.sx + playerShape.scaled_size.x, 
                     position.sy + playerShape.scaled_size.y,
                     shape.scaled_size.x, shape.scaled_size.y, 0.0f);

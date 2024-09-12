@@ -7,7 +7,6 @@
 
 extern float deltaTime;
 extern int width, height;
-extern GLfloat cursorPos[2];
 extern GLfloat toplefttile[2];
 extern GLfloat offsetValue[2];
 extern float gridSpacingValue;
@@ -19,7 +18,7 @@ void updatePlayer(entt::registry &registry) {
     // Update player-based calculations
     Position &playerPos = registry.get<Position>(_player);
     Shape &playerShape = registry.get<Shape>(_player);
-    CursorPosition &playerCursorPos = registry.get<CursorPosition>(_player);
+    Cursor &playerCursorPos = registry.get<Cursor>(_player);
 
     // Set view offset
     offsetValue[0] = ((fmod(playerPos.x, defaultGSV) * gridSpacingValue) / defaultGSV) - (playerShape.size.x / 2);
@@ -30,8 +29,8 @@ void updatePlayer(entt::registry &registry) {
     toplefttile[1] = static_cast<int>(playerPos.y / defaultGSV) - (height / gridSpacingValue / 2);
 
     // Determine cursor position using toplefttile and offset, factoring in defaultGSV
-    playerCursorPos.x = playerPos.x + ((cursorPos[0] - width / 2) * defaultGSV / gridSpacingValue);
-    playerCursorPos.y = playerPos.y + ((cursorPos[1] - height / 2) * defaultGSV / gridSpacingValue);
+    playerCursorPos.position.sx = playerPos.x + ((playerCursorPos.position.x - width / 2) * defaultGSV / gridSpacingValue);
+    playerCursorPos.position.sy = playerPos.y + ((playerCursorPos.position.y - height / 2) * defaultGSV / gridSpacingValue);
 
 }
 
@@ -392,6 +391,8 @@ void updateInteractions(entt::registry &registry)
     auto playerPos = registry.get<Position>(_player);
     auto playerShape = registry.get<Shape>(_player);
     bool playerInside = registry.all_of<Inside>(_player);
+    Cursor &cursor = registry.get<Cursor>(_player);
+    
     entt::entity playerInterior = entt::null;
     if (playerInside)
     {
@@ -422,8 +423,8 @@ void updateInteractions(entt::registry &registry)
         bool mouseCollides = false;
 
         // Calculate cursor position in shader coordinates
-        float normalizedCursorX = -((cursorPos[0] / width) * 2.0f - 1.0f) - playerShape.scaled_size.x;
-        float normalizedCursorY = (1.0f - (cursorPos[1] / height) * 2.0f) - playerShape.scaled_size.y;
+        float normalizedCursorX = -((cursor.position.x / width) * 2.0f - 1.0f) - playerShape.scaled_size.x;
+        float normalizedCursorY = (1.0f - (cursor.position.y / height) * 2.0f) - playerShape.scaled_size.y;
 
         // Normalize interactable radius using the average of the scaled sizes
         float normalizedRadius = interactable.radius * (shape.scaled_size.x + shape.scaled_size.y) / 2.0f;
@@ -627,16 +628,16 @@ void updateOther(entt::registry &registry)
         auto &interacted = interacted_entities.get<Interacted>(entity);
         if (interacted.interactor == _player)
         {
-            if (registry.all_of<CursorPosition, Shape>(_player))
+            if (registry.all_of<Cursor, Shape>(_player))
             {
-                auto &cursorPos = registry.get<CursorPosition>(_player);
+                auto &cursorPos = registry.get<Cursor>(_player);
                 auto &cursorShape = registry.get<Shape>(_player);
                 auto &position = registry.get<Position>(entity);
                 auto &shape = registry.get<Shape>(entity);
                 auto &playerPos = registry.get<Position>(_player);
 
-                float newX = cursorPos.x - (shape.size.x / 2) + (cursorShape.size.x / 2);
-                float newY = cursorPos.y - (shape.size.y / 2) + (cursorShape.size.y / 2);
+                float newX = cursorPos.position.sx - (shape.size.x / 2) + (cursorShape.size.x / 2);
+                float newY = cursorPos.position.sy - (shape.size.y / 2) + (cursorShape.size.y / 2);
 
                 float distanceToCursor = std::sqrt(std::pow(newX - playerPos.x, 2) + std::pow(newY - playerPos.y, 2));
                 float distanceToEntity = std::sqrt(std::pow(position.x - playerPos.x, 2) + std::pow(position.y - playerPos.y, 2));
@@ -664,7 +665,7 @@ void updateOther(entt::registry &registry)
         auto &tone = tone_entities.get<Tone>(entity);
         if (tone.playing)
         {
-            _js__play_tone(tone.note, tone.duration, tone.volume);
+            _js__play_tone(tone.note, tone.duration, tone.volume, tone.type);
             tone.playing = false;
             
         }
