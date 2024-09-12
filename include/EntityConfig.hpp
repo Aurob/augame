@@ -464,7 +464,7 @@ extern "C"
                                 }
                             }, "Dragable");
 
-                            // Tone (note, duration, volume)
+                            // Tone (note, duration, volume, type)
                             safe_emplace(registry, entity, [&]() {
                                 if (components.contains("Tone") && components["Tone"].is_object())
                                 {
@@ -472,6 +472,7 @@ extern "C"
                                     registry.emplace<Tone>(entity, Tone{
                                         .note = tone["note"],
                                         .duration = tone["duration"],
+                                        .type = tone["type"],
                                         .volume = tone["volume"],
                                     });
                                 }

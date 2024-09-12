@@ -68,10 +68,6 @@ struct Position {
     float sy;
     float sz;
 };
-struct CursorPosition {
-    float x;
-    float y;
-};
 
 struct Shape {
     Vector3f size{1, 1, .1};
@@ -262,8 +258,8 @@ struct TextureGroupPart {
     std::string groupName;
     std::string partName;
     Texture texture;
+    
 };
-
 
 struct CollideColorAlt {
     Color inactive;
@@ -282,6 +278,10 @@ struct Keys {
     std::unordered_map<SDL_Keycode, bool> keys;
 };
 
+struct Cursor {
+    Position position;
+};
+
 struct Configurable {};
 
 // UI
@@ -290,10 +290,10 @@ struct UIElement {
     bool visible;
 };
 
-
 struct Tone {
     std::string note;
     std::string duration;
+    std::string type;
     float volume;
     bool playing{false};
     int iterations{0};

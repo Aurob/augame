@@ -32,15 +32,19 @@
 
 var configstr = `
     id 1 room position 0 -10 0 shape 10 10 0 color 0.5 0.5 0.5 1.0 renderPriority -1 collidable interior
-    id 0 player position 4.5 -1 0 shape 1 1 1 color 0.1 0.2 0.3 1.0 renderPriority 0 collidable inside 1
+    id 0 player position 4.5 -1 0 shape 1 1 1 color 0.1 0.2 0.3 .3 movement 75 1000 0 0 0 0 10 1 0 moveable collidable renderPriority 0 inside 1
     id 3 slime1 position 4.5 -3 0 shape .5 .125 .25 color 0.4 0.2 0.3 1.0 renderPriority -2 collidable inside 1 texture slime 0 0 0.047 0.11 0.031 0.038
-    
+    id 3 trumpet position 9 -8 0 shape 1 1 0 color 0.4 0.2 0.3 1.0 renderPriority 3 inside 1 interactable hoverable dragable tone R 4n -25 fsharp.wav texture trumpet
+
+    id 4 chair position 6 -6 0 shape 1 1 1 color 0.4 0.2 0.3 1.0 renderPriority 3 inside 1 interactable hoverable dragable textureGroupPart interiors s590
+    id 4 chair position 6 -6 -1 shape 1 1 1 color 0.4 0.2 0.3 1.0 renderPriority -1 inside 1 interactable hoverable dragable textureGroupPart interiors s606
+
     id 6 piano position 9 -5 0 shape 1 1 1 color 0.1 0.2 0.3 1.0 renderPriority 0 collidable inside 1 hoverable interactable texture props 0 0 0.577 0.043 0.0113 0.035
     id 7 pianokey position 9.2 -5.4 1 shape .325 0.15 1 color 1 1 1 1.0 renderPriority 2 collidable inside 1 hoverable interactable tone C4 4n -25
     id 7 pianokey position 9.2 -5.25 1 shape .1625 0.15 1 color 1 1 1 1.0 renderPriority 2 collidable inside 1 hoverable interactable tone D4 4n -25
     id 7 pianokey position 9.3625 -5.25 1 shape .1625 0.15 1 color 0 0 0 1.0 renderPriority 2 collidable inside 1 hoverable interactable tone Eb4 4n -25
     id 7 pianokey position 9.2 -5.1 1 shape .325 0.15 1 color 1 1 1 1.0 renderPriority 2 collidable inside 1 hoverable interactable tone E4 4n -25
-    id 7 pianokey position 9.2 -4.95 1 shape .1625 0.15 1 color 1 1 1 1.0 renderPriority 2 collidable inside 1 hoverable interactable tone F4 4n -25
+    id 7 pianokey position 9.2 -4.95 1 shape .1625 0.15 1 color 1 1 1 1.0 renderPriority 2 collidable inside 1 hoverable interactawble tone F4 4n -25
     id 7 pianokey position 9.3625 -4.95 1 shape .1625 0.15 1 color 0 0 0 1.0 renderPriority 2 collidable inside 1 hoverable interactable tone Gb4 4n -25
     id 7 pianokey position 9.2 -4.8 1 shape .325 0.15 1 color 1 1 1 1.0 renderPriority -1 collidable inside 1 hoverable interactable tone G4 4n -25
     id 7 pianokey position 9.2 -4.65 1 shape .1625 0.15 0 color 1 1 1 1.0 renderPriority -1 collidable inside 1 hoverable interactable tone A4 4n -25

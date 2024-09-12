@@ -10,7 +10,6 @@
 using namespace std;
 
 extern int width, height;
-extern GLfloat cursorPos[2];
 extern float gridSpacingValue;
 extern entt::entity _player;
 extern entt::registry registry;
@@ -31,15 +30,21 @@ void EventHandler(int type, SDL_Event *event)
     // Mouse/Touch position
     if (event->type == SDL_MOUSEMOTION || event->type == SDL_FINGERMOTION)
     {
-        if (event->type == SDL_MOUSEMOTION)
+        auto view = registry.view<Cursor, Player>();
+        for (auto entity : view)
         {
-            cursorPos[0] = event->motion.x;
-            cursorPos[1] = event->motion.y;
-        }
-        else
-        {
-            cursorPos[0] = event->tfinger.x * width;
-            cursorPos[1] = event->tfinger.y * height;
+            auto &cursor = view.get<Cursor>(entity);
+            if (event->type == SDL_MOUSEMOTION)
+            {
+                printf("Mouse motion\n");
+                cursor.position.x = event->motion.x;
+                cursor.position.y = event->motion.y;
+            }
+            else
+            {
+                cursor.position.x = event->tfinger.x * width;
+                cursor.position.y = event->tfinger.y * height;
+            }
         }
     }
 

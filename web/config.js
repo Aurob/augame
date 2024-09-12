@@ -22,58 +22,7 @@ var CONFIG = {
         }
     ],
     "textures": [
-        {
-            "name": "tree",
-            "path": "resources/tree11.png"
-        },
-        {
-            "name": "door",
-            "path": "resources/door.jpg"
-        },
-        {
-            "name": "smile",
-            "path": "resources/smile1.png"
-        },
-        {
-            "name": "treeset1",
-            "path": "resources/treeset1.png"
-        },
-        {
-            "name": "treeset2",
-            "path": "resources/treeset2.png"
-        },
-        {
-            "name": "ladder_up",
-            "path": "resources/ladder_up.png"
-        },
-        {
-            "name": "ladder_down",
-            "path": "resources/ladder_down.png"
-        },
-        {
-            "name": "table",
-            "path": "resources/table.png"
-        },
-        {
-            "name": "bed1",
-            "path": "resources/bed1.png"
-        },
-        {
-            "name": "chair1",
-            "path": "resources/chair1.png"
-        },
-        {
-            "name": "shelf1",
-            "path": "resources/shelf1.png"
-        },
-        {
-            "name": "wall1",
-            "path": "resources/wall1.png"
-        },
-        {
-            "name": "wall2",
-            "path": "resources/wall2.png"
-        },
+       
         {
             "name": "tileset1",
             "path": "resources/tileset1.png"
@@ -85,6 +34,18 @@ var CONFIG = {
         {
             "name": "props",
             "path": "resources/Props.png"
+        },
+        {
+            "name": "trumpet",
+            "path": "resources/trumpet.png"
+        },
+        {
+            "name": "skele",
+            "path": "resources/skele.png"
+        },
+        {
+            "name": "interiors",
+            "path": "resources/Interiors_free_32x32.png"
         }
     
     ],
@@ -139,9 +100,34 @@ for (let j = 0; j < slime.height / slime.tileHeight; j++) {
         slime.parts.push(part);
         c++;
     }
-}   
+}
 
-CONFIG.textureGroups.push(tileset1, slime); 
+let largeTexture = {
+    'name': 'interiors',
+    'path': 'resources/Interiors_free_32x32.png',
+    'width': 512,
+    'height': 2848,
+    'tileWidth': 32,
+    'tileHeight': 32,
+    'parts': []
+};
+
+c = 1; // Start from 1 to match the tilemap checker IDs
+for (let j = 0; j < largeTexture.height / largeTexture.tileHeight; j++) {
+    for (let i = 0; i < largeTexture.width / largeTexture.tileWidth; i++) {
+        let part = {
+            'name': `s${c}`,
+            'x': i * largeTexture.tileWidth,
+            'y': j * largeTexture.tileHeight,
+            'w': largeTexture.tileWidth,
+            'h': largeTexture.tileHeight
+        }
+        largeTexture.parts.push(part);
+        c++;
+    }
+}
+
+CONFIG.textureGroups.push(tileset1, slime, largeTexture);
 
 const actions = ["Idle", "Run"];
 const directions = ["Down", "Left", "Right", "Up"];
