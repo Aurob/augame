@@ -10,6 +10,8 @@
 #include <unordered_map>
 #include <string>
 
+extern int width, height;
+extern float gridSpacingValue;
 
 void loadUI(SDL_Window *mpWindow, SDL_GLContext gl_context) {
     

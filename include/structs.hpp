@@ -146,7 +146,10 @@ struct Interactable {
     }
 };
 
-struct Dragable {};
+struct Draggable {
+    float radius;
+    float sradius;
+};
 
 struct Colliding{
     std::vector<entt::entity> collidables;
@@ -288,6 +291,8 @@ struct Configurable {};
 struct UIElement {
     std::string content;
     bool visible;
+    Vector2f offset;
+    Vector2f soffset;
 };
 
 struct Tone {

@@ -1,12 +1,6 @@
-#include <SDL_opengles2.h>
-#include <cmath>
-#include <array>
+#include <SDL2/SDL.h>
+#include <SDL_image.h>
 #include "../include/shaders.hpp"
-#include "../include/json.hpp"
-#include <SDL_opengles2.h>
-#include <vector>
-#include <unordered_map>
-#include <string>
 #include "../include/UIUtils.hpp"
 
 extern float seed;
@@ -28,6 +22,32 @@ SDL_GLContext loadGl(SDL_Window *mpWindow)
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     return glc;
+}
+
+SDL_Window* loadSDL() {
+    // Initialize SDL and SDL_Image
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
+        return nullptr;
+    }
+    if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
+        printf("SDL_image could not initialize! SDL_image Error: %s\n", SDL_GetError());
+        return nullptr;
+    }
+
+    SDL_Window *mpWindow = SDL_CreateWindow(
+        "Untitled",
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        width, height,
+        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN
+    );
+
+    if (!mpWindow) {
+        printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
+        return nullptr;
+    }
+
+    return mpWindow;
 }
 
 void updateUniforms(GLuint &shaderProgram,
@@ -388,7 +408,7 @@ void loadTextures() {
     }
 }
 
-void renderAll(const context *ctx) {
+void renderAll() {
 
     Position &playerPos = registry.get<Position>(_player);
     Shape &playerShape = registry.get<Shape>(_player);
@@ -414,7 +434,7 @@ void renderAll(const context *ctx) {
     }
 
    registry.sort<Visible>([&](const entt::entity lhs, const entt::entity rhs) {
-        casonst auto& lhsPos = registry.get<Position>(lhs);
+        const auto& lhsPos = registry.get<Position>(lhs);
         const auto& rhsPos = registry.get<Position>(rhs);
         const auto& lhsShape = registry.get<Shape>(lhs);
         const auto& rhsShape = registry.get<Shape>(rhs);
@@ -567,22 +587,21 @@ void renderAll(const context *ctx) {
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     
     // Handle UIElement Components
-    auto ui_elements = registry.view<UIElement>();
+    auto ui_elements = registry.view<UIElement, InView>();
     for(auto& entity : ui_elements) {
         auto& uiElement = registry.get<UIElement>(entity);
         if(uiElement.visible) {
             auto position = registry.get<Position>(entity);
             auto shape = registry.get<Shape>(entity);
-            test_imgui(uiElement.content, 
-                ( (1 - ((position.sx + playerShape.scaled_size.x*1.25 + shape.scaled_size.x*0.1) + 1) / 2) * width),
-                ( (1 - ((position.sy + playerShape.scaled_size.y*1.25 + shape.scaled_size.y*0.1) + 1) / 2) * height),
-                (shape.scaled_size.x + shape.scaled_size.x*.1) * width,
-                (shape.scaled_size.y + shape.scaled_size.y*.1) * height
-            );
+            float posX = (1 - ((position.sx + playerShape.scaled_size.x + shape.scaled_size.x) + 1) / 2) * width;
+            float posY = (1 - ((position.sy + playerShape.scaled_size.y + shape.scaled_size.y) + 1) / 2) * height;
+            float sizeX = (shape.scaled_size.x + shape.scaled_size.x * 0.1) * width;
+            float sizeY = (shape.scaled_size.y + shape.scaled_size.y * 0.1) * height;
+
+            posX += uiElement.soffset.x;
+            posY += uiElement.soffset.y;
+
+            test_imgui(uiElement.content, posX, posY, sizeX, sizeY);
         }
     }
-
-    // Swap buffers
-    SDL_GL_SwapWindow(ctx->window);
-
 }
