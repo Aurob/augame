@@ -16,8 +16,7 @@
         canvas {
             border: 1px solid black;
             margin-top: 20px;
-            max-width: 100%;
-            max-height: 100%;
+            width: 100%;
         }
         #controls {
             display: flex;
@@ -51,6 +50,7 @@
 
     let currentImage = null;
     let zoomLevel = 1;
+    let selectedTiles = [];
 
     fileInput.addEventListener('change', handleFileSelect);
     tileWidthInput.addEventListener('input', handleTileSizeChange);
@@ -58,7 +58,6 @@
     zoomLevelInput.addEventListener('input', handleZoomChange);
     canvas.addEventListener('click', handleCanvasClick);
 
-    // Load image and tile sizes from localStorage if exists
     window.onload = function() {
         const storedImage = localStorage.getItem('storedImage');
         const storedTileWidth = localStorage.getItem('tileWidth');
@@ -89,7 +88,6 @@
                 currentImage = img;
                 resizeCanvas();
                 redraw();
-                // Store image in localStorage
                 localStorage.setItem('storedImage', e.target.result);
             }
             img.src = e.target.result;
@@ -113,13 +111,8 @@
     function resizeCanvas() {
         if (currentImage) {
             const aspectRatio = currentImage.width / currentImage.height;
-            if (window.innerWidth / window.innerHeight > aspectRatio) {
-                canvas.height = (window.innerHeight - 100) * zoomLevel;
-                canvas.width = canvas.height * aspectRatio;
-            } else {
-                canvas.width = (window.innerWidth - 40) * zoomLevel;
-                canvas.height = canvas.width / aspectRatio;
-            }
+            canvas.width = window.innerWidth - 40;
+            canvas.height = canvas.width / aspectRatio;
         }
     }
 
@@ -144,7 +137,7 @@
         const scaleY = canvas.height / currentImage.height;
 
         ctx.strokeStyle = 'red';
-        ctx.font = `${Math.min(tileWidth, tileHeight)}px Arial`;
+        ctx.font = `${Math.min(tileWidth, tileHeight) / 2}px Arial`;
         ctx.fillStyle = 'black';
 
         for (let row = 0; row < rows; row++) {
@@ -155,6 +148,14 @@
                 ctx.fillText(`${row * cols + col + 1}`, x + 5, y + Math.min(tileHeight * scaleY, 20));
             }
         }
+
+        // Highlight selected tiles
+        ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
+        selectedTiles.forEach(tile => {
+            const x = tile.col * tileWidth * scaleX;
+            const y = tile.row * tileHeight * scaleY;
+            ctx.fillRect(x, y, tileWidth * scaleX, tileHeight * scaleY);
+        });
     }
 
     function handleCanvasClick(event) {
@@ -167,13 +168,22 @@
         const scaleX = canvas.width / currentImage.width;
         const scaleY = canvas.height / currentImage.height;
 
-        const col = Math.floor(x / (tileWidth * scaleX * 2));
+        const col = Math.floor(x / (tileWidth * scaleX));
         const row = Math.floor(y / (tileHeight * scaleY));
         const cols = Math.floor(currentImage.width / tileWidth);
         const cellNumber = row * cols + col + 1;
 
-        console.log(`Clicked cell: ${cellNumber}`);
-        alert(`Clicked cell: ${cellNumber}`);
+        const tile = { col, row, width: tileWidth, height: tileHeight };
+        selectedTiles.push(tile);
+
+        const minX = Math.min(...selectedTiles.map(t => t.col * tileWidth));
+        const minY = Math.min(...selectedTiles.map(t => t.row * tileHeight));
+        const maxX = Math.max(...selectedTiles.map(t => (t.col + 1) * tileWidth));
+        const maxY = Math.max(...selectedTiles.map(t => (t.row + 1) * tileHeight));
+
+        alert(`Selected tile ${cellNumber} at (${minX}, ${minY}) to (${maxX}, ${maxY}). ${minX/currentImage.width} ${minY/currentImage.height} ${maxX/currentImage.width} ${maxY/currentImage.height}`);
+
+        redraw();
     }
 </script>
 </body>

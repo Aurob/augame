@@ -460,6 +460,8 @@ void renderAll() {
         bool isDebug = registry.all_of<Debug>(entity);
         bool isTeleport = registry.all_of<Teleport>(entity);
 
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
         if (registry.all_of<Texture>(entity)) {
             const auto& texture = registry.get<Texture>(entity);
@@ -500,8 +502,6 @@ void renderAll() {
             auto partName = textureGroupPart.partName;
 
 
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             auto rootTexture = textureIDMap[groupName];
             const auto& texture = textureGroupMap[groupName].at(partName);
             updateUniformsTexture(shaderProgramMap["texture"], 
