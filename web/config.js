@@ -40,12 +40,16 @@ var CONFIG = {
             "path": "resources/trumpet.png"
         },
         {
-            "name": "skele",
-            "path": "resources/skele.png"
+            "name": "room1",
+            "path": "resources/Room_Builder_free_32x32.png"
         },
         {
-            "name": "interiors",
-            "path": "resources/Interiors_free_32x32.png"
+            "name": "doors",
+            "path": "resources/doors.png"
+        },
+        {
+            "name": "instruments",
+            "path": "resources/instruments.png"
         }
     
     ],
@@ -102,32 +106,33 @@ for (let j = 0; j < slime.height / slime.tileHeight; j++) {
     }
 }
 
-let largeTexture = {
-    'name': 'interiors',
-    'path': 'resources/Interiors_free_32x32.png',
-    'width': 512,
-    'height': 2848,
+let room1 = {
+    'name': 'room1',
+    'path': 'resources/Room_Builder_free_32x32.png',
+    'width': 544,
+    'height': 736,
     'tileWidth': 32,
     'tileHeight': 32,
     'parts': []
 };
 
 c = 1; // Start from 1 to match the tilemap checker IDs
-for (let j = 0; j < largeTexture.height / largeTexture.tileHeight; j++) {
-    for (let i = 0; i < largeTexture.width / largeTexture.tileWidth; i++) {
+for (let j = 0; j < room1.height / room1.tileHeight; j++) {
+    for (let i = 0; i < room1.width / room1.tileWidth; i++) {
         let part = {
             'name': `s${c}`,
-            'x': i * largeTexture.tileWidth,
-            'y': j * largeTexture.tileHeight,
-            'w': largeTexture.tileWidth,
-            'h': largeTexture.tileHeight
+            'x': i * room1.tileWidth,
+            'y': j * room1.tileHeight,
+            'w': room1.tileWidth,
+            'h': room1.tileHeight
         }
-        largeTexture.parts.push(part);
+        room1.parts.push(part);
         c++;
     }
 }
 
-CONFIG.textureGroups.push(tileset1, slime, largeTexture);
+
+CONFIG.textureGroups.push(tileset1, slime, room1);
 
 const actions = ["Idle", "Run"];
 const directions = ["Down", "Left", "Right", "Up"];

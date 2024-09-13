@@ -118,30 +118,66 @@ class EntityBuilder {
     }
 }
 
-fetch('/include/structs.hpp').then(res=>res.text()).then(e=>{
-    // Define the regex pattern to match structs and their fields with comments
-    const structRegex = /struct\s+(\w+)\s*\{([^}]*)\}/gs;
-    const fieldRegex = /\s*(\w+)\s+(\w+);\s*(\/\/.*)?/g;
-  
-    // Find all matches
-    const structs = [];
-    let match;
-    while ((match = structRegex.exec(e)) !== null) {
-        const structName = match[1];
-        const structBody = match[2];
-  
-        const fields = [];
-        let fieldMatch;
-        while ((fieldMatch = fieldRegex.exec(structBody)) !== null) {
-            const fieldType = fieldMatch[1];
-            const fieldName = fieldMatch[2];
-            const fieldComment = fieldMatch[3] ? fieldMatch[3].trim() : null;
-            fields.push({ name: fieldName, type: fieldType, comment: fieldComment });
-        }
-  
-        structs.push({ struct: structName, fields: fields });
+class XMLComponentParser {
+    constructor(filePath) {
+        this.filePath = filePath;
+        this.components = [];
     }
-  
-    // Output the JSON
-    console.log(structs);
-  })
+
+    async fetchXML(filePath) {
+        const response = await fetch(filePath);
+        if (!response.ok) {
+            throw new Error(`Failed to load XML file: ${response.status}`);
+        }
+        const text = await response.text();
+        const parser = new DOMParser();
+        return parser.parseFromString(text, 'application/xml');
+    }
+
+    async parseXML() {
+        try {
+            const xmlDoc = await this.fetchXML(this.filePath);
+            const innerClasses = xmlDoc.getElementsByTagName('innerclass');
+            const componentPaths = [];
+
+            for (let innerClass of innerClasses) {
+                const refid = innerClass.getAttribute('refid');
+                componentPaths.push(`../xml/${refid}.xml`);
+            }
+
+            for (let path of componentPaths) {
+                const componentDoc = await this.fetchXML(path);
+                const members = componentDoc.getElementsByTagName('memberdef');
+                const component = { name: path.split('/').pop().split('.')[0].replace('struct_', ''), fields: [] };
+
+                for (let member of members) {
+                    if (member.getElementsByTagName('para').length > 0) {
+                        const fieldName = member.getElementsByTagName('name')[0].textContent;
+                        const fieldTypeElement = member.getElementsByTagName('type')[0];
+                        const fieldType = fieldTypeElement.getElementsByTagName('ref').length > 0 
+                            ? fieldTypeElement.getElementsByTagName('ref')[0].textContent 
+                            : fieldTypeElement.textContent;
+                        component.fields.push({ name: fieldName, type: fieldType });
+                    }
+                }
+                this.components.push(component);
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    getComponents() {
+        return this.components;
+    }
+}
+
+(async () => {
+    const xmlParser = new XMLComponentParser('../xml/group__client__components.xml');
+    await xmlParser.parseXML();
+    const parsedComponents = xmlParser.getComponents();
+
+    console.log(parsedComponents);
+})();
+
+
