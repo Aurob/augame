@@ -1,22 +1,12 @@
-#include <emscripten.h>
-#include <SDL2/SDL.h>
-#include <SDL_image.h>
-#include <SDL_opengles2.h>
-#include <unordered_map>
-#include <cmath>
 #include "../include/events.hpp"
 #include "../include/GLUtils.hpp"
 #include "../include/JSUtils.hpp"
 #include "../include/EntityConfig.hpp"
 #include "../include/UIUtils.hpp"
 #include "../include/entt.hpp"
-#include "../include/structs.hpp"
 #include "../include/Utils.hpp"
 #include "../include/EFactory.hpp"
 #include "../include/Systems.hpp"
-#include "../include/imgui/imgui.h"
-#include "../include/imgui/imgui_impl_sdl.h"
-#include "../include/imgui/imgui_impl_opengl3.h"
 
 using namespace std;
 
@@ -45,7 +35,6 @@ float defaultGSV = 16.0f;
 GLfloat generationSize[2] = {defaultGSV*2, defaultGSV*2};
 GLfloat gridSpacingValue = 1024.0f;
 bool first_start = false;
-float defaultMoveSpeed = 0.0f;
 float seed = 0.0f;
 
 entt::entity _player;
@@ -59,26 +48,9 @@ void EventHandler(int, SDL_Event *);
 
 int main(int argc, char *argv[])
 {
+    
     // Initialize SDL and SDL_Image
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
-        return -1;
-    }
-    if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
-        printf("SDL_image could not initialize! SDL_image Error: %s\n", SDL_GetError());
-        return -1;
-    }
-
-    SDL_Window *mpWindow = SDL_CreateWindow("Untitled",
-        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        width, height,
-        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN);
-
-    if (!mpWindow) {
-        printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
-        return -1;
-    }
-
+    SDL_Window *mpWindow = loadSDL();
     SDL_GLContext gl_context = loadGl(mpWindow);
 
     loadUI(mpWindow, gl_context);
@@ -109,27 +81,6 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
 }
 
-void updateFrame(context *ctx)
-{
-    // Check if the window size has been updated
-    if (windowResized)
-    {
-        glViewport(0, 0, width, height);
-        SDL_SetWindowSize(ctx->window, width, height);
-        windowResized = false;
-    }
-
-    // Update entity movement and interactions
-    updatePlayer(registry);
-    updateFlags(registry);
-    updateCollisions(registry);
-    updateMovement(registry);
-    updateShapes(registry);
-    updatePositions(registry);
-    updateOther(registry);
-    updateInteractions(registry);
-}
-
 bool js_loaded() {
     if(!ready) return false;
     if(!first_start) {
@@ -148,14 +99,26 @@ void mainloop(void *arg)
 
     deltaTime = (SDL_GetTicks() - lastTime) / 1000.0f;
     lastTime = SDL_GetTicks();
-    context *ctx = static_cast<context *>(arg);
-
     // Handle events
-    processEvents(EventHandler, ctx);
+    processEvents();
+    
+    context *ctx = (context *)arg;
+
+    // Check if the window size has been updated
+    if (windowResized)
+    {
+        glViewport(0, 0, width, height);
+        SDL_SetWindowSize(ctx->window, width, height);
+        windowResized = false;
+    }
+
     // Update frame
-    updateFrame(ctx);
+    updateFrame();
     // Render
-    renderAll(ctx);
+    renderAll();
+
+    // Swap buffers
+    SDL_GL_SwapWindow(ctx->window);
     // Update JS Client
     _js__update_client();
 

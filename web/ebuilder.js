@@ -20,9 +20,9 @@ class EntityBuilder {
         configurable: 1,
         teleporter: 4,
         teleportable: 1,
-        draggable: 1,
-        Tone: 5,
-
+        draggable: 2,
+        tone: 5,
+        ui: 5
     };
     
     static componentParsers = {
@@ -75,30 +75,32 @@ class EntityBuilder {
         configurable: () => ({ Configurable: true }),
         teleporter: (parts, i) => ({ Teleporter: { destination: { x: parseFloat(parts[i]), y: parseFloat(parts[i+1]), z: parseFloat(parts[i+2]) }, interiorEntity: parseInt(parts[i+3], 10) } }),
         teleportable: () => ({ Teleportable: true }),
-        dragable: () => ({ Dragable: true }),
+        draggable: (parts, i) => ({ Draggable: { radius: parseFloat(parts[i]) } }),
         tone: (parts, i) => ({ Tone: { note: parts[i], duration: parts[i+1], volume: parseFloat(parts[i+2]), type: parts[i+3] || 'sine' } }),
+        ui: (parts, i) => ({ UIElement: { content: parts[i], visible: parseInt(parts[i+1], 10) === 1 || parts[i+1] === "true", offset: { x: parseFloat(parts[i+2]), y: parseFloat(parts[i+3]) } } }),
     };
 
     constructor() {
         this.components = {};
     }
-parseInput(input) {
-    const parts = input.split(/\s+/).filter(part => part.length > 0);
-    let i = 0;
-    while (i < parts.length) {
-        const componentName = parts[i];
-        const parser = EntityBuilder.componentParsers[componentName];
-        if (parser) {
-            const result = parser(parts, i + 1);
-            Object.assign(this.components, result);
-            i += this.getComponentParameterCount(componentName, result);
-        } else {
-            console.warn(`Unknown component or parser not implemented: ${componentName}`);
-            i++;
+
+    parseInput(input) {
+        const parts = input.split(/\s+/).filter(part => part.length > 0);
+        let i = 0;
+        while (i < parts.length) {
+            const componentName = parts[i];
+            const parser = EntityBuilder.componentParsers[componentName];
+            if (parser) {
+                const result = parser(parts, i + 1);
+                Object.assign(this.components, result);
+                i += this.getComponentParameterCount(componentName, result);
+            } else {
+                console.warn(`Unknown component or parser not implemented: ${componentName}`);
+                i++;
+            }
         }
+        return this;
     }
-    return this;
-}
 
     getComponentParameterCount(componentName, result) {
         if (componentName in EntityBuilder.componentParameterCounts) {
