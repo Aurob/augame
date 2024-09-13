@@ -12,6 +12,7 @@ extern GLfloat offsetValue[2];
 extern float gridSpacingValue;
 extern float defaultGSV;
 extern entt::entity _player;
+extern bool windowResized;
 
 void updatePlayer(entt::registry &registry) {
     
@@ -303,6 +304,18 @@ void updatePositions(entt::registry &registry)
         position.sy = (2 * posY / height - 1) / defaultGSV - shape.scaled_size.y * 0.999f;
         position.sz = (2 * posZ / height - 1) / defaultGSV - shape.scaled_size.z * 0.999f;
 
+                
+        // If is UIElement, update UIElement.offset to have screen scaled values, use UIElement.soffset for scaled
+        if (registry.all_of<UIElement>(entity))
+        {
+            UIElement &uiElement = registry.get<UIElement>(entity);
+            float soffsetX = (uiElement.offset.x - playerPos.x) * gridSpacingValue + width / 2;
+            float soffsetY = (uiElement.offset.y - playerPos.y) * gridSpacingValue + height / 2;
+            uiElement.soffset.x = (2 * soffsetX / width - 1) / defaultGSV;
+            uiElement.soffset.y = (2 * soffsetY / height - 1) / defaultGSV;
+        }
+
+
         bool isWithinBounds = (entity == _player) || (
             position.sx + shape.scaled_size.x >= -1 
             && position.sx - shape.scaled_size.x <= 1 
@@ -371,7 +384,6 @@ void updatePositions(entt::registry &registry)
                 }
             }
         }
-        
 
         if (isVisible)
             registry.emplace_or_replace<Visible>(entity);
@@ -622,7 +634,7 @@ void updateOther(entt::registry &registry)
     }
 
     // Handle Interacted
-    auto interacted_entities = registry.view<Interacted, Dragable>();
+    auto interacted_entities = registry.view<Interacted, Draggable>();
     for (auto entity : interacted_entities)
     {
         auto &interacted = interacted_entities.get<Interacted>(entity);
@@ -715,4 +727,18 @@ void updateFlags(entt::registry &registry)
             registry.destroy(entityToDestroy);
         }
     }
+}
+
+
+void updateFrame()
+{
+    // Update entity movement and interactions
+    updatePlayer(registry);
+    updateFlags(registry);
+    updateCollisions(registry);
+    updateMovement(registry);
+    updateShapes(registry);
+    updatePositions(registry);
+    updateOther(registry);
+    updateInteractions(registry);
 }

@@ -1,12 +1,8 @@
 #pragma once
-#include <emscripten.h>
-#include <SDL_opengles2.h>
 #include "shaders.hpp"
 #include "../include/entt.hpp"
 #include "../include/structs.hpp"
 #include "../include/json.hpp"
-#include <sstream>
-#include <functional>
 
 using namespace std;
 
@@ -456,13 +452,15 @@ extern "C"
                                 }
                             }, "Teleportable");
 
-                            // Dragable
+                            // Draggable
                             safe_emplace(registry, entity, [&]() {
-                                if (components.contains("Dragable") && components["Dragable"].is_boolean())
+                                if (components.contains("Draggable") && components["Draggable"].is_object())
                                 {
-                                    registry.emplace<Dragable>(entity);
+                                    auto &draggable = components["Draggable"];
+                                    float radius = draggable["radius"];
+                                    registry.emplace<Draggable>(entity, Draggable{.radius = radius});
                                 }
-                            }, "Dragable");
+                            }, "Draggable");
 
                             // Tone (note, duration, volume, type)
                             safe_emplace(registry, entity, [&]() {
@@ -477,6 +475,18 @@ extern "C"
                                     });
                                 }
                             }, "Tone");
+
+                            safe_emplace(registry, entity, [&]() {
+                                if (components.contains("UIElement") && components["UIElement"].is_object())
+                                {
+                                    auto &uiElement = components["UIElement"];
+                                    registry.emplace<UIElement>(entity, UIElement{
+                                        .content = uiElement["content"],
+                                        .visible = uiElement["visible"],
+                                        .offset = {uiElement["offset"]["x"], uiElement["offset"]["y"]},
+                                    });
+                                }
+                            }, "UIElement");
                         }
                     }
                 }

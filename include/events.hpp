@@ -36,7 +36,6 @@ void EventHandler(int type, SDL_Event *event)
             auto &cursor = view.get<Cursor>(entity);
             if (event->type == SDL_MOUSEMOTION)
             {
-                printf("Mouse motion\n");
                 cursor.position.x = event->motion.x;
                 cursor.position.y = event->motion.y;
             }
@@ -86,23 +85,15 @@ void EventHandler(int type, SDL_Event *event)
     }
 }
 
-void processEvents(void (*EventHandler)(int, SDL_Event*), context *ctx) {
-    while (SDL_PollEvent(&ctx->event))
+void processEvents() {
+    SDL_Event event;
+    while (SDL_PollEvent(&event))
     {
-        ImGui_ImplSDL2_ProcessEvent(&ctx->event);
-        EventHandler(0, &ctx->event);
+        ImGui_ImplSDL2_ProcessEvent(&event);
+        EventHandler(0, &event);
     }
 
     auto keys = registry.get<Keys>(_player).keys;
-
-    // If Shift is pressed, increase speed
-    auto& playerMovement = registry.get<Movement>(_player);
-    // if(keys[SDLK_LSHIFT]) {
-    //     playerMovement.speed = defaultMoveSpeed * 20;
-    // }
-    // else {
-    //     playerMovement.speed = defaultMoveSpeed;
-    // }
     
     // If B increase player z
     if(keys[SDLK_b]) {
