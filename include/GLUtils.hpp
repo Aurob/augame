@@ -475,52 +475,58 @@ void renderAll() {
                 texture.x, texture.y, texture.w, texture.h
             );
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-            // if (registry.all_of<RenderDebug>(entity)) {
-            //     float r = 1.0f, g = 1.0f, b = 1.0f, a = 0.2f; // Default color
-            //     if (registry.all_of<Color>(entity)) {
-            //         const auto& color = registry.get<Color>(entity);
-            //         r = color.r;
-            //         g = color.g;
-            //         b = color.b;
-            //         a = color.a;
-            //     }
-            //     updateUniformsDebug(shaderProgramMap["debug_entity"],
-            //         r, g, b, a,
-            //         position.sx + playerShape.scaled_size.x, 
-            //         position.sy + playerShape.scaled_size.y,
-            //         shape.scaled_size.x, 
-            //         shape.scaled_size.y, 
-            //         0.0f
-            //     );
-            //     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-            // }
         }
         else if (registry.all_of<TextureGroupPart>(entity)) {
             const auto& textureGroupPart = registry.get<TextureGroupPart>(entity);
             auto groupName = textureGroupPart.groupName;
             auto partName = textureGroupPart.partName;
 
-
             auto rootTexture = textureIDMap[groupName];
             const auto& texture = textureGroupMap[groupName].at(partName);
-            updateUniformsTexture(shaderProgramMap["texture"], 
-                rootTexture,
-                position.sx + playerShape.scaled_size.x,
-                position.sy + playerShape.scaled_size.y + position.sz + playerShape.scaled_size.z,
-                shape.scaled_size.x,
-                shape.scaled_size.y,
-                texture.x, texture.y, texture.w, texture.h
-            );
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+            auto IdName = registry.get<Id>(entity).name;
+            if (textureGroupPart.tilex > 0 && textureGroupPart.tiley > 0) {
+                int divisorX = textureGroupPart.tilex;
+                int divisorY = textureGroupPart.tiley;
+                auto ssizex = shape.scaled_size.x / divisorX;
+                auto ssizey = shape.scaled_size.y / divisorY;
+                auto posX = position.sx + playerShape.scaled_size.x;
+                auto posY = position.sy + playerShape.scaled_size.y + position.sz + playerShape.scaled_size.z;
+
+                // Increase size by 1%
+                auto increasedSsizex = ssizex * 1.01f;
+                auto increasedSsizey = ssizey * 1.01f;
+
+                for (int i = 0; i < divisorX; ++i) {
+                    for (int j = 0; j < divisorY; ++j) {
+                        updateUniformsTexture(shaderProgramMap["texture"], 
+                            rootTexture,
+                            (posX + i * ssizex*2) - shape.scaled_size.x + ssizex - (increasedSsizex - ssizex) / 2,
+                            (posY + j * ssizey*2) - shape.scaled_size.y - (increasedSsizey - ssizey) / 2,
+                            increasedSsizex, increasedSsizey,
+                            texture.x, texture.y, texture.w, texture.h
+                        );
+                        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                    }
+                }
+            } 
+            else {
+                updateUniformsTexture(shaderProgramMap["texture"], 
+                    rootTexture,
+                    position.sx + playerShape.scaled_size.x,
+                    position.sy + playerShape.scaled_size.y + position.sz + playerShape.scaled_size.z,
+                    shape.scaled_size.x,
+                    shape.scaled_size.y,
+                    texture.x, texture.y, texture.w, texture.h
+                );
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            }
         } 
         else if (registry.all_of<Textures>(entity)) {
             const auto& textures = registry.get<Textures>(entity);
             const auto& current_texture = textures.textures[textures.current];
 
 
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             if (registry.all_of<RenderDebug>(entity)) {
                 updateUniformsDebug(shaderProgramMap["debug_entity"],
                     1.0f, 1.0f, 1.0f, 0.2f,

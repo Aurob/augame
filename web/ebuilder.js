@@ -1,12 +1,12 @@
 class EntityBuilder {
     static componentParameterCounts = {
         texture: 8,
-        textureGroupPart: 3,
+        textureGroupPart: 5,
         position: 4,
         shape: 4,
         color: 5,
         movement: 10,
-        interiorPortal: 3,
+        interiorPortal: 4,
         inside: 2,
         associated: 3,
         id: 3,
@@ -38,7 +38,7 @@ class EntityBuilder {
         renderPriority: (parts, i) => ({ RenderPriority: { priority: parseInt(parts[i], 10) } }),
         collidable: () => ({ Collidable: true }),
         interior: () => ({ Interior: { hideInside: true } }),
-        interiorPortal: (parts, i) => ({ InteriorPortal: { A: parseInt(parts[i], 10), B: parseInt(parts[i+1], 10) } }),
+        interiorPortal: (parts, i) => ({ InteriorPortal: { A: parseInt(parts[i], 10), B: parseInt(parts[i+1], 10), locked: parts[i+2] === "1" } }),
         inside: (parts, i) => ({ Inside: { interiorEntity: parseInt(parts[i], 10), showOutside: parts[i+1] === "true" } }),
         associated: (parts, i) => ({ Associated: { entities: [parseInt(parts[i], 10)] } }),
         texture: (parts, i) => ({
@@ -56,6 +56,8 @@ class EntityBuilder {
             TextureGroupPart: {
                 groupName: parts[i],
                 partName: parts[i+1],
+                tilex: parseFloat(parts[i+2]) || 0.0,
+                tiley: parseFloat(parts[i+3]) || 0.0
             }
         }),
         moveable: () => ({ Moveable: {} }),

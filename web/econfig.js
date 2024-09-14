@@ -31,12 +31,16 @@
 // id 2 test test1 position 0 -8 4 shape 15 4 1 color 0.1 0.2 0.4 1.0 renderPriority 3 collidable
 
 var configstr = `
-    id 1 room position 0 -10 0 shape 10 10 0 color 0.5 0.5 0.5 1.0 renderPriority -1 collidable interior
+    id 1 room position 0 -10 0 shape 10 10 0 color 0.5 0.5 0.5 1.0 renderPriority -1 collidable interior textureGroupPart room1 s115 10 10
+    id 11 roomwall position 0 -12.5 0 shape 10 2 1 color 0.1 0.2 0.3 1.0 renderPriority 0 inside 1 textureGroupPart room1 s227 10 2
+    id 11 roomwall2 position 0 -1 1 shape 10 2 1 color 0.1 0.2 0.3 1.0 renderPriority 0 inside 1 textureGroupPart room1 s227 10 2
+
     id 0 player position 4.5 -1 0 shape 1 1 1 color 0.1 0.2 0.3 .3 movement 75 1000 0 0 0 0 10 1 0 moveable collidable renderPriority 0 inside 1
-    id 3 slime1 position 4.6 -5.2 2 shape .5 .125 .25 color 0.4 0.2 0.3 1.0 texture slime 0 0 0.047 0.11 0.031 0.038 ui hello 1 0 -200 renderPriority -2 inside 1 hoverable interactable tone R 4n -25 fsharp.wav
 
     id 2 room2 position 0 -20 0 shape 10 10 0 color 0.5 0.5 0.5 1.0 renderPriority 0 collidable interior
-    id 10 door position 4.5 -10.8 0 shape 1.5 1 1 color 0.0 0.0 0.0 1.0 renderPriority 2 collidable interiorPortal 1 2 inside 1 texture doors 0 0 0 0 1 0.5
+    id 3 slime1 position 4.6 -15.2 1 shape .5 .125 .25 color 0.4 0.2 0.3 1.0 texture slime 0 0 0.047 0.11 0.031 0.038 1 0 -200 renderPriority -2 inside 2 hoverable interactable tone R 4n -25 fsharp.wav
+
+    id 10 doorA position 4.5 -10.8 0 shape 1.5 1 1 color 0.0 0.0 0.0 1.0 renderPriority 2 collidable interiorPortal 1 2 1 inside 1 texture doors 0 0 0 0 1 0.5
     id 11 piano2 position 4.5 -5 0 shape 2 2 1 color 0.1 0.2 0.3 1.0 renderPriority 0 inside 1 hoverable interactable texture instruments 0 0 0.6875 0.1764 0.125 0.1875
     id 12 piano2col position 4.5 -4.25 0 shape 2 .25 1 color 0.1 0.2 0.3 0.0 renderPriority 0 collidable inside 1
     
@@ -60,7 +64,7 @@ var configstr = `
     id 22 p2key position 5.309 -4.235 0 shape .06 .115 1 color 0 0 0 0.8 renderPriority 2 inside 1 hoverable interactable
     id 23 p2key position 5.309 -4.115 0 shape .06 .115 1 color 1 1 1 0.8 renderPriority 2 inside 1 hoverable interactable tone C5 4n -25
 
-    id 24 p2key position 5.371 -4.23 0 shape .06 .23 1 color 1 1 1 0.8 renderPriority 2 inside 1 hoverable interactable tone D5 4n -25
+    id 24 p2keytest position 5.371 -4.23 0 shape .06 .23 1 color 1 1 1 0.8 renderPriority 2 inside 1 hoverable interactable tone D5 4n -25
 
     id 25 p2key position 5.433 -4.235 0 shape .06 .115 1 color 0 0 0 0.8 renderPriority 2 inside 1 hoverable interactable
     id 26 p2key position 5.433 -4.115 0 shape .06 .115 1 color 1 1 1 0.8 renderPriority 2 inside 1 hoverable interactable tone E5 4n -25

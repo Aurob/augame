@@ -248,6 +248,7 @@ struct Inside {
 struct InteriorPortal {
     entt::entity A;
     entt::entity B;
+    bool locked;
 };
 struct OnInteriorPortal {
     entt::entity portal;
@@ -288,6 +289,8 @@ struct TextureGroupPart {
     std::string groupName;
     std::string partName;
     Texture texture;
+    int tilex;
+    int tiley;
     
 };
 
