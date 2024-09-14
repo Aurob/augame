@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entity Visual Builder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f9;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .component {
+            margin-bottom: 15px;
+        }
+        .component label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .component input[type="text"],
+        .component input[type="number"] {
+            width: calc(100% - 10px);
+            padding: 8px;
+            margin-bottom: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .component input[type="checkbox"] {
+            margin-right: 5px;
+        }
+        .component button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .component button:hover {
+            background-color: #0056b3;
+        }
+        .output {
+            margin-top: 20px;
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Entity Visual Builder</h1>
+        <div class="component">
+            <label for="id">ID</label>
+            <input type="number" id="id" placeholder="Enter ID">
+        </div>
+        <div class="component">
+            <label for="test">Test</label>
+            <input type="text" id="test" placeholder="Enter Test Value">
+        </div>
+        <div class="component">
+            <label for="position">Position (x, y, z)</label>
+            <input type="text" id="position" placeholder="e.g., 0 10 -1">
+        </div>
+        <div class="component">
+            <label for="shape">Shape (width, height, depth)</label>
+            <input type="text" id="shape" placeholder="e.g., 1 1 1">
+        </div>
+        <div class="component">
+            <label for="color">Color (r, g, b)</label>
+            <input type="text" id="color" placeholder="e.g., 0.4 0.5 0.6">
+        </div>
+        <div class="component">
+            <input type="checkbox" id="collidable">
+            <label for="collidable">Collidable</label>
+        </div>
+        <div class="component">
+            <input type="checkbox" id="interior">
+            <label for="interior">Interior</label>
+        </div>
+        <div class="component">
+            <button onclick="buildEntity()">Build Entity</button>
+        </div>
+        <div class="output" id="output"></div>
+    </div>
+    <script src="ebuilder.js"></script>
+    <script>
+        function buildEntity() {
+            const id = document.getElementById('id').value;
+            const test = document.getElementById('test').value;
+            const position = document.getElementById('position').value;
+            const shape = document.getElementById('shape').value;
+            const color = document.getElementById('color').value;
+            const collidable = document.getElementById('collidable').checked;
+            const interior = document.getElementById('interior').checked;
+
+            const entity = new EntityBuilder(id)
+                .setTest(test)
+                .setPosition(position)
+                .setShape(shape)
+                .setColor(color)
+                .setCollidable(collidable)
+                .setInterior(interior)
+                .build();
+
+            document.getElementById('output').innerText = JSON.stringify(entity, null, 2);
+        }
+    </script>
+</body>
+</html>

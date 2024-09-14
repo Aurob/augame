@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tile Grid Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+        canvas {
+            border: 1px solid black;
+            margin-top: 20px;
+            width: 100%;
+        }
+        #controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #controls input {
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Tile Grid Generator</h1>
+    <div id="controls">
+        <input type="file" id="fileInput" accept="image/*">
+        <label for="tileWidth">Tile Width:</label>
+        <input type="number" id="tileWidth" value="50">
+        <label for="tileHeight">Tile Height:</label>
+        <input type="number" id="tileHeight" value="50">
+        <label for="zoomLevel">Zoom Level:</label>
+        <input type="range" id="zoomLevel" min="1" max="30" step="0.1" value="1">
+    </div>
+    <canvas id="canvas"></canvas>
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const tileWidthInput = document.getElementById('tileWidth');
+    const tileHeightInput = document.getElementById('tileHeight');
+    const zoomLevelInput = document.getElementById('zoomLevel');
+
+    let currentImage = null;
+    let zoomLevel = 1;
+    let selectedTiles = [];
+
+    fileInput.addEventListener('change', handleFileSelect);
+    tileWidthInput.addEventListener('input', handleTileSizeChange);
+    tileHeightInput.addEventListener('input', handleTileSizeChange);
+    zoomLevelInput.addEventListener('input', handleZoomChange);
+    canvas.addEventListener('click', handleCanvasClick);
+
+    window.onload = function() {
+        const storedImage = localStorage.getItem('storedImage');
+        const storedTileWidth = localStorage.getItem('tileWidth');
+        const storedTileHeight = localStorage.getItem('tileHeight');
+        const storedZoomLevel = localStorage.getItem('zoomLevel');
+        if (storedTileWidth) tileWidthInput.value = storedTileWidth;
+        if (storedTileHeight) tileHeightInput.value = storedTileHeight;
+        if (storedZoomLevel) zoomLevelInput.value = storedZoomLevel;
+        if (storedImage) {
+            const img = new Image();
+            img.onload = function() {
+                currentImage = img;
+                resizeCanvas();
+                redraw();
+            }
+            img.src = storedImage;
+        }
+    };
+
+    function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                currentImage = img;
+                resizeCanvas();
+                redraw();
+                localStorage.setItem('storedImage', e.target.result);
+            }
+            img.src = e.target.result;
+        }
+        reader.readAsDataURL(file);
+    }
+
+    function handleTileSizeChange() {
+        localStorage.setItem('tileWidth', tileWidthInput.value);
+        localStorage.setItem('tileHeight', tileHeightInput.value);
+        redraw();
+    }
+
+    function handleZoomChange() {
+        zoomLevel = parseFloat(zoomLevelInput.value);
+        localStorage.setItem('zoomLevel', zoomLevel);
+        resizeCanvas();
+        redraw();
+    }
+
+    function resizeCanvas() {
+        if (currentImage) {
+            const aspectRatio = currentImage.width / currentImage.height;
+            canvas.width = window.innerWidth - 40;
+            canvas.height = canvas.width / aspectRatio;
+        }
+    }
+
+    function redraw() {
+        if (currentImage) {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(currentImage, 0, 0, canvas.width, canvas.height);
+            drawGrid();
+        }
+    }
+
+    function drawGrid() {
+        const tileWidth = parseInt(tileWidthInput.value, 10);
+        const tileHeight = parseInt(tileHeightInput.value, 10);
+        if (!tileWidth || !tileHeight) return;
+
+        const cols = Math.floor(currentImage.width / tileWidth);
+        const rows = Math.floor(currentImage.height / tileHeight);
+
+        const scaleX = canvas.width / currentImage.width;
+        const scaleY = canvas.height / currentImage.height;
+
+        ctx.strokeStyle = 'red';
+        ctx.font = `${Math.min(tileWidth, tileHeight) / 2}px Arial`;
+        ctx.fillStyle = 'black';
+
+        for (let row = 0; row < rows; row++) {
+            for (let col = 0; col < cols; col++) {
+                const x = col * tileWidth * scaleX;
+                const y = row * tileHeight * scaleY;
+                ctx.strokeRect(x, y, tileWidth * scaleX, tileHeight * scaleY);
+                ctx.fillText(`${row * cols + col + 1}`, x + 5, y + Math.min(tileHeight * scaleY, 20));
+            }
+        }
+
+        // Highlight selected tiles
+        ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
+        selectedTiles.forEach(tile => {
+            const x = tile.col * tileWidth * scaleX;
+            const y = tile.row * tileHeight * scaleY;
+            ctx.fillRect(x, y, tileWidth * scaleX, tileHeight * scaleY);
+        });
+    }
+
+    function handleCanvasClick(event) {
+        const tileWidth = parseInt(tileWidthInput.value, 10);
+        const tileHeight = parseInt(tileHeightInput.value, 10);
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+
+        const scaleX = canvas.width / currentImage.width;
+        const scaleY = canvas.height / currentImage.height;
+
+        const col = Math.floor(x / (tileWidth * scaleX));
+        const row = Math.floor(y / (tileHeight * scaleY));
+        const cols = Math.floor(currentImage.width / tileWidth);
+        const cellNumber = row * cols + col + 1;
+
+        const tile = { col, row, width: tileWidth, height: tileHeight };
+        selectedTiles.push(tile);
+
+        const minX = Math.min(...selectedTiles.map(t => t.col * tileWidth));
+        const minY = Math.min(...selectedTiles.map(t => t.row * tileHeight));
+        const maxX = Math.max(...selectedTiles.map(t => (t.col + 1) * tileWidth));
+        const maxY = Math.max(...selectedTiles.map(t => (t.row + 1) * tileHeight));
+
+        alert(`Selected tile ${cellNumber} at (${minX}, ${minY}) to (${maxX}, ${maxY}). ${minX/currentImage.width} ${minY/currentImage.height} ${maxX/currentImage.width} ${maxY/currentImage.height}`);
+
+        redraw();
+    }
+</script>
+</body>
+</html>

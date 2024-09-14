@@ -1,11 +1,16 @@
-#include <SDL_opengles2.h>
-#include <cmath>
-#include <array>
+#include <SDL2/SDL.h>
+#include <SDL_image.h>
 #include "../include/shaders.hpp"
+#include "../include/UIUtils.hpp"
 
-extern GLfloat cursorPos[2];
 extern float seed;
-void loadGl(SDL_Window *mpWindow)
+extern float gridSpacingValue;
+extern float offsetValue[2];
+extern float toplefttile[2];
+extern float generationSize[2];
+extern entt::registry registry;
+
+SDL_GLContext loadGl(SDL_Window *mpWindow)
 {
     // Create OpenGLES 2 context on SDL window
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
@@ -16,6 +21,33 @@ void loadGl(SDL_Window *mpWindow)
     SDL_GLContext glc = SDL_GL_CreateContext(mpWindow);
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    return glc;
+}
+
+SDL_Window* loadSDL() {
+    // Initialize SDL and SDL_Image
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
+        return nullptr;
+    }
+    if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
+        printf("SDL_image could not initialize! SDL_image Error: %s\n", SDL_GetError());
+        return nullptr;
+    }
+
+    SDL_Window *mpWindow = SDL_CreateWindow(
+        "Untitled",
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        width, height,
+        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN
+    );
+
+    if (!mpWindow) {
+        printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
+        return nullptr;
+    }
+
+    return mpWindow;
 }
 
 void updateUniforms(GLuint &shaderProgram,
@@ -44,8 +76,9 @@ void updateUniforms(GLuint &shaderProgram,
     glUniform2fv(boundsLocation, 1, toplefttile);
 
     // cursorPos uniform
+    auto &cursor = registry.get<Cursor>(_player);
     GLint cursorPosLocation = glGetUniformLocation(shaderProgram, "cursorPos");
-    glUniform2f(cursorPosLocation, cursorPos[0], cursorPos[1]);
+    glUniform2f(cursorPosLocation, cursor.position.x, cursor.position.y);
 
     // time
     GLint timeLocation = glGetUniformLocation(shaderProgram, "time");
@@ -60,7 +93,7 @@ void updateUniforms(GLuint &shaderProgram,
     glUniform1f(seedLocation, seed);
 }
 
-void updateUniforms2(GLuint &shaderProgram, float _width, float _height, float gridSpacingValue, float toplefttile[2])
+void updateUIShader(GLuint &shaderProgram, float _width, float _height, float gridSpacingValue, float toplefttile[2])
 {
     glUseProgram(shaderProgram);
 
@@ -71,15 +104,16 @@ void updateUniforms2(GLuint &shaderProgram, float _width, float _height, float g
     // grid_spacing uniform
     GLint gridSpacingLocation = glGetUniformLocation(shaderProgram, "grid_spacing");
     glUniform1f(gridSpacingLocation, gridSpacingValue);
-
     // cursorPos uniform
+    auto &cursor = registry.get<Cursor>(_player);
     GLint cursorPosLocation = glGetUniformLocation(shaderProgram, "cursorPos");
-    glUniform2f(cursorPosLocation, cursorPos[0], cursorPos[1]);
+    glUniform2f(cursorPosLocation, cursor.position.x, cursor.position.y);
 
     // toplefttile uniform
     GLint toplefttileLocation = glGetUniformLocation(shaderProgram, "toplefttile");
     glUniform2fv(toplefttileLocation, 1, toplefttile);
 }
+
 void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, float x, float y, float scalex, float scaley, float startX = 0.0f, float startY = 0.0f, float sizeX = 1.0f, float sizeY = 1.0f) {
     glUseProgram(shaderProgram);
     glBindTexture(GL_TEXTURE_2D, textureID);
@@ -96,9 +130,6 @@ void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, float x, flo
     GLint cropSizeLocation = glGetUniformLocation(shaderProgram, "cropSize");
     glUniform2f(cropSizeLocation, sizeX, sizeY);
 }
-
-// updateUniformsDebug(shaderProgramMap["debug"], color.r, color.g, color.b, color.a, position.sx, position.sy, 0.1f * gridSpacingValue/1000);
-
 void updateUniformsDebug(GLuint &shaderProgram, 
 float r, float g, float b, float a, float x, float y, 
 float scalex, float scaley, float angle) {
@@ -118,7 +149,7 @@ float scalex, float scaley, float angle) {
 }
 
 
-void loadGL1(GLuint &shaderProgram, std::string program_name)
+void createShader(GLuint &shaderProgram, std::string program_name)
 {
 
     // Create and compile vertex shader
@@ -241,8 +272,6 @@ void loadGL1(GLuint &shaderProgram, std::string program_name)
     shaderProgramMap[program_name] = shaderProgram;
 }
 
-// // Texture Stuff
-
 GLuint compileShader(const char* shaderSource, GLenum shaderType) {
     GLuint shader = glCreateShader(shaderType);
     glShaderSource(shader, 1, &shaderSource, NULL);
@@ -352,23 +381,233 @@ GLuint loadGLTexture(GLuint &shaderProgram, std::string textureSrc, int &width, 
     return textureID;
 }
 
-// Utility functions
+void loadTextures() {
+    createShader(shaderProgramMap["terrain"], "terrain");
+    createShader(shaderProgramMap["ui_layer"], "ui_layer");
+    createShader(shaderProgramMap["debug_entity"], "debug_entity");
+    createShader(shaderProgramMap["texture"], "texture");
+    // Load textures from textureMap
+    for(auto& [name, src] : textureMap) {
 
-float dot(const std::array<float, 3>& v1, const std::array<float, 3>& v2) {
-    return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2];
+        // printf("Loading texture: %s\n", name.c_str());
+        int width{0}, height{0};
+        textureIDMap[name] = loadGLTexture(shaderProgramMap["texture"], src.c_str(), width, height);
+        
+        // Set the shape of the texture
+        textureShapeMap[name] = {width, height};
+
+        // Normalize TextureGroupPart if necessary
+        if (textureGroupMap.find(name) != textureGroupMap.end()) {
+            for (auto& [partName, part] : textureGroupMap[name]) {
+                if (part.x > 1) part.x /= width;
+                if (part.y > 1) part.y /= height;
+                if (part.w > 1) part.w /= width;
+                if (part.h > 1) part.h /= height;
+            }
+        }
+    }
 }
 
-std::array<float, 3> fract(const std::array<float, 3>& v) {
-    return {v[0] - std::floor(v[0]), v[1] - std::floor(v[1]), v[2] - std::floor(v[2])};
-}
+void renderAll() {
 
-// Hash function
-std::array<float, 3> customHash(const std::array<float, 3>& p);
-std::array<float, 3> customHash(const std::array<float, 3>& p) {
-    auto p1 = std::array<float, 3>{dot(p, {127.1f, 311.7f, 74.7f}), 
-                                   dot(p, {269.5f, 183.3f, 246.1f}),
-                                   dot(p, {113.5f, 271.9f, 101.5f})};
-    auto s = [](float x) { return std::sin(x) * 43758.5453f; };
-    auto f = fract({s(p1[0]), s(p1[1]), s(p1[2])});
-    return {-1.0f + 2.0f * f[0], -1.0f + 2.0f * f[1], -1.0f + 2.0f * f[2]};
+    Position &playerPos = registry.get<Position>(_player);
+    Shape &playerShape = registry.get<Shape>(_player);
+
+    glClear(GL_COLOR_BUFFER_BIT);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    bool playerIsInside = registry.all_of<Inside>(_player);
+    Inside playerInside = (playerIsInside) ? registry.get<Inside>(_player) : Inside{};
+
+    if(!playerIsInside) {
+        // Render terrain
+        updateUniforms(
+            shaderProgramMap["terrain"],
+            gridSpacingValue, 
+            offsetValue, 
+            width, height, 
+            toplefttile,
+            generationSize
+        );
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    }
+
+   registry.sort<Visible>([&](const entt::entity lhs, const entt::entity rhs) {
+        const auto& lhsPos = registry.get<Position>(lhs);
+        const auto& rhsPos = registry.get<Position>(rhs);
+        const auto& lhsShape = registry.get<Shape>(lhs);
+        const auto& rhsShape = registry.get<Shape>(rhs);
+        const auto& lhsPrio = registry.get<RenderPriority>(lhs);
+        const auto& rhsPrio = registry.get<RenderPriority>(rhs);
+        
+
+        // Compare y + z + shape.z
+        float lhsYZS = lhsPos.y + lhsPos.z + lhsShape.size.z;
+        float rhsYZS = rhsPos.y + rhsPos.z + rhsShape.size.z;
+        if (lhsYZS != rhsYZS)
+            return lhsYZS < rhsYZS;
+
+        return lhsPrio.priority < rhsPrio.priority;
+    });
+
+    // Render visible entities
+    auto visible_entities = registry.view<Visible, InView>();
+    for(auto& entity : visible_entities) {
+        auto position = registry.get<Position>(entity);
+        auto shape = registry.get<Shape>(entity);
+        
+        bool isDebug = registry.all_of<Debug>(entity);
+        bool isTeleport = registry.all_of<Teleport>(entity);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+        if (registry.all_of<Texture>(entity)) {
+            const auto& texture = registry.get<Texture>(entity);
+
+            updateUniformsTexture(shaderProgramMap["texture"], 
+                textureIDMap[texture.name],
+                position.sx + playerShape.scaled_size.x,
+                position.sy + playerShape.scaled_size.y + shape.scaled_size.z,
+                shape.scaled_size.x, 
+                shape.scaled_size.y + shape.scaled_size.z,
+                texture.x, texture.y, texture.w, texture.h
+            );
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        }
+        else if (registry.all_of<TextureGroupPart>(entity)) {
+            const auto& textureGroupPart = registry.get<TextureGroupPart>(entity);
+            auto groupName = textureGroupPart.groupName;
+            auto partName = textureGroupPart.partName;
+
+            auto rootTexture = textureIDMap[groupName];
+            const auto& texture = textureGroupMap[groupName].at(partName);
+
+            auto IdName = registry.get<Id>(entity).name;
+            if (textureGroupPart.tilex > 0 && textureGroupPart.tiley > 0) {
+                int divisorX = textureGroupPart.tilex;
+                int divisorY = textureGroupPart.tiley;
+                auto ssizex = shape.scaled_size.x / divisorX;
+                auto ssizey = shape.scaled_size.y / divisorY;
+                auto posX = position.sx + playerShape.scaled_size.x;
+                auto posY = position.sy + playerShape.scaled_size.y + position.sz + playerShape.scaled_size.z;
+
+                // Increase size by 1%
+                auto increasedSsizex = ssizex * 1.01f;
+                auto increasedSsizey = ssizey * 1.01f;
+
+                for (int i = 0; i < divisorX; ++i) {
+                    for (int j = 0; j < divisorY; ++j) {
+                        updateUniformsTexture(shaderProgramMap["texture"], 
+                            rootTexture,
+                            (posX + i * ssizex*2) - shape.scaled_size.x + ssizex - (increasedSsizex - ssizex) / 2,
+                            (posY + j * ssizey*2) - shape.scaled_size.y - (increasedSsizey - ssizey) / 2,
+                            increasedSsizex, increasedSsizey,
+                            texture.x, texture.y, texture.w, texture.h
+                        );
+                        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                    }
+                }
+            } 
+            else {
+                updateUniformsTexture(shaderProgramMap["texture"], 
+                    rootTexture,
+                    position.sx + playerShape.scaled_size.x,
+                    position.sy + playerShape.scaled_size.y + position.sz + playerShape.scaled_size.z,
+                    shape.scaled_size.x,
+                    shape.scaled_size.y,
+                    texture.x, texture.y, texture.w, texture.h
+                );
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            }
+        } 
+        else if (registry.all_of<Textures>(entity)) {
+            const auto& textures = registry.get<Textures>(entity);
+            const auto& current_texture = textures.textures[textures.current];
+
+
+            if (registry.all_of<RenderDebug>(entity)) {
+                updateUniformsDebug(shaderProgramMap["debug_entity"],
+                    1.0f, 1.0f, 1.0f, 0.2f,
+                    position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
+                    shape.scaled_size.x, shape.scaled_size.y, 0.0f);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            }
+
+            updateUniformsTexture(shaderProgramMap["texture"], 
+                textureIDMap[current_texture.name],
+                position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
+                shape.scaled_size.x * current_texture.scalex, shape.scaled_size.y * current_texture.scaley,
+                current_texture.x, current_texture.y, current_texture.w, current_texture.h);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        } else if (registry.all_of<TextureAlts, Player>(entity)) {
+            const auto& textureAlts = registry.get<TextureAlts>(entity);
+            const auto& currentTextures = textureAlts.alts.at(textureAlts.current);
+            const auto& current_texture = currentTextures.textures[currentTextures.current];
+            // Check if the entity has RenderDebug
+            // if (registry.all_of<RenderDebug, Player>(entity)) {
+                // Render a small transparent square to indicate bounding box
+                auto color = registry.get<Color>(entity);
+                updateUniformsDebug(shaderProgramMap["debug_entity"],
+                    color.r, color.g, color.b, color.a, // Set color to Color
+                    position.sx + playerShape.scaled_size.x, 
+                    position.sy + playerShape.scaled_size.y,
+                    shape.scaled_size.x, shape.scaled_size.y, 0.0f);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            // }
+
+            updateUniformsTexture(shaderProgramMap["texture"], 
+                textureIDMap[current_texture.name],
+                position.sx + playerShape.scaled_size.x,
+                position.sy + playerShape.scaled_size.y + position.sz + playerShape.scaled_size.z*2,
+                shape.scaled_size.x * current_texture.scalex, 
+                shape.scaled_size.y * current_texture.scaley,
+                current_texture.x, current_texture.y, 
+                current_texture.w, current_texture.h);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+        }
+        else if(registry.all_of<Color>(entity)) {
+            auto color = registry.get<Color>(entity);
+
+            float angle = 0.0f;
+            if(registry.all_of<Rotation>(entity)) {
+                angle = registry.get<Rotation>(entity).angle;
+            }
+
+            updateUniformsDebug(shaderProgramMap["debug_entity"],
+                color.r, color.g, color.b, color.a,
+                position.sx + playerShape.scaled_size.x, 
+                position.sy + playerShape.scaled_size.y,
+                shape.scaled_size.x, shape.scaled_size.y, 
+                angle);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        }
+
+    }
+
+    updateUIShader(shaderProgramMap["ui_layer"], 
+        width, height, gridSpacingValue,
+        toplefttile);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    
+    // Handle UIElement Components
+    auto ui_elements = registry.view<UIElement, InView>();
+    for(auto& entity : ui_elements) {
+        auto& uiElement = registry.get<UIElement>(entity);
+        if(uiElement.visible) {
+            auto position = registry.get<Position>(entity);
+            auto shape = registry.get<Shape>(entity);
+            float posX = (1 - ((position.sx + playerShape.scaled_size.x + shape.scaled_size.x) + 1) / 2) * width;
+            float posY = (1 - ((position.sy + playerShape.scaled_size.y + shape.scaled_size.y) + 1) / 2) * height;
+            float sizeX = (shape.scaled_size.x + shape.scaled_size.x * 0.1) * width;
+            float sizeY = (shape.scaled_size.y + shape.scaled_size.y * 0.1) * height;
+
+            posX += uiElement.soffset.x;
+            posY += uiElement.soffset.y;
+
+            test_imgui(uiElement.content, posX, posY, sizeX, sizeY);
+        }
+    }
 }

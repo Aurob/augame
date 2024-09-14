@@ -1,287 +1,121 @@
-ECONFIG = {
-    "Entities": [
-        {
-            "New": true,
-            "Components": {
-                "Id": 0,
-                "Test": { "value": "Room" },
-                "Position": { "x": 0, "y": 10, "z": -1 },
-                "Shape": { "size": [15, 15, 1] },
-                "Color": { "r": 0.5, "g": 0.5, "b": 0.5, "a": 1.0 },
-                "RenderPriority": { "priority": 1 },
-                "Collidable": true,
-                "Interior": { "hideInside": true }
-            }
-        },
-        {
-            "New": true,
-            "Components": {
-                "Id": 1,
-                "Test": { "value": "Door" },
-                "Position": { "x": 2, "y": 25, "z": .1 },
-                "Shape": { "size": [1, 0.1, 1] },
-                "Color": { "r": 0.6, "g": 0.3, "b": 0.1, "a": 1.0 },
-                "RenderPriority": { "priority": 2 },
-                "Collidable": true,
-                "InteriorPortal": { "A": 0, "B": -1 },
-                "Inside": { "interiorEntity": 0 },
-                "Associated": { "entities": [0] }
-            }
-        },
-        {
-            "New": true,
-            "Components": {
-                "Id": 2,
-                "Test": { "value": "Wall" },
-                "Position": { "x": 0, "y": 10, "z": 0.5 },
-                "Shape": { "size": [15, 1, 2] },
-                "Color": { "r": 0.1, "g": 0.2, "b": 0.4, "a": 1.0 },
-                "RenderPriority": { "priority": 1 },
-                "Collidable": true,
-                "Inside": { "interiorEntity": 0 }
-            }
-        },
-        {
-            "New": true,
-            "Components": {
-                "Id": 3,
-                "Test": { "value": "Wall" },
-                "Position": { "x": 5, "y": 12, "z": 0.5 },
-                "Shape": { "size": [1, 6, 2] },
-                "Color": { "r": 0.05, "g": 0.1, "b": 0.2, "a": 1.0 },
-                "RenderPriority": { "priority": 1 },
-                "Collidable": true,
-                "Inside": { "interiorEntity": 0 }
-            }
-        },
-        {
-            "New": true,
-            "Components": {
-                "Id": 4,
-                "Test": { "value": "Wall" },
-                "Position": { "x": 0, "y": 24, "z": 0.5 },
-                "Shape": { "size": [15, 1, 2] },
-                "Color": { "r": 0.1, "g": 0.2, "b": 0.4, "a": 1.0 },
-                "RenderPriority": { "priority": 1 },
-                "Inside": { "interiorEntity": 0 }
-            }
-        },
-        {
-            "New": true,
-            "Components": {
-                "Id": 5,
-                "Test": { "value": "Other" },
-                "Position": { "x": 0, "y": 12, "z": 2.1 },
-                "Shape": { "size": [1, 1, 1] },
-                "Color": { "r": 0.1, "g": 0.2, "b": 0.3, "a": 1.0 },
-                "RenderPriority": { "priority": 1 },
-                "Collidable": true,
-                "Inside": { "interiorEntity": 0 }
-            }
-        },
-        {
-            "New": true,
-            "Components": {
-                "Id": 6,
-                "Test": { "value": "Room" },
-                "Position": { "x": 9, "y": 10, "z": .2 },
-                "Shape": { "size": [6, 6, 0] },
-                "Color": { "r": 0.15, "g": 0.15, "b": 0.15, "a": 1.0 },
-                "RenderPriority": { "priority": 1 },
-                "Collidable": true,
-                "Interior": { "hideInside": true },
-                "Inside": { "interiorEntity": 0 }
-            }
-        },
-        {
-            "New": true,
-            "Components": {
-                "Id": 7,
-                "Test": { "value": "Door" },
-                "Position": { "x": 12, "y": 16, "z": 0 },
-                "Shape": { "size": [1, 0.1, 1] },
-                "Color": { "r": 0.6, "g": 0.3, "b": 0.1, "a": 1.0 },
-                "RenderPriority": { "priority": 2 },
-                "Collidable": true,
-                "InteriorPortal": { "A": 6, "B": 0 },
-                "Inside": { "interiorEntity": 0 },
-                "Texture": { "name": "door" },
-            }
-        },
-        {
-            "New": true,
-            "Components": {
-                "Id": 8,
-                "Test": { "value": "Wall" },
-                "Position": { "x": 9, "y": 15, "z": 0.1 },
-                "Shape": { "size": [6, 1, 2] },
-                "Color": { "r": 0.1, "g": 0.2, "b": 0.4, "a": 1.0 },
-                "RenderPriority": { "priority": 1 },
-                "Collidable": true,
-                "Inside": { "interiorEntity": 0, "showOutside": true }
-            }
-        },
-        {
-            "New": true,
-            "Components": {
-                "Id": 9,
-                "Test": { "value": "Other" },
-                "Position": { "x": -17, "y": 12, "z": 0 },
-                "Shape": { "size": [1, 1, .1] },
-                "Color": { "r": 0.1, "g": 0.3, "b": 0.8, "a": 1 },
-                "RenderPriority": { "priority": 0 },
-                "Collidable": true,
-                "Moveable": {},
-                "Movement": {
-                    "speed": 1,
-                    "maxSpeed": 10,
-                    "acceleration": { "x": 0, "y": 0 },
-                    "velocity": { "x": 0, "y": 0 },
-                    "friction": 1, "mass": 1, "drag": .1
-                },
-                "Hoverable": true,
-                "Interactable": true
-            }
-        },
-        {
-            "New": true,
-            "Components": {
-                "Id": 10,
-                "Test": { "value": "Table" },
-                "Position": { "x": 12, "y": 11, "z": .1 },
-                "Shape": { "size": [1.5, 1.5, 1] },
-                "Color": { "r": 0.5, "g": 0.25, "b": 0.1, "a": 1.0 },
-                "RenderPriority": { "priority": 1 },
-                "Collidable": true,
-                "Texture": {
-                    "name": "table",
-                    "scalex": 1.0,
-                    "scaley": 1.0,
-                    "x": 1,
-                    "y": 1,
-                    "w": 11,
-                    "h": 11
-                },
-                "Inside": { "interiorEntity": 6 }
-            }
-        },
-        {
-            "New": true,
-            "Components": {
-                "Id": 11,
-                "Test": { "value": "Chair1" },
-                "Position": { "x": 13, "y": 13, "z": -.1 },
-                "Shape": { "size": [.75, .75, .5] },
-                "Color": { "r": 0.7, "g": 0.4, "b": 0.2, "a": 1.0 },
-                "RenderPriority": { "priority": 0 },
-                "Texture": {
-                    "name": "chair1",
-                    "scalex": 1.0,
-                    "scaley": 1.0,
-                    "x": 0,
-                    "y": 0,
-                    "w": 1,
-                    "h": 1
-                },
-                "Inside": { "interiorEntity": 6 }
-            }
-        },
-        {
-            "New": true,
-            "Components": {
-                "Id": 12,
-                "Test": { "value": "Chair2" },
-                "Position": { "x": 14, "y": 12, "z": -.1 },
-                "Shape": { "size": [.75, .75, .5] },
-                "Color": { "r": 0.7, "g": 0.4, "b": 0.2, "a": 1.0 },
-                "RenderPriority": { "priority": 0 },
-                "Texture": {
-                    "name": "chair1",
-                    "scalex": 1.0,
-                    "scaley": 1.0,
-                    "x": 0,
-                    "y": 0,
-                    "w": 1,
-                    "h": 1
-                },
-                "Inside": { "interiorEntity": 6 }
-            }
-        },
-        {
-            "New": true,
-            "Components": {
-                "Id": 14,
-                "Test": { "value": "Bed" },
-                "Position": { "x": 9, "y": 14, "z": .1 },
-                "Shape": { "size": [2, 2, 1] },
-                "Color": { "r": 0.4, "g": 0.3, "b": 0.2, "a": 1.0 },
-                "RenderPriority": { "priority": 1 },
-                "Texture": {
-                    "name": "bed1",
-                    "scalex": 1.0,
-                    "scaley": 1.0,
-                    "x": 0,
-                    "y": 0,
-                    "w": 1,
-                    "h": 1
-                },
-                "Inside": { "interiorEntity": 6 }
-            }
-        },
-        {
-            "New": true,
-            "Components": {
-                "Id": 13,
-                "Test": { "value": "Shelf" },
-                "Position": { "x": 9, "y": 8, "z": .2 },
-                "Shape": { "size": [2, 2, 2] },
-                "Color": { "r": 0.3, "g": 0.2, "b": 0.1, "a": 1.0 },
-                "RenderPriority": { "priority": 2 },
-                "Texture": {
-                    "name": "shelf1",
-                    "scalex": 1.0,
-                    "scaley": 1.0,
-                    "x": 0,
-                    "y": 0,
-                    "w": 1,
-                    "h": 1
-                },
-                "Inside": { "interiorEntity": 6 },
-                
-            }
-        }
-    ]
+
+
+
+
+//textureGroupPart roomtiles tile88 
+// id 18 test texTest position 0 0 0 shape 1 1 1 color 1 1 1 renderPriority 3 texture roomtiles 0.5 1.0 0.5 0 .1 .1
+// id 0 test Room position 0 10 -1 shape 15 15 1 color 0.5 0.5 0.5 1.0 renderPriority 1 collidable interior
+// id 1 test Door position 2 25 0.1 shape 1 0.1 1 color 0.6 0.3 0.1 renderPriority 2 collidable interiorPortal 0 -1 inside 0 associated 0
+// id 2 test Wall position 0 10 0.5 shape 15 1 2 color 0.1 0.2 0.4 1.0 renderPriority 1 collidable inside 0
+// id 3 test Wall position 5 12 0.5 shape 1 6 2 color 0.05 0.1 0.2 1.0 renderPriority 1 collidable inside 0
+// id 4 test Wall position 0 24 0.5 shape 15 1 2 color 0.1 0.2 0.4 1.0 renderPriority 1 inside 0
+// id 5 test Other position 0 12 2.1 shape 1 1 1 color 0.1 0.2 0.3 1.0 renderPriority 1 collidable inside 0
+// id 6 test Room position 9 10 0.2 shape 6 6 0 color 0.15 0.15 0.15 1.0 renderPriority 1 collidable interior inside 0
+// id 7 test Door position 12 16 0 shape 1 0.1 1 color 0.6 0.3 0.1 renderPriority 2 collidable interiorPortal 6 0 inside 0 texture door
+// id 8 test Wall position 9 15 0.1 shape 6 1 2 color 0.1 0.2 0.4 1.0 renderPriority 1 collidable inside 0 true
+// id 9 test Other position -17 12 0 shape 1 1 0.1 color 0.1 0.3 0.8 renderPriority 0 collidable moveable movement 1 10 0 0 0 0 1 1 0.1 hoverable interactable
+// id 10 test Table position 12 11 0.1 shape 1.5 1.5 1 color 0.5 0.25 0.1 1.0 renderPriority 1 collidable texture table 1.0 1.0 1 1 11 11 inside 6
+// id 11 test Chair1 position 13 13 -0.1 shape 0.75 0.75 0.5 color 0.7 0.4 0.2 renderPriority 0 texture chair1 1.0 1.0 0 0 1 1 inside 6
+// id 12 test Chair2 position 14 12 -0.1 shape 0.75 0.75 0.5 color 0.7 0.4 0.2 renderPriority 0 texture chair1 1.0 1.0 0 0 1 1 inside 6
+// id 14 test Bed position 9 14 0.1 shape 2 2 1 color 0.4 0.3 0.2 1.0 renderPriority 1 texture bed1 1.0 1.0 0 0 1 1 inside 6
+// id 13 test Shelf position 9 8 0.2 shape 2 2 2 color 0.3 0.2 0.1 renderPriority 2 texture shelf1 1.0 1.0 0 0 1 1 inside 6
+// id 14 test Wall position 8 6 0 shape 3 3 3 color 0.15 0.15 0.15 1.0 renderPriority 1 collidable inside 6 texture wall1 1.0 2.0 0 0 1 1
+// id 15 test Wall position 11 6 0 shape 3 3 3 color 0.15 0.15 0.15 1.0 renderPriority 1 collidable inside 6 texture wall1 1.0 2.0 0 0 1 1
+// id 16 test Wall positbion 14 6 0 shape 3 3 3 color 0.15 0.15 0.15 1.0 renderPriority 1 collidable inside 6 texture wall1 1.0 2.0 0 0 1 1
+// id 15 test Wall position 8 9 0 shape 1 3 3 color 0.15 0.15 0.15 renderPriority 2 collidable inside 6 texture wall2 1.0 2.0 0 0 1 1
+// id 17 test Wall position 8 12 0 shape 1 3 3 color 0.15 0.15 0.15 renderPriority 2 collidable inside 6 texture wall2 1.0 2.0 0 0.5 1 1
+// `;
+
+// id 2 test test1 position 0 0 0 shape 15 4 0 color 0.1 0.2 0.3 1.0 renderPriority 0 collidable
+// id 3 test test2 position 0 -.1 0 shape 15 .1 4 color 0.1 0.3 0.4 1.0 renderPriority 2 collidable
+// id 2 test test1 position 0 -8 4 shape 15 4 1 color 0.1 0.2 0.4 1.0 renderPriority 3 collidable
+
+var configstr = `
+    id 1 room position 0.5 -10 0 shape 10 10 0 color 0.5 0.5 0.5 1.0 renderPriority -1 collidable interior textureGroupPart room1 s115 10 10
+    id 11 roomwall position 0.5 -12.5 0 shape 10 2 1 color 0.1 0.2 0.3 1.0 renderPriority 0 inside 1 textureGroupPart room1 s227 10 2
+    id 11 roomwall2 position 0.5 -1 1 shape 10 2 1 color 0.1 0.2 0.3 1.0 renderPriority 0 inside 1 textureGroupPart room1 s227 10 2
+
+    id 0 player position 4.5 -1 0 shape 1 1 1 color 0.1 0.2 0.3 .3 movement 75 1000 0 0 0 0 10 1 0 moveable collidable renderPriority 0 inside 1
+
+    id 2 room2 position 0 -20 0 shape 10 10 0 color 0.5 0.5 0.5 1.0 renderPriority 0 collidable interior
+
+    id 33 rgb1 position 4.65 -11.9 2 shape .25 .25 .25 color 1 0 0 1.0 renderPriority 0 collidable inside 1 hoverable interactable
+    id 34 rgb2 position 5 -11.9 2 shape .25 .25 .25 color 0 0 1 1.0 renderPriority 0 collidable inside 1 hoverable interactable
+    id 35 rgb3 position 5.35 -11.9 2 shape .25 .25 .25 color 0 1 0 1.0 renderPriority 0 collidable inside 1 hoverable interactable
+    id 36 rgb4 position 5.65 -11.9 2 shape .25 .25 .25 color 1 1 0 1.0 renderPriority 0 collidable inside 1 hoverable interactable
+    id 37 rgb5 position 5.95 -11.9 2 shape .25 .25 .25 color 1 0.5 0 1.0 renderPriority 0 collidable inside 1 hoverable interactable
+
+    id 10 doorA position 4.725 -10.8 0 shape 1.5 1 1 color 0.0 0.0 0.0 1.0 renderPriority 2 collidable interiorPortal 1 2 1 inside 1 texture doors 0 0 0 0 1 0.5
+    id 11 piano2 position 4.5 -5 0 shape 2 2 1 color 0.1 0.2 0.3 1.0 renderPriority 0 inside 1 hoverable interactable texture instruments 0 0 0.6875 0.1764 0.125 0.1875
+    id 12 piano2col position 4.5 -4.25 0 shape 2 .25 1 color 0.1 0.2 0.3 0.0 renderPriority 0 collidable inside 1
+
+    id 13 p2key2 position 4.875 -4.23 0 shape .06 .23 1 color 1 1 1 0.8 renderPriority 2 inside 1 hoverable interactable tone C4 4n -25
+    
+    id 14 p2key position 4.937 -4.115 0 shape .06 .115 1 color 1 1 1 0.8 renderPriority 2 inside 1 hoverable interactable tone D4 4n -25
+    id 14 p2key position 4.937 -4.235 0 shape .06 .115 1 color 0 0 0 0.8 renderPriority 2 inside 1 hoverable interactable 
+    
+    id 15 p2key2 position 4.999 -4.23 0 shape .06 .23 1 color 1 1 1 0.8 renderPriority 2 inside 1 hoverable interactable tone E4 4n -25
+    
+    id 16 p2key position 5.061 -4.235 0 shape .06 .115 1 color 0 0 0 0.8 renderPriority 2 inside 1 hoverable interactable
+    id 17 p2key position 5.061 -4.115 0 shape .06 .115 1 color 1 1 1 0.8 renderPriority 2 inside 1 hoverable interactable tone F4 4n -25
+    
+    id 18 p2key2 position 5.123 -4.23 0 shape .06 .23 1 color 1 1 1 0.8 renderPriority 2 inside 1 hoverable interactable tone G4 4n -25
+    
+    id 19 p2key position 5.185 -4.235 0 shape .06 .115 1 color 0 0 0 0.8 renderPriority 2 inside 1 hoverable interactable
+    id 20 p2key position 5.185 -4.115 0 shape .06 .115 1 color 1 1 1 0.8 renderPriority 2 inside 1 hoverable interactable tone A4 4n -25
+    
+    id 21 p2key2 position 5.247 -4.23 0 shape .06 .23 1 color 1 1 1 0.8 renderPriority 2 inside 1 hoverable interactable tone B4 4n -25
+
+    id 22 p2key position 5.309 -4.235 0 shape .06 .115 1 color 0 0 0 0.8 renderPriority 2 inside 1 hoverable interactable
+    id 23 p2key position 5.309 -4.115 0 shape .06 .115 1 color 1 1 1 0.8 renderPriority 2 inside 1 hoverable interactable tone C5 4n -25
+
+    id 24 p2key2 position 5.371 -4.23 0 shape .06 .23 1 color 1 1 1 0.8 renderPriority 2 inside 1 hoverable interactable tone D5 4n -25
+
+    id 25 p2key position 5.433 -4.235 0 shape .06 .115 1 color 0 0 0 0.8 renderPriority 2 inside 1 hoverable interactable
+    id 26 p2key position 5.433 -4.115 0 shape .06 .115 1 color 1 1 1 0.8 renderPriority 2 inside 1 hoverable interactable tone E5 4n -25
+
+    id 27 p2key2 position 5.495 -4.23 0 shape .06 .23 1 color 1 1 1 0.8 renderPriority 2 inside 1 hoverable interactable tone F5 4n -25
+
+    id 28 p2key position 5.557 -4.235 0 shape .06 .115 1 color 0 0 0 0.8 renderPriority 2 inside 1 hoverable interactable
+    id 29 p2key position 5.557 -4.115 0 shape .06 .115 1 color 1 1 1 0.8 renderPriority 2 inside 1 hoverable interactable tone G5 4n -25
+
+    id 30 p2key2 position 5.619 -4.23 0 shape .06 .23 1 color 1 1 1 0.8 renderPriority 2 inside 1 hoverable interactable tone A5 4n -25
+
+    id 31 p2key position 5.681 -4.235 0 shape .06 .115 1 color 0 0 0 0.8 renderPriority 2 inside 1 hoverable interactable
+    id 32 p2key position 5.681 -4.115 0 shape .06 .115 1 color 1 1 1 0.8 renderPriority 2 inside 1 hoverable interactable tone B5 4n -25
+
+    id 33 p2key2 position 5.743 -4.23 0 shape .06 .23 1 color 1 1 1 0.8 renderPriority 2 inside 1 hoverable interactable tone C6 4n -25
+
+    id 34 p2key position 5.805 -4.235 0 shape .06 .115 1 color 0 0 0 0.8 renderPriority 2 inside 1 hoverable interactable
+    id 35 p2key position 5.805 -4.115 0 shape .06 .115 1 color 1 1 1 0.8 renderPriority 2 inside 1 hoverable interactable tone D6 4n -25
+
+    id 36 p2key2 position 5.867 -4.23 0 shape .06 .23 1 color 1 1 1 0.8 renderPriority 2 inside 1 hoverable interactable tone E6 4n -25
+
+    id 37 p2key position 5.929 -4.235 0 shape .06 .115 1 color 0 0 0 0.8 renderPriority 2 inside 1 hoverable interactable
+    id 38 p2key position 5.929 -4.115 0 shape .06 .115 1 color 1 1 1 0.8 renderPriority 2 inside 1 hoverable interactable tone F6 4n -25
+
+    id 39 p2key2 position 5.991 -4.23 0 shape .06 .23 1 color 1 1 1 0.8 renderPriority 2 inside 1 hoverable interactable tone G6 4n -25
+    `.split("\n").filter(line => line.length > 0);
+
+    
+function createSlime(id, x, y) {
+    return `id ${id} slime1 position ${x} ${y} 0 shape .5 .125 .25 color 0.4 0.2 0.3 1.0 texture slime 0 0 0.047 0.11 0.031 0.038 renderPriority -2 inside 2 hoverable interactable tone R 4n -25 fsharp.wav`;
 }
 
-// Create 4 rows, each with 12 books, and place on the shelf with random colors and sizes
-for (var row = 3; row >= 0; row--) {
-    for (var col = 0; col < 13; col++) {
-        const width = 0.05 + Math.random() * 0.04; // Random width between 0.08 and 0.12
-        const height = 0.15; // Random height between 0.2 and 0.3
-        ECONFIG.Entities.push({
-            "New": true,
-            "Components": {
-                "Id": 15 + ((3 - row) * 12) + col,
-                "Test": { "value": "Book" },
-                "Position": { 
-                    "x": 9.3 + (col * 0.11), 
-                    "y": 8.64 + ((3 - row) * height * 3), 
-                    "z": row },
-                "Shape": { "size": [width, height, .1] },
-                "Color": (function () {
-                    const colors = [
-                        { "r": 0.36, "g": 0.25, "b": 0.20, "a": 1.0 }, // Earthy Brown
-                        { "r": 0.40, "g": 0.55, "b": 0.40, "a": 1.0 }, // Earthy Green
-                        { "r": 0.55, "g": 0.27, "b": 0.27, "a": 1.0 }, // Earthy Red
-                        { "r": 0.33, "g": 0.33, "b": 0.33, "a": 1.0 }  // Earthy Gray
-                    ];
-                    return colors[Math.floor(Math.random() * colors.length)];
-                })(),
-                "RenderPriority": { "priority": 3 },
-                "Inside": { "interiorEntity": 6 },
-                "Interactable": true,
-                "Hoverable": true,
-            }
-        });
+const slimeConfigs = [];
+const gridSize = 6;
+
+for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+        const id = 40 + i * gridSize + j;
+        const x = 1 + Math.random() * 6;
+        const y = -20 + Math.random() * 10;
+        slimeConfigs.push(createSlime(id, x, y));
     }
 }
+
+configstr.push(...slimeConfigs);
+    
+ECONFIG = {
+    "Entities": configstr.map(input => new EntityBuilder().parseInput(input).build())
+};
