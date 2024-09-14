@@ -1,6 +1,8 @@
 #pragma once
 #include "../include/entt.hpp"
 #include "JSUtils.hpp"
+#include <random> 
+
 
 extern entt::entity _player;
 
@@ -24,20 +26,6 @@ void makePlayer(entt::registry &registry)
     registry.emplace_or_replace<Player>(player);
     registry.emplace<Keys>(player);
     registry.emplace<Cursor>(player);
-
-    auto view = registry.view<Tone>(entt::exclude<InteractionAction>);
-    for (auto entity : view)
-    {
-        registry.emplace_or_replace<InteractionAction>(entity, InteractionAction{[](entt::registry &registry, entt::entity entity, std::optional<entt::entity> optEntity)
-            {
-                if (registry.get<Hoverable>(entity).duration == 0) {
-                    auto &tone = registry.get<Tone>(entity);
-                    tone.playing = true;
-                }
-            }, false});
-    }
-
-    
 
     // Add textures to the player
     std::vector<Textures> textureAlts;
@@ -86,33 +74,62 @@ void makePlayer(entt::registry &registry)
  */
 void runFactories(entt::registry &registry)
 {
-    // lookup Id.name = p2keytest
+  
+    // query all the Id.name = "p2key", choose 5 random ones to give the PuzzlePiece component
     auto view = registry.view<Id>();
+    std::vector<entt::entity> p2keyEntities;
+
     for (auto entity : view)
     {
-        if (view.get<Id>(entity).name == "p2keytest")
+        const auto& id = view.get<Id>(entity).name;
+        if (id.find("p2key2") == 0)
         {
-            // add Interaction Action
-            registry.emplace_or_replace<InteractionAction>(entity, InteractionAction{[](entt::registry &registry, entt::entity entity, std::optional<entt::entity> optEntity)
-                {
-                    // Find entity Id.name = slime1
-                    auto view = registry.view<Id>();
-                    for (auto _entity : view)
-                    {
-                        if (view.get<Id>(_entity).name == "doorA")
-                        {
-                            // get InteriorPortal
-                            auto &interiorPortal = registry.get<InteriorPortal>(_entity);
-                            interiorPortal.locked = false;
-                            _js__play_tone("C5", "1n", 0.0f, "sparkle1.mp3");
-
-                            // remove InteractionAction
-                            registry.remove<InteractionAction>(entity);
-                        }
-                    }
-                },
-                false});
+            p2keyEntities.push_back(entity);
         }
     }
+
+    std::shuffle(p2keyEntities.begin(), p2keyEntities.end(), std::mt19937{std::random_device{}()});
+    std::vector<entt::entity> selectedEntities(p2keyEntities.begin(), p2keyEntities.begin() + std::min<size_t>(5, p2keyEntities.size()));
+
+    std::array<Color, 5> colors = {Color{1.0f, 0.0f, 0.0f}, Color{0.0f, 0.0f, 1.0f}, Color{0.0f, 1.0f, 0.0f}, Color{1.0f, 1.0f, 0.0f}, Color{1.0f, 0.5f, 0.0f}};
+
+    for (size_t i = 0; i < selectedEntities.size(); ++i)
+    {
+        auto entity = selectedEntities[i];
+        registry.emplace_or_replace<PuzzlePiece>(entity, PuzzlePiece{false});
+        registry.emplace_or_replace<Color>(entity, colors[i]);
+    }
+
+
+    auto puzzleEntity = registry.create();
+    registry.emplace<Puzzle>(puzzleEntity, Puzzle{selectedEntities});
+
+
+    auto view2 = registry.view<Tone>(entt::exclude<InteractionActions>);
+    for (auto entity : view2)
+    {
+        auto &interactionActions = registry.get_or_emplace<InteractionActions>(entity);
+        interactionActions.actions.push_back(InteractionAction{[](entt::registry &registry, entt::entity entity, std::optional<entt::entity> optEntity)
+            {
+                if (registry.get<Hoverable>(entity).duration == 0) {
+                    auto &tone = registry.get<Tone>(entity);
+                    tone.playing = true;
+
+                    if (registry.all_of<PuzzlePiece>(entity))
+                    {
+                        auto &puzzlePiece = registry.get<PuzzlePiece>(entity);
+                        auto parentPuzzle = registry.view<Puzzle>().front();
+                        auto &puzzle = registry.get<Puzzle>(parentPuzzle);
+
+                        if (!puzzle.solved)
+                        {
+                            puzzlePiece.active = true;
+                        }
+                    }
+                }
+            }, false});
+    }
+
+    
 
 }
