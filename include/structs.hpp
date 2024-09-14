@@ -149,6 +149,10 @@ struct InteractionAction {
     bool toggle;
 };
 
+struct InteractionActions {
+    std::vector<InteractionAction> actions;
+};
+
 struct HoverAction {
     std::function<void(entt::registry&, entt::entity)> action;
 };
@@ -332,4 +336,13 @@ struct Tone {
     float volume;
     bool playing{false};
     int iterations{0};
+};
+
+struct Puzzle {
+    std::vector<entt::entity> pieces;
+    bool solved;
+};
+
+struct PuzzlePiece {
+    bool active;
 };

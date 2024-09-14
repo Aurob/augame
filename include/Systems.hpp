@@ -501,17 +501,21 @@ void updateInteractions(entt::registry &registry)
         }
     }
 
-    auto interacted_entities = registry.view<Interacted, InteractionAction>();
+    auto interacted_entities = registry.view<Interacted, InteractionActions>();
     for (auto entity : interacted_entities)
     {
         auto &interacted = interacted_entities.get<Interacted>(entity);
-        auto &action = interacted_entities.get<InteractionAction>(entity);
+        auto &interactionActions = interacted_entities.get<InteractionActions>(entity);
 
         // get the interacting entity put in _entity
         auto _entity = interacted.interactor;
-        
-        if(interacted.interactions < 1) {
-            action.action(registry, entity, _entity);
+
+        if (interacted.interactions < 1)
+        {
+            for (auto &action : interactionActions.actions)
+            {
+                action.action(registry, entity, _entity);
+            }
         }
     }
 
@@ -683,6 +687,72 @@ void updateOther(entt::registry &registry)
         }
     }
 
+    auto puzzle_view = registry.view<Puzzle>();
+    for (auto puzzle_entity : puzzle_view)
+    {
+        auto &puzzle = puzzle_view.get<Puzzle>(puzzle_entity);
+        bool allActive = true;
+        bool inCorrectOrder = true;
+        std::vector<bool> activeStates(puzzle.pieces.size(), false);
+
+        for (size_t i = 0; i < puzzle.pieces.size(); ++i)
+        {
+            auto piece = puzzle.pieces[i];
+            if (!registry.all_of<PuzzlePiece>(piece))
+            {
+                allActive = false;
+                break;
+            }
+
+            auto &puzzlePiece = registry.get<PuzzlePiece>(piece);
+            activeStates[i] = puzzlePiece.active;
+            if (!puzzlePiece.active)
+            {
+                allActive = false;
+            }
+
+            if (i > 0)
+            {
+                auto &prevPuzzlePiece = registry.get<PuzzlePiece>(puzzle.pieces[i - 1]);
+                if (!prevPuzzlePiece.active && puzzlePiece.active)
+                {
+                    inCorrectOrder = false;
+                    break;
+                }
+            }
+        }
+        
+        auto deactivateAll = [&registry, &puzzle]() {
+            for (auto piece : puzzle.pieces)
+            {
+                if (registry.all_of<PuzzlePiece>(piece))
+                {
+                    auto &puzzlePiece = registry.get<PuzzlePiece>(piece);
+                    puzzlePiece.active = false;
+                }
+            }
+        };
+
+        if (allActive && inCorrectOrder)
+        {
+            auto door_view = registry.view<Id>();
+            for (auto door_entity : door_view)
+            {
+                if (door_view.get<Id>(door_entity).name == "doorA")
+                {
+                    auto &interiorPortal = registry.get<InteriorPortal>(door_entity);
+                    interiorPortal.locked = false;
+                    _js__play_tone("C5", "1n", 0.0f, "sparkle1.mp3");
+                    deactivateAll();
+                    break;
+                }
+            }
+        }
+        else if (!inCorrectOrder)
+        {
+            deactivateAll();
+        }
+    }
 }   
 
 void updateFlags(entt::registry &registry)

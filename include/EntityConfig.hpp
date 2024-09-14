@@ -425,20 +425,6 @@ extern "C"
                                 }
                             }, "TextureGroupPart");
 
-                            // Configurable
-                            //  - if has this flag, add an InteractionAction that logs its Id
-                            safe_emplace(registry, entity, [&]() {
-                                if (components.contains("Configurable") && components["Configurable"].is_boolean())
-                                {
-                                    registry.emplace<Configurable>(entity);
-                                    registry.emplace<InteractionAction>(entity, InteractionAction{
-                                        [](entt::registry& registry, entt::entity entity, std::optional<entt::entity> optEntity) {
-                                            _js__log("Configurable entity: " + std::to_string(registry.get<Id>(entity).id));
-                                        },
-                                    true});
-                                }
-                            }, "Configurable");
-
                             // Teleporter
                             safe_emplace(registry, entity, [&]() {
                                 if (components.contains("Teleporter") && components["Teleporter"].is_object())
