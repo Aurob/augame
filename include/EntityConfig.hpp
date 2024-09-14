@@ -303,6 +303,7 @@ extern "C"
                                     auto &interiorPortal = components["InteriorPortal"];
                                     auto portalAId = interiorPortal["A"].get<int>();
                                     auto portalBId = interiorPortal["B"].get<int>();
+                                    bool locked = interiorPortal["locked"].get<bool>();
 
                                     auto view = registry.view<Id>();
                                     entt::entity portalA = entt::null;
@@ -320,7 +321,9 @@ extern "C"
                                         if ((portalA != entt::null || portalAId == -1) && (portalB != entt::null || portalBId == -1))
                                             break;
                                     }
-                                    registry.emplace<InteriorPortal>(entity, InteriorPortal{portalA, portalB});
+
+                                    printf("is locked: %d\n", locked);
+                                    registry.emplace<InteriorPortal>(entity, InteriorPortal{portalA, portalB, locked});
                                 }
                             }, "InteriorPortal");
 
@@ -413,9 +416,11 @@ extern "C"
                                     auto &textureGroupPart = components["TextureGroupPart"];
                                     std::string groupName = textureGroupPart["groupName"];
                                     std::string partName = textureGroupPart["partName"];
+                                    int tilex = textureGroupPart.value("tilex", 0);
+                                    int tiley = textureGroupPart.value("tiley", 0);
                                     if (textureGroupMap.find(groupName) != textureGroupMap.end() && textureGroupMap[groupName].find(partName) != textureGroupMap[groupName].end())
                                     {
-                                        registry.emplace<TextureGroupPart>(entity, TextureGroupPart{groupName, partName});
+                                        registry.emplace<TextureGroupPart>(entity, TextureGroupPart{groupName, partName, {}, tilex, tiley});
                                     }
                                 }
                             }, "TextureGroupPart");

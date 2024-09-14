@@ -148,10 +148,10 @@ void checkCollisions(entt::registry &registry, entt::entity entity, Position &en
 
             if (registry.any_of<InteriorPortal>(_entity))
             {
-                if (!registry.any_of<OnInteriorPortal>(entity))
+                auto &interiorPortal = registry.get<InteriorPortal>(_entity);
+                if(!interiorPortal.locked && !registry.any_of<OnInteriorPortal>(entity))
                 {
                     registry.emplace_or_replace<OnInteriorPortal>(entity, OnInteriorPortal{_entity});
-                    auto &interiorPortal = registry.get<InteriorPortal>(_entity);
                     auto currentInterior = registry.any_of<Inside>(entity) ? registry.get<Inside>(entity).interior : entt::null;
                     auto newInterior = (interiorPortal.A != currentInterior) ? interiorPortal.A : interiorPortal.B;
                     if (newInterior != entt::null)

@@ -86,33 +86,33 @@ void makePlayer(entt::registry &registry)
  */
 void runFactories(entt::registry &registry)
 {
-    auto key2 = registry.create();
-    registry.emplace<Position>(key2, Position{1, -5, 0});
-    registry.emplace<Shape>(key2, Shape{.25, .25, .1});
-    registry.emplace<Color>(key2, Color{250, 255, 0, 1.0f});
-    registry.emplace<RenderPriority>(key2, RenderPriority{0});
-    registry.emplace<Debug>(key2, Debug{Color{0, 1.0, 0, 1.0f}});
-    registry.emplace<Test>(key2, Test{"key entity"});
-    registry.emplace<Interactable>(key2, Interactable{.radius = 1.0f});
-    registry.emplace<Collidable>(key2, Collidable{.ignorePlayer = true});
-    registry.emplace<Hoverable>(key2);
-    registry.emplace<UIElement>(key2, UIElement{"Key", false});
-    registry.emplace_or_replace<InteractionAction>(key2, InteractionAction{[](entt::registry &registry, entt::entity entity, std::optional<entt::entity> opt_entity) {
-        auto& uiElement = registry.get<UIElement>(entity);
-        uiElement.visible = !uiElement.visible;
-    }, true});
-
+    // lookup Id.name = p2keytest
     auto view = registry.view<Id>();
-    entt::entity room3 = entt::null;
-    for (auto entity : view) {
-        if (view.get<Id>(entity).name == "room3") {
-            room3 = entity;
-            break;
-        }
-    }
+    for (auto entity : view)
+    {
+        if (view.get<Id>(entity).name == "p2keytest")
+        {
+            // add Interaction Action
+            registry.emplace_or_replace<InteractionAction>(entity, InteractionAction{[](entt::registry &registry, entt::entity entity, std::optional<entt::entity> optEntity)
+                {
+                    // Find entity Id.name = slime1
+                    auto view = registry.view<Id>();
+                    for (auto _entity : view)
+                    {
+                        if (view.get<Id>(_entity).name == "doorA")
+                        {
+                            // get InteriorPortal
+                            auto &interiorPortal = registry.get<InteriorPortal>(_entity);
+                            interiorPortal.locked = false;
+                            _js__play_tone("C5", "1n", 0.0f, "sparkle1.mp3");
 
-    if (room3 != entt::null) {
-        registry.emplace_or_replace<Inside>(key2, Inside{room3});
+                            // remove InteractionAction
+                            registry.remove<InteractionAction>(entity);
+                        }
+                    }
+                },
+                false});
+        }
     }
 
 }
