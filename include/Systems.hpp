@@ -7,12 +7,33 @@
 
 extern float deltaTime;
 extern int width, height;
-extern GLfloat cursorPos[2];
 extern GLfloat toplefttile[2];
+extern GLfloat offsetValue[2];
 extern float gridSpacingValue;
 extern float defaultGSV;
 extern entt::entity _player;
+extern bool windowResized;
 
+void updatePlayer(entt::registry &registry) {
+    
+    // Update player-based calculations
+    Position &playerPos = registry.get<Position>(_player);
+    Shape &playerShape = registry.get<Shape>(_player);
+    Cursor &playerCursorPos = registry.get<Cursor>(_player);
+
+    // Set view offset
+    offsetValue[0] = ((fmod(playerPos.x, defaultGSV) * gridSpacingValue) / defaultGSV) - (playerShape.size.x / 2);
+    offsetValue[1] = ((fmod(playerPos.y, defaultGSV) * gridSpacingValue) / defaultGSV) - (playerShape.size.y / 2);
+
+    // Set bounds
+    toplefttile[0] = static_cast<int>(playerPos.x / defaultGSV) - (width / gridSpacingValue / 2);
+    toplefttile[1] = static_cast<int>(playerPos.y / defaultGSV) - (height / gridSpacingValue / 2);
+
+    // Determine cursor position using toplefttile and offset, factoring in defaultGSV
+    playerCursorPos.position.sx = playerPos.x + ((playerCursorPos.position.x - width / 2) * defaultGSV / gridSpacingValue);
+    playerCursorPos.position.sy = playerPos.y + ((playerCursorPos.position.y - height / 2) * defaultGSV / gridSpacingValue);
+
+}
 
 void updateMovement(entt::registry &registry)
 {
@@ -23,9 +44,9 @@ void updateMovement(entt::registry &registry)
         auto &movement = view.get<Movement>(entity);
         auto &position = view.get<Position>(entity);
 
-        if (registry.any_of<Player>(entity))
+        if (registry.any_of<Keys>(entity))
         {
-            auto keys = registry.get<Keys>(_player).keys;
+            auto keys = registry.get<Keys>(entity).keys;
             Vector3f input{static_cast<float>(keys[SDLK_d]) - static_cast<float>(keys[SDLK_a]),
                            static_cast<float>(keys[SDLK_s]) - static_cast<float>(keys[SDLK_w])};
             float length = std::sqrt(input.x * input.x + input.y * input.y);
@@ -60,7 +81,7 @@ void checkCollisions(entt::registry &registry, entt::entity entity, Position &en
 
     for (auto _entity : collidables)
     {
-        if (_entity == entity || (registry.any_of<Linked>(_entity) && registry.get<Linked>(_entity).parent == entity))
+        if (_entity == entity)
             continue;
 
         Position &_entityPosition = registry.get<Position>(_entity);
@@ -75,6 +96,16 @@ void checkCollisions(entt::registry &registry, entt::entity entity, Position &en
             if (interior == _entity)
             {
                 invert = true;
+            }
+        }
+
+        // If Collidable.ignorePlayer or Collidable.ignoreCollideAll is true, skip collision
+        if (registry.any_of<Collidable>(_entity))
+        {
+            auto &collidable = registry.get<Collidable>(_entity);
+            if (collidable.ignoreCollideAll || (collidable.ignorePlayer && entity == _player))
+            {
+                continue;
             }
         }
 
@@ -117,10 +148,10 @@ void checkCollisions(entt::registry &registry, entt::entity entity, Position &en
 
             if (registry.any_of<InteriorPortal>(_entity))
             {
-                if (!registry.any_of<OnInteriorPortal>(entity))
+                auto &interiorPortal = registry.get<InteriorPortal>(_entity);
+                if(!interiorPortal.locked && !registry.any_of<OnInteriorPortal>(entity))
                 {
                     registry.emplace_or_replace<OnInteriorPortal>(entity, OnInteriorPortal{_entity});
-                    auto &interiorPortal = registry.get<InteriorPortal>(_entity);
                     auto currentInterior = registry.any_of<Inside>(entity) ? registry.get<Inside>(entity).interior : entt::null;
                     auto newInterior = (interiorPortal.A != currentInterior) ? interiorPortal.A : interiorPortal.B;
                     if (newInterior != entt::null)
@@ -191,9 +222,6 @@ void updateCollisions(entt::registry &registry)
 
     for (auto entity : collidables)
     {
-        if (!registry.any_of<Movement>(entity))
-            continue;
-
         std::vector<entt::entity> _collidables;
         std::vector<Vector3f> overlaps;
 
@@ -213,17 +241,20 @@ void updateCollisions(entt::registry &registry)
                 registry.emplace<Colliding>(entity, Colliding{_collidables, overlaps});
             }
             
-            // offset entity position by overlaps
-            for (auto &overlap : overlaps)
-            {
-                entityPosition.x += overlap.x;
-                entityPosition.y += overlap.y;
+            if (registry.any_of<Movement>(entity)) {
+
+                // offset entity position by overlaps
+                for (auto &overlap : overlaps)
+                {
+                    entityPosition.x += overlap.x;
+                    entityPosition.y += overlap.y;
+                }
             }
 
             // Apply movement to colliding entities
             for (auto _entity : _collidables)
             {
-                if (registry.any_of<Movement>(_entity))
+                if (registry.any_of<Movement>(_entity) && registry.any_of<Movement>(entity))
                 {
                     auto &movement = registry.get<Movement>(entity);
                     auto &_movement = registry.get<Movement>(_entity);
@@ -233,17 +264,17 @@ void updateCollisions(entt::registry &registry)
                         _movement.velocity += movement.velocity * 0.5f;
                         _movement.acceleration += movement.acceleration * 0.5f;
                     }
-
-                    if (registry.any_of<Collidable>(_entity))
-                    {
-                        auto &collidable = registry.get<Collidable>(_entity);
-                        if (!collidable.ignoreCollideAll)
-                        {
-                            collidable.colliding_with.push_back(entity);
-                        }
-                    }
-
                 }
+
+                if (registry.any_of<Collidable>(_entity))
+                {
+                    auto &collidable = registry.get<Collidable>(_entity);
+                    if (!collidable.ignoreCollideAll)
+                    {
+                        collidable.colliding_with.push_back(entity);
+                    }
+                }
+
             }
         }
         else
@@ -272,6 +303,18 @@ void updatePositions(entt::registry &registry)
         position.sx = (2 * posX / width - 1) / defaultGSV - shape.scaled_size.x * 0.999f;
         position.sy = (2 * posY / height - 1) / defaultGSV - shape.scaled_size.y * 0.999f;
         position.sz = (2 * posZ / height - 1) / defaultGSV - shape.scaled_size.z * 0.999f;
+
+                
+        // If is UIElement, update UIElement.offset to have screen scaled values, use UIElement.soffset for scaled
+        if (registry.all_of<UIElement>(entity))
+        {
+            UIElement &uiElement = registry.get<UIElement>(entity);
+            float soffsetX = (uiElement.offset.x - playerPos.x) * gridSpacingValue + width / 2;
+            float soffsetY = (uiElement.offset.y - playerPos.y) * gridSpacingValue + height / 2;
+            uiElement.soffset.x = (2 * soffsetX / width - 1) / defaultGSV;
+            uiElement.soffset.y = (2 * soffsetY / height - 1) / defaultGSV;
+        }
+
 
         bool isWithinBounds = (entity == _player) || (
             position.sx + shape.scaled_size.x >= -1 
@@ -341,7 +384,6 @@ void updatePositions(entt::registry &registry)
                 }
             }
         }
-        
 
         if (isVisible)
             registry.emplace_or_replace<Visible>(entity);
@@ -361,6 +403,8 @@ void updateInteractions(entt::registry &registry)
     auto playerPos = registry.get<Position>(_player);
     auto playerShape = registry.get<Shape>(_player);
     bool playerInside = registry.all_of<Inside>(_player);
+    Cursor &cursor = registry.get<Cursor>(_player);
+    
     entt::entity playerInterior = entt::null;
     if (playerInside)
     {
@@ -391,14 +435,17 @@ void updateInteractions(entt::registry &registry)
         bool mouseCollides = false;
 
         // Calculate cursor position in shader coordinates
-        float normalizedCursorX = -((cursorPos[0] / width) * 2.0f - 1.0f) - playerShape.scaled_size.x;
-        float normalizedCursorY = (1.0f - (cursorPos[1] / height) * 2.0f) - playerShape.scaled_size.y;
+        float normalizedCursorX = -((cursor.position.x / width) * 2.0f - 1.0f) - playerShape.scaled_size.x;
+        float normalizedCursorY = (1.0f - (cursor.position.y / height) * 2.0f) - playerShape.scaled_size.y;
 
-        // Check for exact boundary collision
-        if (normalizedCursorX >= position.sx - shape.scaled_size.x &&
-            normalizedCursorX <= position.sx + shape.scaled_size.x &&
-            normalizedCursorY >= position.sy - shape.scaled_size.y &&
-            normalizedCursorY <= position.sy + shape.scaled_size.y)
+        // Normalize interactable radius using the average of the scaled sizes
+        float normalizedRadius = interactable.radius * (shape.scaled_size.x + shape.scaled_size.y) / 2.0f;
+
+        // Check for boundary collision extended by normalized interactable.radius
+        if (normalizedCursorX >= position.sx - shape.scaled_size.x - normalizedRadius &&
+            normalizedCursorX <= position.sx + shape.scaled_size.x + normalizedRadius &&
+            normalizedCursorY >= position.sy - shape.scaled_size.y - normalizedRadius &&
+            normalizedCursorY <= position.sy + shape.scaled_size.y + normalizedRadius)
         {
             mouseCollides = true;
         }
@@ -408,6 +455,11 @@ void updateInteractions(entt::registry &registry)
             if (!registry.all_of<Hovered>(entity))
             {
                 registry.emplace<Hovered>(entity);
+            }
+            else
+            {
+                auto &hovered = registry.get<Hoverable>(entity);
+                hovered.duration += deltaTime;
             }
 
             if (keys[SDL_BUTTON_LEFT])
@@ -419,7 +471,9 @@ void updateInteractions(entt::registry &registry)
                 else
                 {
                     interactable.interactions++;
-                    interactable.toggle = !interactable.toggle;
+                    auto &interaction = registry.get<Interacted>(entity);
+                    interaction.interactions++;
+                    // interactable.toggle = !interactable.toggle;
                 }
 
                 keys[SDL_BUTTON_LEFT] = false;
@@ -437,6 +491,8 @@ void updateInteractions(entt::registry &registry)
             if (registry.all_of<Hovered>(entity))
             {
                 registry.remove<Hovered>(entity);
+                auto &hovered = registry.get<Hoverable>(entity);
+                hovered.duration = 0;
             }
             if (registry.all_of<Interacted>(entity))
             {
@@ -445,15 +501,28 @@ void updateInteractions(entt::registry &registry)
         }
     }
 
-    auto interacted_entities = registry.view<Interacted, InteractionAction>();
+    auto interacted_entities = registry.view<Interacted, InteractionActions>();
     for (auto entity : interacted_entities)
     {
         auto &interacted = interacted_entities.get<Interacted>(entity);
-        auto &action = interacted_entities.get<InteractionAction>(entity);
+        auto &interactionActions = interacted_entities.get<InteractionActions>(entity);
 
         // get the interacting entity put in _entity
         auto _entity = interacted.interactor;
-        action.action(registry, entity, _entity);
+
+        if (interacted.interactions < 1)
+        {
+            for (auto &action : interactionActions.actions)
+            {
+                action.action(registry, entity, _entity);
+            }
+        }
+    }
+
+    auto hovered_entities = registry.view<Hoverable, Hovered, HoverAction>();
+    for (auto entity : hovered_entities)
+    {
+        hovered_entities.get<HoverAction>(entity).action(registry, entity);
     }
 
 
@@ -485,6 +554,8 @@ void updateInteractions(entt::registry &registry)
             action.time = 0.0f; // Reset the time after triggering the action
         }
     }
+
+
 }
 
 void updateShapes(entt::registry &registry)
@@ -531,7 +602,158 @@ void updateOther(entt::registry &registry)
             color.b = color.defaultB;
         }
     }
-}
+
+    auto collidable_entities = registry.view<Position, Shape, Collidable, InView, Teleportable>();
+    for (auto &entity : collidable_entities)
+    {
+        auto &position = collidable_entities.get<Position>(entity);
+        auto &shape = collidable_entities.get<Shape>(entity);
+
+        auto teleport_entities = registry.view<Position, Shape, Teleport, InView>();
+        for (auto &tentity : teleport_entities)
+        {
+
+            auto &tposition = teleport_entities.get<Position>(tentity);
+            auto &tshape = teleport_entities.get<Shape>(tentity);
+            auto &teleport = teleport_entities.get<Teleport>(tentity);
+
+            Vector3f collides = positionsCollide(position, shape, tposition, tshape, false);
+            if (collides.x != 0 || collides.y != 0 || collides.z != 0)
+            {
+                position.x = teleport.destination.x;
+                position.y = teleport.destination.y;
+                position.z = teleport.destination.z;
+
+                if (teleport.reverse)
+                {
+                    if (registry.all_of<Movement>(entity))
+                    {
+                        auto &movement = registry.get<Movement>(entity);
+                        movement.velocity.x = 0;
+                        movement.velocity.y = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    // Handle Interacted
+    auto interacted_entities = registry.view<Interacted, Draggable>();
+    for (auto entity : interacted_entities)
+    {
+        auto &interacted = interacted_entities.get<Interacted>(entity);
+        if (interacted.interactor == _player)
+        {
+            if (registry.all_of<Cursor, Shape>(_player))
+            {
+                auto &cursorPos = registry.get<Cursor>(_player);
+                auto &cursorShape = registry.get<Shape>(_player);
+                auto &position = registry.get<Position>(entity);
+                auto &shape = registry.get<Shape>(entity);
+                auto &playerPos = registry.get<Position>(_player);
+
+                float newX = cursorPos.position.sx - (shape.size.x / 2) + (cursorShape.size.x / 2);
+                float newY = cursorPos.position.sy - (shape.size.y / 2) + (cursorShape.size.y / 2);
+
+                float distanceToCursor = std::sqrt(std::pow(newX - playerPos.x, 2) + std::pow(newY - playerPos.y, 2));
+                float distanceToEntity = std::sqrt(std::pow(position.x - playerPos.x, 2) + std::pow(position.y - playerPos.y, 2));
+
+                if (distanceToEntity <= 2.0f)
+                {
+                    if (distanceToCursor > 2.0f)
+                    {
+                        float scale = 2.0f / distanceToCursor;
+                        newX = playerPos.x + (newX - playerPos.x) * scale;
+                        newY = playerPos.y + (newY - playerPos.y) * scale;
+                    }
+
+                    position.x = newX;
+                    position.y = newY;
+                }
+            }
+        }
+    }
+
+    // Handle playing Tones
+    auto tone_entities = registry.view<Tone>();
+    for (auto entity : tone_entities)
+    {
+        auto &tone = tone_entities.get<Tone>(entity);
+        if (tone.playing)
+        {
+            _js__play_tone(tone.note, tone.duration, tone.volume, tone.type);
+            tone.playing = false;
+            
+        }
+    }
+
+    auto puzzle_view = registry.view<Puzzle>();
+    for (auto puzzle_entity : puzzle_view)
+    {
+        auto &puzzle = puzzle_view.get<Puzzle>(puzzle_entity);
+        bool allActive = true;
+        bool inCorrectOrder = true;
+        std::vector<bool> activeStates(puzzle.pieces.size(), false);
+
+        for (size_t i = 0; i < puzzle.pieces.size(); ++i)
+        {
+            auto piece = puzzle.pieces[i];
+            if (!registry.all_of<PuzzlePiece>(piece))
+            {
+                allActive = false;
+                break;
+            }
+
+            auto &puzzlePiece = registry.get<PuzzlePiece>(piece);
+            activeStates[i] = puzzlePiece.active;
+            if (!puzzlePiece.active)
+            {
+                allActive = false;
+            }
+
+            if (i > 0)
+            {
+                auto &prevPuzzlePiece = registry.get<PuzzlePiece>(puzzle.pieces[i - 1]);
+                if (!prevPuzzlePiece.active && puzzlePiece.active)
+                {
+                    inCorrectOrder = false;
+                    break;
+                }
+            }
+        }
+        
+        auto deactivateAll = [&registry, &puzzle]() {
+            for (auto piece : puzzle.pieces)
+            {
+                if (registry.all_of<PuzzlePiece>(piece))
+                {
+                    auto &puzzlePiece = registry.get<PuzzlePiece>(piece);
+                    puzzlePiece.active = false;
+                }
+            }
+        };
+
+        if (allActive && inCorrectOrder)
+        {
+            auto door_view = registry.view<Id>();
+            for (auto door_entity : door_view)
+            {
+                if (door_view.get<Id>(door_entity).name == "doorA")
+                {
+                    auto &interiorPortal = registry.get<InteriorPortal>(door_entity);
+                    interiorPortal.locked = false;
+                    _js__play_tone("C5", "1n", 0.0f, "sparkle1.mp3");
+                    deactivateAll();
+                    break;
+                }
+            }
+        }
+        else if (!inCorrectOrder)
+        {
+            deactivateAll();
+        }
+    }
+}   
 
 void updateFlags(entt::registry &registry)
 {
@@ -575,4 +797,18 @@ void updateFlags(entt::registry &registry)
             registry.destroy(entityToDestroy);
         }
     }
+}
+
+
+void updateFrame()
+{
+    // Update entity movement and interactions
+    updatePlayer(registry);
+    updateFlags(registry);
+    updateCollisions(registry);
+    updateMovement(registry);
+    updateShapes(registry);
+    updatePositions(registry);
+    updateOther(registry);
+    updateInteractions(registry);
 }

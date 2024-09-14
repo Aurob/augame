@@ -16,11 +16,6 @@ struct context
     SDL_Window *window;
 };
 
-struct Id {
-    int id;
-    string name;
-};
-
 struct Vector2f {
     float x, y;
 
@@ -58,27 +53,59 @@ struct Vector3f {
     Vector3f normalized() const { float len = length(); return len > 0 ? *this / len : *this; }
 };
 
-// Entity Components
+/**
+ * \defgroup client_components Client Components
+ * This group includes all components relevant to the client.
+ */
+
+struct Internal {
+    bool internal;
+};
+
+/// \ingroup client_components
+struct Id {
+    /// @brief include
+    int id;
+    /// @brief include
+    string name;
+};
+
+/// \ingroup client_components
+/// @brief tag
 struct Player {};
+
+
+/// \ingroup client_components
 struct Position {
+    /// @brief include
     float x;
+    /// @brief include
     float y;
+    /// @brief include
     float z;
     float sx;
     float sy;
     float sz;
 };
 
+
+/// \ingroup client_components
 struct Shape {
+    /// @brief include
     Vector3f size{1, 1, .1};
     Vector3f scaled_size;
 };
 
+/// \ingroup client_components
 struct Color {
-    float r;
-    float g;
-    float b;
-    float a;
+    /// @brief include
+    float r; 
+    /// @brief include
+    float g; 
+    /// @brief include
+    float b; 
+    /// @brief include
+    float a; 
     float defaultR;
     float defaultG;
     float defaultB;
@@ -106,15 +133,28 @@ struct Teleport {
 };
 struct Teleportable {};
 
-struct Hoverable {};
-struct Hovered {};
+struct Hoverable {
+    int duration;
+};
+struct Hovered {
+};
 
 struct Interacted {
     entt::entity interactor;
+    int interactions;
 };
 
 struct InteractionAction {
     std::function<void(entt::registry&, entt::entity, std::optional<entt::entity>)> action;
+    bool toggle;
+};
+
+struct InteractionActions {
+    std::vector<InteractionAction> actions;
+};
+
+struct HoverAction {
+    std::function<void(entt::registry&, entt::entity)> action;
 };
 
 struct CollisionAction {
@@ -129,7 +169,17 @@ struct TickAction {
 
 struct Interactable {
     int interactions;
-    bool toggle;
+    float radius;
+    bool toggleState;
+    bool toggle() {
+        toggleState = !toggleState;
+        return toggleState;
+    }
+};
+
+struct Draggable {
+    float radius;
+    float sradius;
 };
 
 struct Colliding{
@@ -202,6 +252,7 @@ struct Inside {
 struct InteriorPortal {
     entt::entity A;
     entt::entity B;
+    bool locked;
 };
 struct OnInteriorPortal {
     entt::entity portal;
@@ -238,6 +289,15 @@ struct TextureAlts {
     std::string current;
 };
 
+struct TextureGroupPart {
+    std::string groupName;
+    std::string partName;
+    Texture texture;
+    int tilex;
+    int tiley;
+    
+};
+
 struct CollideColorAlt {
     Color inactive;
     Color active;
@@ -253,4 +313,36 @@ struct Elevate {
 
 struct Keys {
     std::unordered_map<SDL_Keycode, bool> keys;
+};
+
+struct Cursor {
+    Position position;
+};
+
+struct Configurable {};
+
+// UI
+struct UIElement {
+    std::string content;
+    bool visible;
+    Vector2f offset;
+    Vector2f soffset;
+};
+
+struct Tone {
+    std::string note;
+    std::string duration;
+    std::string type;
+    float volume;
+    bool playing{false};
+    int iterations{0};
+};
+
+struct Puzzle {
+    std::vector<entt::entity> pieces;
+    bool solved;
+};
+
+struct PuzzlePiece {
+    bool active;
 };
