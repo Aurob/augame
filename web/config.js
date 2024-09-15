@@ -50,6 +50,10 @@ var CONFIG = {
         {
             "name": "instruments",
             "path": "resources/instruments.png"
+        },
+        {
+            "name": "ladders",
+            "path": "resources/ladders.png"
         }
     
     ],

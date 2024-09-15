@@ -434,21 +434,21 @@ void renderAll() {
     }
 
    registry.sort<Visible>([&](const entt::entity lhs, const entt::entity rhs) {
+        const auto& lhsPrio = registry.get<RenderPriority>(lhs);
+        const auto& rhsPrio = registry.get<RenderPriority>(rhs);
+
+        if (lhsPrio.priority != rhsPrio.priority)
+            return lhsPrio.priority < rhsPrio.priority;
+
         const auto& lhsPos = registry.get<Position>(lhs);
         const auto& rhsPos = registry.get<Position>(rhs);
         const auto& lhsShape = registry.get<Shape>(lhs);
         const auto& rhsShape = registry.get<Shape>(rhs);
-        const auto& lhsPrio = registry.get<RenderPriority>(lhs);
-        const auto& rhsPrio = registry.get<RenderPriority>(rhs);
-        
 
         // Compare y + z + shape.z
         float lhsYZS = lhsPos.y + lhsPos.z + lhsShape.size.z;
         float rhsYZS = rhsPos.y + rhsPos.z + rhsShape.size.z;
-        if (lhsYZS != rhsYZS)
-            return lhsYZS < rhsYZS;
-
-        return lhsPrio.priority < rhsPrio.priority;
+        return lhsYZS < rhsYZS;
     });
 
     // Render visible entities
