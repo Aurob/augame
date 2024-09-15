@@ -155,7 +155,6 @@ actions.forEach((action, actionIndex) => {
 
 CONFIG.textures = CONFIG.textures.concat(textures);
 
-
 let synth, bassSynth, loop;
 
 function stopAudio() {
@@ -206,24 +205,36 @@ function initializeAudio() {
                 release: 1.5
             }
         }).toDestination();
-
         loop = new Tone.Loop(time => {
-            const notes = generateHarmony();
-            synth.triggerAttackRelease(notes.harmony, getRandomElement(["8n", "4n", "2n", "16n"]), time);
-            bassSynth.triggerAttackRelease(notes.bass, getRandomElement(["1n", "2n", "4n", "16n"]), time);
-        }, "4n");
+            const notes = generateHarmony(time);
+            synth.triggerAttackRelease(notes.harmony, "16n", time);
+            bassSynth.triggerAttackRelease(notes.bass, "16n", time);
+        }, getRandomElement(["1n", "4n", "8n", "8n", "16n", "16n"]));
 
         Tone.Transport.start();
         loop.start(0);
     }
 }
 
-function generateHarmony() {
-    const notes = ["C", "D", "E", "F", "G", "A", "B"];
-    const octaves = [1, 2, 3, 3.5];
+const chords = [
+    ["C", "E", "G"],
+    ["D", "F", "A"],
+    ["E", "G", "B"],
+    ["F", "A", "C"],
+    ["G", "B", "D"],
+    ["A", "C", "E"],
+    ["B", "D", "F"]
+];
+const octaves = [1.5, 2, 2.5, 3, 3.5, 4, 4];
+
+
+function generateHarmony(time) {
+    // const notes = ["C", "D", "E", "F", "G", "A", "B"];
+    let notes = getRandomElement(chords);
+    const octaves = [1.5, 2, 2.5, 3, 3.5, 4, 4];
     
     function generateRandomScale() {
-        return Array.from({ length: 7 }, () => {
+        return Array.from({ length: Math.random() * 10 }, () => {
             const note = getRandomElement(notes);
             const octave = getRandomElement(octaves);
             return `${note}${octave}`;
@@ -233,15 +244,15 @@ function generateHarmony() {
     const scale = generateRandomScale();
     const bassScale = generateRandomScale();
     
-    const noiseValue1 = noise.simplex2(Math.random(), Math.random());
-    const noiseValue2 = noise.simplex3(Math.random(), Math.random(), Date.now() * 0.0001);
-    const index1 = Math.floor((noiseValue1 + 1) / 2 * scale.length);
-    const index2 = Math.floor((noiseValue2 + 1) / 2 * bassScale.length);
+    const smoothValue1 = (Math.sin(time) + 1) / 2;
+    const smoothValue2 = (Math.cos(time) + 1) / 2;
+    const index1 = Math.floor(smoothValue1 * scale.length);
+    const index2 = Math.floor(smoothValue2 * bassScale.length);
     
     const harmony = [
         scale[index1],
-        scale[(index1 + Math.floor(noise.simplex2(Math.random(), Math.random()) * 5)) % scale.length],
-        scale[(index1 + Math.floor(noise.simplex2(Math.random(), Math.random()) * 7)) % scale.length]
+        scale[(index1 + Math.floor(smoothValue1 * 5)) % scale.length],
+        scale[(index1 + Math.floor(smoothValue1 * 7)) % scale.length]
     ];
     const bass = bassScale[index2];
     
@@ -258,9 +269,19 @@ const header = document.getElementById('header');
 const playButton = document.createElement('button');
 playButton.innerText = 'Play Music';
 playButton.addEventListener('click', () => {
-    const script = document.createElement('script');
-    script.src = 'web/tone.js';
-    script.onload = startAudio;
-    document.body.prepend(script);
+    if (Tone.Transport.state === 'started') {
+        stopAudio();
+    } else {
+        if (!synth) {
+            const script = document.createElement('script');
+            script.src = 'web/tone.js';
+            script.onload = () => {
+                startAudio();
+            };
+            document.body.prepend(script);
+        } else {
+            startAudio();
+        }
+    }
 });
 header.appendChild(playButton);
