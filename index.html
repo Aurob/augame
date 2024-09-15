@@ -34,7 +34,6 @@
             left: 0;
             right: 0;
             height: 50px;
-            background-color: var(--header-bg);
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -55,10 +54,6 @@
 
         #content {
             position: absolute;
-            top: 50px;
-            width: 100%;
-            height: calc(100% - 50px);
-            background-color: var(--content-bg);
         }
 
         #main {
@@ -75,239 +70,16 @@
             object-fit: contain;
         }
 
-        #data,
-        #readme {
-            position: fixed;
-            background-color: rgba(0, 0, 0, 0.7);
-            padding: 10px;
-            border-radius: 4px;
-            display: none;
-        }
-
-        #data {
-            top: 60px;
-            right: 10px;
-        }
-
-        #readme {
-            top: 60px;
-            left: 10px;
-            max-width: 50%;
-            max-height: 80%;
-            overflow-y: auto;
-        }
-
-        .mobile-btn {
-            width: clamp(40px, 12vw, 60px);
-            height: clamp(40px, 12vw, 60px);
-            padding: 5px;
-            margin: 3px;
-            border: 1px solid var(--input-bg);
-            border-radius: 8px;
-            background-color: var(--input-bg);
-            color: var(--text-color);
-            font-size: clamp(14px, 3vw, 20px);
-            font-weight: bold;
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .mobile-controls {
-            width: 100%;
-            position: fixed;
-            bottom: 10px;
-            display: none;
-            flex-wrap: wrap;
-            justify-content: center;
-            padding: 5px;
-            background-color: rgba(0, 0, 0, 0.5);
-            border-radius: 12px;
-        }
-
-        @media (max-width: 768px) {
-            .mobile-controls {
-                display: flex;
-            }
-
-            #header {
-                height: auto;
-                padding: 5px;
-            }
-
-            .toggle-btn {
-                font-size: 0.8em;
-                padding: 3px 6px;
-            }
-        }
-
-        pre {
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-
-        #footer {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 40px;
-            background-color: var(--header-bg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0 10px;
-            z-index: 1000;
-            color: var(--text-color);
-            font-size: 0.9em;
-        }
     </style>
 </head>
 
 <body>
-    <div id="header">
-        <button id="toggleReadme" class="toggle-btn">Toggle README</button>
-        <div>
-            <button id="toggleData" class="toggle-btn">Toggle Data</button>
-            <button id="palette1" class="toggle-btn">Palette 1</button>
-            <button id="palette2" class="toggle-btn">Palette 2</button>
-            <button id="palette3" class="toggle-btn">Palette 3</button>
-        </div>
-    </div>
+    <div id="header"></div>
     <div id="content">
-        <div id="data"></div>
-        <div id="readme"></div>
         <div id="main">
             <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
         </div>
     </div>
-
-    <div class="mobile-controls">
-        <button class="mobile-btn" id="btnW">&#8593;</button>
-        <button class="mobile-btn" id="btnA">&#8592;</button>
-        <button class="mobile-btn" id="btnS">&#8595;</button>
-        <button class="mobile-btn" id="btnD">&#8594;</button>
-        <button class="mobile-btn" id="btnE">Interact</button>
-        <button class="mobile-btn" id="btnF">Zoom In</button>
-        <button class="mobile-btn" id="btnG">Zoom Out</button>
-    </div>
-
-    <div id="footer">
-        Controls: WASD for movement, Scroll/Zoom to change scale, Cursor/Touch to interact
-    </div>
-
-    <script>
-        function loadInputs() {
-            // add custom c-to-js output elements
-            const elements = {
-                x: { id: 'xpos', hasInput: false },
-                y: { id: 'ypos', hasInput: false },
-                z: { id: 'zpos', hasInput: false },
-                gridSpacingValue: { id: 'gridSpacingValue', hasInput: false }
-            };
-
-            for (const [key, { id, hasInput }] of Object.entries(elements)) {
-                let element = document.createElement('div');
-                element.id = id;
-                element.innerText = `${key}: 0`;
-                document.querySelector('#data').appendChild(element);
-                Module.c_kv_elements[key] = id;
-            }
-        }
-
-        // Fetch README
-        fetch('README.md')
-            .then(response => response.text())
-            .then(text => {
-                document.getElementById('readme').innerHTML = marked(text);
-            });
-
-        // Toggle functions
-        document.getElementById('toggleReadme').addEventListener('click', () => {
-            const readme = document.getElementById('readme');
-            console.log(readme.style.display);
-            readme.style.display = readme.style.display === 'none' || readme.style.display === '' ? 'block' : 'none';
-        });
-
-        document.getElementById('toggleData').addEventListener('click', () => {
-            const data = document.getElementById('data');
-            data.style.display = data.style.display === 'none' || data.style.display === '' ? 'block' : 'none';
-        });
-
-        // Palette functions
-        const palettes = {
-            1: { '--bg-color': '#2c2c2c', '--text-color': '#e0e0e0', '--header-bg': '#1a1a1a', '--content-bg': '#3a3a3a', '--input-bg': '#4a4a4a' },
-            2: { '--bg-color': '#f0f0f0', '--text-color': '#333333', '--header-bg': '#e0e0e0', '--content-bg': '#ffffff', '--input-bg': '#d0d0d0' },
-            3: { '--bg-color': '#264653', '--text-color': '#e9c46a', '--header-bg': '#2a9d8f', '--content-bg': '#e76f51', '--input-bg': '#f4a261' }
-        };
-
-        function setPalette(paletteNumber) {
-            const root = document.documentElement;
-            const palette = palettes[paletteNumber];
-            for (const [property, value] of Object.entries(palette)) {
-                root.style.setProperty(property, value);
-            }
-        }
-
-        document.getElementById('palette1').addEventListener('click', () => setPalette(1));
-        document.getElementById('palette2').addEventListener('click', () => setPalette(2));
-        document.getElementById('palette3').addEventListener('click', () => setPalette(3));
-
-        const mobileButtons = ['W', 'A', 'S', 'D', 'E', 'F', 'G'];
-        let pressedKeys = { W: 0, A: 0, S: 0, D: 0, E: 0, F: 0, G: 0 };
-
-        mobileButtons.forEach(key => {
-            const button = document.getElementById(`btn${key}`);
-
-            button.addEventListener('mousedown', () => {
-                pressedKeys[key] = 1;
-                if (key === 'E') {
-                    interact();
-                } else {
-                    updateMovement();
-                }
-            });
-            button.addEventListener('mouseup', () => {
-                pressedKeys[key] = 0;
-                if (key !== 'E') {
-                    updateMovement();
-                }
-            });
-
-            // For touch devices
-            button.addEventListener('touchstart', (e) => {
-                e.preventDefault(); // Prevent default touch behavior
-                pressedKeys[key] = 1;
-                if (key === 'E') {
-                    interact();
-                } else if (key === 'F') {
-                    zoom(1);
-                } else if (key === 'G') {
-                    zoom(-1);
-                } else {
-                    updateMovement();
-                }
-            });
-
-            button.addEventListener('touchend', (e) => {
-                e.preventDefault(); // Prevent default touch behavior
-                pressedKeys[key] = 0;
-                if (key !== 'E' && key !== 'F' && key !== 'G') {
-                    updateMovement();
-                }
-            });
-
-            // button.addEventListener('click', () => {
-            
-        });
-
-        function updateMovement() {
-            console.log(pressedKeys.W, pressedKeys.A, pressedKeys.S, pressedKeys.D);
-            move(pressedKeys.W, pressedKeys.A, pressedKeys.S, pressedKeys.D);
-        }
-    </script>
-    </script>
     <script src="web/tone.js"></script>
     <script src="https://rau.dev/other/libs/noise.js"></script>
     <script src="web/scripts.js"></script>
