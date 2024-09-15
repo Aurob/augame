@@ -34,7 +34,6 @@ var Module = {
   },
 
   ready() {
-    loadInputs();
   },
 
   setkv(key, value) {
