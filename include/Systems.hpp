@@ -413,7 +413,7 @@ void updateInteractions(entt::registry &registry)
 
     auto keys = registry.get<Keys>(_player).keys;
 
-    auto debug_entities = registry.view<InView, Interactable, Hoverable, Position, Shape>();
+    auto debug_entities = registry.view<Visible, Interactable, Hoverable, Position, Shape>();
     for (auto entity : debug_entities)
     {
         // Skip entities that are not in the same interior as the player
@@ -501,7 +501,7 @@ void updateInteractions(entt::registry &registry)
         }
     }
 
-    auto interacted_entities = registry.view<Interacted, InteractionActions>();
+    auto interacted_entities = registry.view<Visible, Interacted, InteractionActions>();
     for (auto entity : interacted_entities)
     {
         auto &interacted = interacted_entities.get<Interacted>(entity);
@@ -519,21 +519,21 @@ void updateInteractions(entt::registry &registry)
         }
     }
 
-    auto hovered_entities = registry.view<Hoverable, Hovered, HoverAction>();
+    auto hovered_entities = registry.view<Visible, Hoverable, Hovered, HoverAction>();
     for (auto entity : hovered_entities)
     {
         hovered_entities.get<HoverAction>(entity).action(registry, entity);
     }
 
 
-    auto colAction_entities = registry.view<CollisionAction, Colliding>();
+    auto colAction_entities = registry.view<Visible, CollisionAction, Colliding>();
     for (auto entity : colAction_entities)
     {
         auto &action = colAction_entities.get<CollisionAction>(entity);
         action.action(registry, entity);
     }
 
-    auto tickAction_entities = registry.view<TickAction, Movement>();
+    auto tickAction_entities = registry.view<Visible, TickAction, Movement>();
     for (auto entity : tickAction_entities)
     {
         auto &action = tickAction_entities.get<TickAction>(entity);
@@ -742,7 +742,7 @@ void updateOther(entt::registry &registry)
                 {
                     auto &interiorPortal = registry.get<InteriorPortal>(door_entity);
                     interiorPortal.locked = false;
-                    _js__play_tone("C5", "1n", 0.0f, "sparkle1.mp3");
+                    _js__play_tone("C5", "1n", -20.0f, "sparkle1.mp3");
                     deactivateAll();
                     break;
                 }
