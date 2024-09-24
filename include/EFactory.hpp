@@ -104,14 +104,113 @@ void runFactories(entt::registry &registry)
     auto puzzleEntity = registry.create();
     registry.emplace<Puzzle>(puzzleEntity, Puzzle{selectedEntities});
 
+    // get Id.name= npctest
+    auto view3 = registry.view<Id>();
+    for (auto entity : view3)
+    {
+        const auto& id = view3.get<Id>(entity).name;
+   
+        // if explode1
+        if (id.find("explode1") == 0)
+        {
+            // Add a tick action to move the entity around
+            registry.emplace_or_replace<TickAction>(entity, TickAction{[](entt::registry &registry, entt::entity entity)
+                {
+                    auto &movement = registry.get<Movement>(entity);
+                    float time = SDL_GetTicks() / 1000.0f; // Get time in seconds
+                    movement.velocity.x += std::sin(time) * std::cos(time) * 0.5f;
+                    movement.velocity.y -= std::cos(time) * 0.5f;
+                }, .1f});
 
-    auto view2 = registry.view<Tone>(entt::exclude<InteractionActions>);
+            // Add a collision action to create 10 .1 shape entities at the entity position with all components
+            auto &interactionActions = registry.get_or_emplace<InteractionActions>(entity);
+            interactionActions.actions.push_back(InteractionAction{[](entt::registry &registry, entt::entity entity, std::optional<entt::entity> optEntity)
+                {
+                    printf("explode1\n");
+                    auto &position = registry.get<Position>(entity);
+                    auto &color = registry.get<Color>(entity);
+                    auto &movement = registry.get<Movement>(entity);
+                    auto &renderPriority = registry.get<RenderPriority>(entity);
+                    auto &inside = registry.get<Inside>(entity);
+
+                    for (int i = 0; i < 40; ++i)
+                    {
+                        auto newEntity = registry.create();
+                        registry.emplace<Position>(newEntity, Position{
+                            position.x + static_cast<float>(rand()) / static_cast<float>(RAND_MAX) - 0.5f,
+                            position.y + static_cast<float>(rand()) / static_cast<float>(RAND_MAX) - 0.5f,
+                            position.z
+                        });
+                        registry.emplace<Shape>(newEntity, Shape{0.05f, 0.05f, 0.05f});
+                        registry.emplace<Color>(newEntity, color);
+                        registry.emplace<RenderPriority>(newEntity, renderPriority);
+                        registry.emplace<Inside>(newEntity, inside);
+
+                        // Add a tick action to slowly reduce opacity to 0 and then destroy
+                        registry.emplace<TickAction>(newEntity, TickAction{
+                            [](entt::registry &registry, entt::entity entity) {
+                                auto &color = registry.get<Color>(entity);
+                                color.a -= 0.01f; // Reduce opacity
+                                if (color.a <= 0.0f) {
+                                    registry.destroy(entity); // Destroy entity when fully transparent
+                                }
+                            }, 0.1f // Interval for the tick action
+                        });
+                    }
+
+                    // Create a unique item with random color and Tone
+                    auto uniqueEntity = registry.create();
+                    registry.emplace<Position>(uniqueEntity, Position{
+                        position.x + static_cast<float>(rand()) / static_cast<float>(RAND_MAX) - 0.5f,
+                        position.y + static_cast<float>(rand()) / static_cast<float>(RAND_MAX) - 0.5f,
+                        position.z
+                    });
+                    registry.emplace<Shape>(uniqueEntity, Shape{0.5f, 0.5f, 0.5f});
+                    registry.emplace<Color>(uniqueEntity, Color{
+                        static_cast<float>(rand()) / static_cast<float>(RAND_MAX),
+                        static_cast<float>(rand()) / static_cast<float>(RAND_MAX),
+                        static_cast<float>(rand()) / static_cast<float>(RAND_MAX),
+                        1.0f
+                    });
+                    registry.emplace<Tone>(uniqueEntity, Tone{
+                        "C4", // Random note can be assigned here
+                        "4n", // Duration
+                        "sine", // Type
+                        -10.0f, // Volume
+                    });
+                    printf("uniqueEntity\n");
+                    registry.emplace<RenderPriority>(uniqueEntity, renderPriority);
+                    registry.emplace<Inside>(uniqueEntity, inside);
+                    registry.emplace<Collidable>(uniqueEntity);
+                    registry.emplace<Hoverable>(uniqueEntity);
+                    registry.emplace<Interactable>(uniqueEntity);
+                    registry.emplace<UIElement>(uniqueEntity, UIElement{"Winner!", true, 0, 0});
+
+                    // Add an action to play the note
+                    auto &interactionActions = registry.get_or_emplace<InteractionActions>(uniqueEntity);
+                    interactionActions.actions.push_back(InteractionAction{[](entt::registry &registry, entt::entity entity, std::optional<entt::entity> optEntity)
+                        {
+                            printf("Tone\n");
+                            auto &tone = registry.get<Tone>(entity);
+                            tone.playing = true;
+                        }, false});
+
+                    // Destroy the entity
+                    registry.destroy(entity);
+                }, false});
+        }
+    }
+
+
+
+    auto view2 = registry.view<Tone>();
     for (auto entity : view2)
     {
         auto &interactionActions = registry.get_or_emplace<InteractionActions>(entity);
         interactionActions.actions.push_back(InteractionAction{[](entt::registry &registry, entt::entity entity, std::optional<entt::entity> optEntity)
             {
                 if (registry.get<Hoverable>(entity).duration == 0) {
+                    printf("Tone\n");
                     auto &tone = registry.get<Tone>(entity);
                     tone.playing = true;
 
@@ -130,6 +229,5 @@ void runFactories(entt::registry &registry)
             }, false});
     }
 
-    
 
 }
