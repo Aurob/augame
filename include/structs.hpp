@@ -5,7 +5,8 @@
 #include <any>
 #include <optional>
 #include <unordered_map>
-#include "entt.hpp"
+#include "../include/lib/entt.hpp"
+#include "../include/lib/physics.hpp"
 
 using namespace std;
 
@@ -68,6 +69,8 @@ struct Id {
     int id;
     /// @brief include
     string name;
+
+    bool other1;
 };
 
 /// \ingroup client_components
@@ -167,21 +170,6 @@ struct TickAction {
     float time;
 };
 
-struct Interactable {
-    int interactions;
-    float radius;
-    bool toggleState;
-    bool toggle() {
-        toggleState = !toggleState;
-        return toggleState;
-    }
-};
-
-struct Draggable {
-    float radius;
-    float sradius;
-};
-
 struct Colliding{
     std::vector<entt::entity> collidables;
     std::vector<Vector3f> overlaps;
@@ -210,34 +198,6 @@ struct Rotation {
     float angular_friction{1};
 };
 
-
-struct Linkable {};
-struct Linked {
-    entt::entity parent;
-    float distance;
-    bool keepCollisions{false};
-};
-
-struct Associated {
-    std::vector<entt::entity> entities;
-    bool destroy;
-
-    template<typename... Components>
-    std::vector<entt::entity> filterByComponents(entt::registry &registry) const {
-        std::vector<entt::entity> filteredEntities;
-        for (auto entity : entities) {
-            if (registry.all_of<Components...>(entity)) {
-                filteredEntities.push_back(entity);
-            }
-        }
-        return filteredEntities;
-    }
-};
-
-struct Flag {
-    std::unordered_map<std::string, std::any> flags;
-};
-
 // Interiors
 struct Interior {
     bool hideInside;
@@ -258,18 +218,8 @@ struct OnInteriorPortal {
     entt::entity portal;
 };
 
-// Basic Pathfinding
-struct BasicPathfinding {
-    entt::entity target;
-    Position targetPos;
-};
-
 struct RenderPriority {
     int priority;
-};
-
-struct Test {
-    std::string value;
 };
 
 struct Texture {
@@ -298,19 +248,6 @@ struct TextureGroupPart {
     
 };
 
-struct CollideColorAlt {
-    Color inactive;
-    Color active;
-};
-
-struct InteriorPortalTexture {
-    entt::entity portal;
-};
-
-struct Elevate {
-    int direction{1};
-};
-
 struct Keys {
     std::unordered_map<SDL_Keycode, bool> keys;
 };
@@ -319,30 +256,20 @@ struct Cursor {
     Position position;
 };
 
-struct Configurable {};
+struct Test { std::string value; };
 
-// UI
-struct UIElement {
-    std::string content;
-    bool visible;
-    Vector2f offset;
-    Vector2f soffset;
+struct PhysicsBodyRect {
+    p2d::RectangleBody *body;
+    // p2d::CircleBody *body;
+    bool added;
 };
 
-struct Tone {
-    std::string note;
-    std::string duration;
-    std::string type;
-    float volume;
-    bool playing{false};
-    int iterations{0};
-};
-
-struct Puzzle {
-    std::vector<entt::entity> pieces;
-    bool solved;
-};
-
-struct PuzzlePiece {
-    bool active;
+struct Interactable {
+    int interactions;
+    float radius;
+    bool toggleState;
+    bool toggle() {
+        toggleState = !toggleState;
+        return toggleState;
+    }
 };
