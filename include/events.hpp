@@ -1,18 +1,15 @@
 #pragma once
 
 #include <SDL2/SDL.h>
-#include "entt.hpp"
+#include "lib/entt.hpp"
 #include "structs.hpp"
-#include "../include/imgui/imgui.h"
-#include "../include/imgui/imgui_impl_sdl.h"
-#include "../include/imgui/imgui_impl_opengl3.h"
-
-using namespace std;
+#include "../include/lib/physics.hpp"
 
 extern int width, height;
 extern float gridSpacingValue;
 extern entt::entity _player;
 extern entt::registry registry;
+extern p2d::Physics physics;
 
 void EventHandler(int type, SDL_Event *event)
 {
@@ -89,7 +86,6 @@ void processEvents() {
     SDL_Event event;
     while (SDL_PollEvent(&event))
     {
-        ImGui_ImplSDL2_ProcessEvent(&event);
         EventHandler(0, &event);
     }
 
@@ -106,6 +102,16 @@ void processEvents() {
         auto& playerPos = registry.get<Position>(_player);
         playerPos.z -= 1;
         keys[SDLK_n] = false;
+    }
+    
+    // Get _player shape and increase by 10 only when RSHIFT and '/' are held
+    if (keys[SDLK_RSHIFT] && keys[SDLK_SLASH]) {
+        if (registry.all_of<Shape>(_player)) {
+            auto& playerShape = registry.get<Shape>(_player);
+            playerShape.size.x += 10;
+            playerShape.size.y += 10;
+            playerShape.size.z += 10;
+        }
     }
     
     // Update player's TextureAlts based on direction and movement

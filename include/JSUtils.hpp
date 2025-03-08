@@ -1,7 +1,7 @@
 #pragma once
 #include <emscripten.h>
 #include "shaders.hpp"
-#include "../include/entt.hpp"
+#include "lib/entt.hpp"
 #include "../include/structs.hpp"
 
 using namespace std;
@@ -30,14 +30,6 @@ void _js__ready()
     });
 }
 
-void _js__refresh()
-{
-    // Refresh the UI
-    EM_ASM({
-        Module.refresh();
-    });
-}
-
 void _js__fetch_configs()
 {
     // Fetch the configs from JS
@@ -45,24 +37,21 @@ void _js__fetch_configs()
         Module.fetch_configs();
     });
 }
+enum LogLevel {
+    CONSOLE = EM_LOG_CONSOLE,
+    WARN = EM_LOG_WARN, 
+    ERROR = EM_LOG_ERROR,
+    DEBUG = EM_LOG_DEBUG,
+    INFO = EM_LOG_INFO
+};
 
-void _js__play_tone(string note, string duration, float volume = 0.5, string type = "sine")
-{
-    // Play a tone
-    EM_ASM_({
-        Module.play_tone(UTF8ToString($0), UTF8ToString($1), $2, UTF8ToString($3));
-    }, note.c_str(), duration.c_str(), volume, type.c_str());
+void emlog(const char* msg, LogLevel level = LogLevel::CONSOLE) {
+    // Supports log levels:
+    // LogLevel::CONSOLE - Standard output (default)
+    // LogLevel::WARN - Warnings 
+    // LogLevel::ERROR - Errors
+    // LogLevel::DEBUG - Debug
+    // LogLevel::INFO - Info
+    // Can combine with | for multiple flags
+    emscripten_log(static_cast<int>(level), "%s", msg);
 }
-
-
-void _js__update_client() {
-    Position &playerPos = registry.get<Position>(_player);
-    Shape &playerShape = registry.get<Shape>(_player);
-
-    // Update info on front end
-    _js__kvdata("x", playerPos.x);
-    _js__kvdata("y", playerPos.y);
-    _js__kvdata("z", playerPos.z);
-    _js__kvdata("gridSpacingValue", gridSpacingValue);
-}
-

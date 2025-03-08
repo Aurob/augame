@@ -1,7 +1,8 @@
 #include <SDL2/SDL.h>
 #include <SDL_image.h>
+#include <SDL_ttf.h>
+
 #include "../include/shaders.hpp"
-#include "../include/UIUtils.hpp"
 
 extern float seed;
 extern float gridSpacingValue;
@@ -34,6 +35,8 @@ SDL_Window* loadSDL() {
         printf("SDL_image could not initialize! SDL_image Error: %s\n", SDL_GetError());
         return nullptr;
     }
+    
+    TTF_Init();
 
     SDL_Window *mpWindow = SDL_CreateWindow(
         "Untitled",
@@ -46,6 +49,7 @@ SDL_Window* loadSDL() {
         printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
         return nullptr;
     }
+
 
     return mpWindow;
 }
@@ -130,6 +134,7 @@ void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, float x, flo
     GLint cropSizeLocation = glGetUniformLocation(shaderProgram, "cropSize");
     glUniform2f(cropSizeLocation, sizeX, sizeY);
 }
+
 void updateUniformsDebug(GLuint &shaderProgram, 
 float r, float g, float b, float a, float x, float y, 
 float scalex, float scaley, float angle) {
@@ -292,7 +297,7 @@ GLuint createProgram(const char* vertexShaderSrc, const char* fragmentShaderSrc)
 void loadImageAndCreateTexture(const char* imagePath, GLuint &textureID) {
     SDL_Surface* image = IMG_Load(imagePath);
     if (!image) {
-        // printf("IMG_Load: %s\n", IMG_GetError());
+        printf("IMG_Load: %s\n", IMG_GetError());
         return;
     }
     // printf("Image loaded successfully\n");
@@ -408,6 +413,35 @@ void loadTextures() {
     }
 }
 
+// // Assume you have a FontAtlas that maps characters to Glyph structs.
+// void renderText(const std::string &text, float x, float y, float scale,
+//                 GLuint shaderProgram, GLuint fontTexture, const FontAtlas &atlas)
+// {
+//     float penX = x;
+//     for (char c : text) {
+//         // Get glyph metrics from your atlas by character
+//         const Glyph &glyph = atlas.getGlyph(c);
+
+//         // Calculate quad position and dimensions for the glyph
+//         float posX = penX + glyph.offsetX * scale;
+//         float posY = y - glyph.offsetY * scale;
+//         float quadWidth  = glyph.glyphWidth * scale;
+//         float quadHeight = glyph.glyphHeight * scale;
+
+//         // Update uniforms using your existing texture shader mechanism.
+//         updateUniformsTexture(shaderProgram, fontTexture,
+//             posX, posY,                  // Position of the quad
+//             quadWidth, quadHeight,        // Scale (size) of the quad
+//             glyph.textureX, glyph.textureY,       // Crop start (texture coordinates)
+//             glyph.textureWidth, glyph.textureHeight); // Crop size
+
+//         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+//         // Advance the pen position horizontally by the glyph's advance metric
+//         penX += glyph.advance * scale;
+//     }
+// }
+
 void renderAll() {
 
     Position &playerPos = registry.get<Position>(_player);
@@ -446,8 +480,8 @@ void renderAll() {
         const auto& rhsShape = registry.get<Shape>(rhs);
 
         // Compare y + z + shape.z
-        float lhsYZS = lhsPos.y + lhsPos.z + lhsShape.size.z;
-        float rhsYZS = rhsPos.y + rhsPos.z + rhsShape.size.z;
+        float lhsYZS = lhsPos.y;// + lhsPos.z + lhsShape.size.z;
+        float rhsYZS = rhsPos.y;// + rhsPos.z + rhsShape.size.z;
         return lhsYZS < rhsYZS;
     });
 
@@ -469,9 +503,9 @@ void renderAll() {
             updateUniformsTexture(shaderProgramMap["texture"], 
                 textureIDMap[texture.name],
                 position.sx + playerShape.scaled_size.x,
-                position.sy + playerShape.scaled_size.y + shape.scaled_size.z,
+                position.sy + playerShape.scaled_size.y, // + shape.scaled_size.z,
                 shape.scaled_size.x, 
-                shape.scaled_size.y + shape.scaled_size.z,
+                shape.scaled_size.y, // + shape.scaled_size.z,
                 texture.x, texture.y, texture.w, texture.h
             );
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -491,7 +525,7 @@ void renderAll() {
                 auto ssizex = shape.scaled_size.x / divisorX;
                 auto ssizey = shape.scaled_size.y / divisorY;
                 auto posX = position.sx + playerShape.scaled_size.x;
-                auto posY = position.sy + playerShape.scaled_size.y + position.sz + playerShape.scaled_size.z;
+                auto posY = position.sy + playerShape.scaled_size.y; // + position.sz + playerShape.scaled_size.z;
 
                 // Increase size by 1%
                 auto increasedSsizex = ssizex * 1.01f;
@@ -502,7 +536,7 @@ void renderAll() {
                         updateUniformsTexture(shaderProgramMap["texture"], 
                             rootTexture,
                             (posX + i * ssizex*2) - shape.scaled_size.x + ssizex - (increasedSsizex - ssizex) / 2,
-                            (posY + j * ssizey*2) - shape.scaled_size.y - (increasedSsizey - ssizey) / 2,
+                            (posY + j * ssizey*2),
                             increasedSsizex, increasedSsizey,
                             texture.x, texture.y, texture.w, texture.h
                         );
@@ -514,7 +548,7 @@ void renderAll() {
                 updateUniformsTexture(shaderProgramMap["texture"], 
                     rootTexture,
                     position.sx + playerShape.scaled_size.x,
-                    position.sy + playerShape.scaled_size.y + position.sz + playerShape.scaled_size.z,
+                    position.sy + playerShape.scaled_size.y, // + position.sz + playerShape.scaled_size.z,
                     shape.scaled_size.x,
                     shape.scaled_size.y,
                     texture.x, texture.y, texture.w, texture.h
@@ -541,6 +575,7 @@ void renderAll() {
                 shape.scaled_size.x * current_texture.scalex, shape.scaled_size.y * current_texture.scaley,
                 current_texture.x, current_texture.y, current_texture.w, current_texture.h);
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
         } else if (registry.all_of<TextureAlts, Player>(entity)) {
             const auto& textureAlts = registry.get<TextureAlts>(entity);
             const auto& currentTextures = textureAlts.alts.at(textureAlts.current);
@@ -560,7 +595,7 @@ void renderAll() {
             updateUniformsTexture(shaderProgramMap["texture"], 
                 textureIDMap[current_texture.name],
                 position.sx + playerShape.scaled_size.x,
-                position.sy + playerShape.scaled_size.y + position.sz + playerShape.scaled_size.z*2,
+                position.sy + playerShape.scaled_size.y, // + position.sz + playerShape.scaled_size.z*2,
                 shape.scaled_size.x * current_texture.scalex, 
                 shape.scaled_size.y * current_texture.scaley,
                 current_texture.x, current_texture.y, 
@@ -576,38 +611,42 @@ void renderAll() {
                 angle = registry.get<Rotation>(entity).angle;
             }
 
+            float r = color.r;
+            float g = color.g; 
+            float b = color.b;
+
+            if(registry.all_of<Hovered>(entity)) {
+                r = 0.0f;
+                g = 0.0f;
+                b = 1.0f;
+            }
+            if(registry.all_of<Interacted>(entity)) {
+                r = 0.0f;
+                g = 1.0f;
+                b = 0.0f;
+            }
+
             updateUniformsDebug(shaderProgramMap["debug_entity"],
-                color.r, color.g, color.b, color.a,
-                position.sx + playerShape.scaled_size.x, 
-                position.sy + playerShape.scaled_size.y,
+                r, g, b, color.a,
+                position.sx + playerShape.scaled_size.x,
+                position.sy + playerShape.scaled_size.y,// + position.sz + playerShape.scaled_size.z*2,
                 shape.scaled_size.x, shape.scaled_size.y, 
                 angle);
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         }
-
     }
 
-    updateUIShader(shaderProgramMap["ui_layer"], 
-        width, height, gridSpacingValue,
-        toplefttile);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    // // Testing Text rendering with TTF_Font
     
-    // Handle UIElement Components
-    auto ui_elements = registry.view<UIElement, InView>();
-    for(auto& entity : ui_elements) {
-        auto& uiElement = registry.get<UIElement>(entity);
-        if(uiElement.visible) {
-            auto position = registry.get<Position>(entity);
-            auto shape = registry.get<Shape>(entity);
-            float posX = (1 - ((position.sx + playerShape.scaled_size.x + shape.scaled_size.x) + 1) / 2) * width;
-            float posY = (1 - ((position.sy + playerShape.scaled_size.y + shape.scaled_size.y) + 1) / 2) * height;
-            float sizeX = (shape.scaled_size.x + shape.scaled_size.x * 0.1) * width;
-            float sizeY = (shape.scaled_size.y + shape.scaled_size.y * 0.1) * height;
+    // TTF_Font* font = TTF_OpenFont("resources/fonts/42dotSans-Regular.ttf", 16);
+    // if (!font) {
+    //     printf("Failed to load font! SDL_ttf Error: %s\n", TTF_GetError());
+    // } else {
+    //     printf("Font loaded successfully\n");
+    // }
+    // SDL_Color color = {255, 255, 255, 255}; // White color
 
-            posX += uiElement.soffset.x;
-            posY += uiElement.soffset.y;
 
-            test_imgui(uiElement.content, posX, posY, sizeX, sizeY);
-        }
-    }
+    // Render Text here:
+    
 }
