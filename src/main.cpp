@@ -88,8 +88,6 @@ bool js_loaded() {
         loadTextures();
         makePlayer(registry);
         runFactories(registry);
-
-        emlog("Starting!", LogLevel::CONSOLE);
     }
     return true; 
 }

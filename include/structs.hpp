@@ -134,7 +134,11 @@ struct Teleport {
     bool reverse{false};
     bool disabled{false};
 };
-struct Teleportable {};
+struct Teleportable {
+    bool refresh;
+    bool done{false};
+    int timer;
+};
 
 struct Hoverable {
     int duration;
@@ -262,6 +266,7 @@ struct PhysicsBodyRect {
     p2d::RectangleBody *body;
     // p2d::CircleBody *body;
     bool added;
+    bool ignore;
 };
 
 struct Interactable {

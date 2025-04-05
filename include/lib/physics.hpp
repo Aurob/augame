@@ -159,6 +159,7 @@ namespace p2d {
     public:
 		// Custom EnTT features
 		entt::entity m_entity;
+		bool ignore;
 
         Body() : m_circle(false), m_rect(false), m_isStatic(false), mass(0.0f), theta(0.0f), 
                  thetaDot(0.0f), thetaDotDot(0.0f), IthetaDotDot(0.0f), inertia(1.0f), 
@@ -171,6 +172,7 @@ namespace p2d {
 		    restitution = std::clamp<float>(m, 0.0f, 1.0f);
             m_isStatic = isStatic;
 			m_entity = __entity;
+			ignore = false;
         }
 
 		void reset() { setVelocity({ 0.0f, 0.0f }); }
@@ -254,7 +256,6 @@ namespace p2d {
 		}
 	};
 
-	// Add this near the top of the physics.hpp file, inside the p2d namespace
 	struct CollisionInfo {
 		Body* bodyA;
 		Body* bodyB;
@@ -498,7 +499,9 @@ namespace p2d {
 						reverse_i_j = normalUnit * dy;
 					}
 				}
-				o->setTempPosition(o->getTempPosition() + reverse_i_j);
+
+				if(!p->ignore)
+					o->setTempPosition(o->getTempPosition() + reverse_i_j);
 
 				//initial velocity along normal
 				float normal_speed_o = o->getVelocity().dot(normalUnit);
@@ -508,7 +511,8 @@ namespace p2d {
 				float normal_speed_after_o = normal_speed_o * (o->getMass() - p->getMass()) / (o->getMass() + p->getMass()) + normal_speed_p * (2.0f * p->getMass()) / (o->getMass() + p->getMass());
 				Vec2f normal_velocity = normalUnit * normal_speed_after_o;	// = velocity_i_j because rectangles are axis alligned
 
-				o->setTempVelocity(normal_velocity);
+				if(!p->ignore)
+					o->setTempVelocity(normal_velocity);
 
 
 				// Create collision info
@@ -540,8 +544,8 @@ namespace p2d {
 				// };
 				
 				// Store the collision
-				// m_collisions.push_back(info);
-				
+				m_collisions.push_back(info);
+			
 				// Call the callback if set
 				if (onCollision != nullptr) {
 					onCollision(info);
@@ -609,6 +613,10 @@ namespace p2d {
 				if (o->isStatic()) {		//Static Bodies can be targets (collided with and resolved from), but are not resolved themselves.
 					continue;
 				}
+
+				// if (o->ignore) {
+				// 	continue;
+				// }
 
 				for (Body* p : m_Body) {	//Target Body
 

@@ -14,6 +14,25 @@ extern float defaultGSV;
 extern entt::entity _player;
 extern bool windowResized;
 
+void updateOther(entt::registry &registry) {
+
+    // auto interiors = registry.view<InteriorPortal, PhysicsBodyRect>();
+    // for(auto e : interiors) {
+    //     auto &interior = registry.get<InteriorPortal>(e);
+    //     auto &body = registry.get<PhysicsBodyRect>(e).body;
+    
+    //     if(interior.locked) {
+    //         if(body->ignore) {
+    //             body->ignore = false;
+    //         }
+    //     }
+    //     else {
+    //         if(!body->ignore) {
+    //             body->ignore = true;
+    //         }
+    //     }
+    // }
+}
 
 // void checkCollisions(entt::registry &registry, entt::entity entity, Position &entityPosition, Shape &entityShape, std::vector<entt::entity> &_collidables, std::vector<Vector3f> &overlaps)
 // {
