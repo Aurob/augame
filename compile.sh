@@ -6,9 +6,10 @@ start_time=$(date +%s)
   -s USE_SDL_IMAGE=2\
   -s STB_IMAGE=1\
   --embed-file resources\
+  -sNO_DISABLE_EXCEPTION_CATCHING\
   -lSDL\
   -s SDL2_IMAGE_FORMATS='["png", "jpg"]'\
-  -s EXPORTED_FUNCTIONS="['_main', '_load_json', '_isready', _malloc, _free, UTF8ToString, stringToUTF8]"\
+  -s EXPORTED_FUNCTIONS="['_main', '_load_json', '_isready','_reload', _malloc, _free, UTF8ToString, stringToUTF8]"\
   -o build/$1.js\
   -O0
   

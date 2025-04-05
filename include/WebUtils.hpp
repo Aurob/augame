@@ -10,6 +10,7 @@ extern int width, height;
 extern bool windowResized;
 extern float gridSpacingValue;
 extern bool ready;
+extern bool first_start;
 extern entt::entity _player;
 extern entt::registry registry;
 
@@ -49,9 +50,59 @@ extern "C"
         ready = true;
     }
 
+    void reload()
+    {
+        ready = false;
+        first_start = false;
+    }
+
     void load_json(char *str)
     {
         nlohmann::json js_json = str_to_json(str);
+        if (js_json.contains("log")) {
+            if (js_json["log"].is_string()) {
+                emlog(js_json["log"].get<std::string>().c_str());
+            } else if (js_json["log"].is_object()) {
+                std::string message;
+                LogLevel level = LogLevel::CONSOLE;
+                
+                // Merge all key-value pairs into a message
+                for (auto& [key, value] : js_json["log"].items()) {
+                    if (key == "level") {
+                        if (value.is_string()) {
+                            std::string levelStr = value.get<std::string>();
+                            if (levelStr == "WARN") level = LogLevel::WARN;
+                            else if (levelStr == "ERROR") level = LogLevel::ERROR;
+                            else if (levelStr == "DEBUG") level = LogLevel::DEBUG;
+                            else if (levelStr == "INFO") level = LogLevel::INFO;
+                        } else if (value.is_number()) {
+                            level = static_cast<LogLevel>(value.get<int>());
+                        }
+                    } else {
+                        if (!message.empty()) message += ", ";
+                        if (!key.empty()) {
+                            // Get the string value without quotes
+                            std::string valueStr;
+                            if (value.is_string()) {
+                                valueStr = value.get<std::string>();
+                            } else {
+                                valueStr = value.dump();
+                            }
+                            message += key + ": " + valueStr;
+                        } else {
+                            // Get the string value without quotes
+                            if (value.is_string()) {
+                                message += value.get<std::string>();
+                            } else {
+                                message += value.dump();
+                            }
+                        }
+                    }
+                }
+                
+                emlog(message.c_str(), level);
+            }
+        }
         if (js_json.contains("world"))
         {
             if (js_json["world"].contains("width") && js_json["world"]["width"].is_number())
@@ -384,9 +435,21 @@ extern "C"
 
                             // Interactable
                             safe_emplace(registry, entity, [&]() {
-                                if (components.contains("Interactable") && components["Interactable"].is_boolean())
+                                if (components.contains("Interactable"))
                                 {
-                                    registry.emplace<Interactable>(entity);
+                                    float radius = 0.5f;
+                                    bool toggleState = false;
+                                    
+                                    if (components["Interactable"].is_object())
+                                    {
+                                        auto &interactable = components["Interactable"];
+                                        if (interactable.contains("radius") && interactable["radius"].is_number())
+                                            radius = interactable["radius"];
+                                        if (interactable.contains("toggleState") && interactable["toggleState"].is_boolean())
+                                            toggleState = interactable["toggleState"];
+                                    }
+                                    
+                                    registry.emplace<Interactable>(entity, 0, radius, toggleState);
                                 }
                             }, "Interactable");
 

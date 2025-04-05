@@ -16,13 +16,13 @@ class EntityBuilder {
         interior: 1,
         moveable: 1,
         hoverable: 1,
-        interactable: 1,
+        interactable: 3,
         configurable: 1,
         teleporter: 4,
         teleportable: 1,
         draggable: 2,
         tone: 5,
-        ui: 5
+        ui: 5,
     };
     
     static componentParsers = {
@@ -73,7 +73,12 @@ class EntityBuilder {
             }
         }),
         hoverable: () => ({ Hoverable: true }),
-        interactable: () => ({ Interactable: true }),
+        interactable: (parts, i) => ({ 
+            Interactable: { 
+                radius: parts[i] !== undefined ? parseFloat(parts[i]) : 0.5,
+                toggleState: parts[i+1] === "true" || parts[i+1] === "1"
+            } 
+        }),
         configurable: () => ({ Configurable: true }),
         teleporter: (parts, i) => ({ Teleporter: { destination: { x: parseFloat(parts[i]), y: parseFloat(parts[i+1]), z: parseFloat(parts[i+2]) }, interiorEntity: parseInt(parts[i+3], 10) } }),
         teleportable: () => ({ Teleportable: true }),
@@ -97,6 +102,7 @@ class EntityBuilder {
                 Object.assign(this.components, result);
                 i += this.getComponentParameterCount(componentName, result);
             } else {
+                console.log(parts[i-1])
                 console.warn(`Unknown component or parser not implemented: ${componentName}`);
                 i++;
             }

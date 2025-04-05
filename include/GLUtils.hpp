@@ -492,7 +492,7 @@ void renderAll() {
         auto shape = registry.get<Shape>(entity);
         
         bool isDebug = registry.all_of<Debug>(entity);
-        bool isTeleport = registry.all_of<Teleport>(entity);
+        bool is = registry.all_of<Teleport>(entity);
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -528,8 +528,8 @@ void renderAll() {
                 auto posY = position.sy + playerShape.scaled_size.y; // + position.sz + playerShape.scaled_size.z;
 
                 // Increase size by 1%
-                auto increasedSsizex = ssizex * 1.01f;
-                auto increasedSsizey = ssizey * 1.01f;
+                auto increasedSsizex = ssizex;// * 1.01f;
+                auto increasedSsizey = ssizey;// * 1.01f;
 
                 for (int i = 0; i < divisorX; ++i) {
                     for (int j = 0; j < divisorY; ++j) {

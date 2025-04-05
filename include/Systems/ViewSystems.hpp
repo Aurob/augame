@@ -17,12 +17,22 @@ extern bool windowResized;
 void updatePositions(entt::registry &registry)
 {
     Position playerPos = registry.get<Position>(_player);
+
     bool playerIsInside = registry.all_of<Inside>(_player);
+    entt::entity playerInterior;
+    if(playerIsInside) {
+        auto playerInside = registry.get<Inside>(_player);
+        playerInterior = playerInside.interior;
+    }
 
     auto entities = registry.view<Position, Shape>();
     for (auto entity : entities)
     {
-        
+        bool logit;
+        if(registry.all_of<Id>(entity)) {
+            if(registry.get<Id>(entity).name == "door2") logit = true;
+        }
+
         auto &position = entities.get<Position>(entity);
         auto &shape = entities.get<Shape>(entity);
 
@@ -35,12 +45,19 @@ void updatePositions(entt::registry &registry)
         position.sz = (2 * posZ / height - 1) / defaultGSV - shape.scaled_size.z * 0.999f;
 
 
-        bool isWithinBounds = (entity == _player) || (
+        if(entity == _player) {
+            registry.emplace_or_replace<Visible>(entity);
+            registry.emplace_or_replace<InView>(entity);
+            continue;
+        }
+
+        bool isWithinBounds = (
             position.sx + shape.scaled_size.x >= -1 
             && position.sx - shape.scaled_size.x <= 1 
             && (position.sy + shape.scaled_size.y + shape.scaled_size.z*2 + shape.scaled_size.y) >= -1
             && (position.sy - shape.scaled_size.y - shape.scaled_size.z*2 - shape.scaled_size.y) <= 1
         );
+
 
         bool isVisible = true;
         bool isInView = true;
@@ -50,7 +67,10 @@ void updatePositions(entt::registry &registry)
 
             if(registry.all_of<Inside>(entity)) { 
                 auto _interior = registry.get<Inside>(entity).interior;
-
+                // if(_interior != playerInterior) {
+                //             isVisible = false;
+                //             isInView = false;
+                // }
                 if(!entityIsPortal) {
                     if(!playerIsInside) {
                         bool hideInside = registry.get<Interior>(_interior).hideInside;
@@ -59,10 +79,15 @@ void updatePositions(entt::registry &registry)
                             isInView = false;
                         }
                     }
+                    else if(entityIsPortal) {
+                        if(_interior != playerInterior) {
+                            isVisible = false;
+                            isInView = false;
+                        }
+                    }
                     else {
-                        auto playerInside = registry.get<Inside>(_player);
 
-                        if(entity != playerInside.interior && _interior != playerInside.interior) {
+                        if(entity != playerInterior && _interior != playerInterior) {
                             isVisible = false;
                             isInView = false;
                         }
@@ -102,16 +127,24 @@ void updatePositions(entt::registry &registry)
                 }
             }
         }
-
-        if (isVisible)
+        if (isVisible) {
             registry.emplace_or_replace<Visible>(entity);
-        else if (registry.all_of<Visible>(entity)) {
+        } else if (registry.all_of<Visible>(entity)) {
             registry.remove<Visible>(entity);
         }
-        if (isInView)
+        if (isInView) {
             registry.emplace_or_replace<InView>(entity);
+            if (registry.all_of<PhysicsBodyRect>(entity) && !registry.all_of<InteriorPortal>(entity)) {
+                auto& physBody = registry.get<PhysicsBodyRect>(entity);
+                physBody.body->ignore = false;
+            }
+        }
         else if (registry.all_of<InView>(entity)) {
-            registry.remove<InView>(entity);
+            // registry.remove<InView>(entity);
+            // if (registry.all_of<PhysicsBodyRect>(entity)) {
+            //     auto& physBody = registry.get<PhysicsBodyRect>(entity);
+            //     physBody.body->ignore = true;
+            // }
         }
     }
 }

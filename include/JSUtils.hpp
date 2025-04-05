@@ -30,6 +30,20 @@ void _js__ready()
     });
 }
 
+void _js__show_alert(string message) 
+{
+    EM_ASM({
+        Module.show_alert(UTF8ToString($0));
+    }, message.c_str());
+}
+
+void _js__play_tone(string note, string duration, float volume = 0.5, string type = "sine")
+{
+    // Play a tone
+    EM_ASM_({
+        Module.play_tone(UTF8ToString($0), UTF8ToString($1), $2, UTF8ToString($3));
+    }, note.c_str(), duration.c_str(), volume, type.c_str());
+}
 void _js__fetch_configs()
 {
     // Fetch the configs from JS
@@ -38,20 +52,34 @@ void _js__fetch_configs()
     });
 }
 enum LogLevel {
-    CONSOLE = EM_LOG_CONSOLE,
-    WARN = EM_LOG_WARN, 
-    ERROR = EM_LOG_ERROR,
-    DEBUG = EM_LOG_DEBUG,
-    INFO = EM_LOG_INFO
+    CONSOLE = 1,       // Output to console
+    WARN = 2,          // Output to console as a warning
+    ERROR = 4,         // Output to console as an error
+    INFO = 512,        // Output to console as info
+    DEBUG = 256,       // Output to console as debug
+    JS_STACK = 16,     // Add a JS stack trace to the message
+    NO_PATHS = 64,     // Omit file paths in stack traces
 };
 
-void emlog(const char* msg, LogLevel level = LogLevel::CONSOLE) {
+void emlog(const char* msg, LogLevel level = CONSOLE) {
     // Supports log levels:
     // LogLevel::CONSOLE - Standard output (default)
     // LogLevel::WARN - Warnings 
     // LogLevel::ERROR - Errors
     // LogLevel::DEBUG - Debug
     // LogLevel::INFO - Info
+    // LogLevel::JS_STACK - Add a JS stack trace
+    // LogLevel::NO_PATHS - Omit file paths in stack traces
     // Can combine with | for multiple flags
-    emscripten_log(static_cast<int>(level), "%s", msg);
+    
+    // Use emscripten_log which will be compiled to call emscriptenLog internally
+    // This ensures proper warning coloring based on the flags
+    int flags = static_cast<int>(level);
+    
+    // Make sure CONSOLE flag is set if any output is desired
+    if (!(flags & CONSOLE) && (flags & (WARN | ERROR | INFO | DEBUG))) {
+        flags |= CONSOLE;
+    }
+    
+    emscripten_log(flags, "%s", msg);
 }

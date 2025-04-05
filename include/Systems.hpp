@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Systems/CollisionSystems.hpp"
+#include "Systems/OtherSystems.hpp"
 #include "Systems/PlayerSystems.hpp"
 #include "Systems/ActionSystems.hpp"
 #include "Systems/ViewSystems.hpp"
@@ -11,10 +11,11 @@ extern float deltaTime;
 
 void updateFrame()
 {
+    updateOther(registry);
+    updateActions(registry);
     updatePhysics(registry);
     updatePlayer(registry);
     updateInteractions(registry);
     updateShapes(registry);
     updatePositions(registry);
-    updateActions(registry);
 }

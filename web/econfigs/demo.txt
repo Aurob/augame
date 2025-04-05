@@ -1,0 +1,44 @@
+--  ░▒▓███████▓▒░░▒▓█▓▒░       ░▒▓██████▓▒░░▒▓█▓▒░░▒▓█▓▒░ 
+--  ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░ 
+--  ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░ 
+--  ░▒▓███████▓▒░░▒▓█▓▒░      ░▒▓████████▓▒░░▒▓██████▓▒░  
+--  ░▒▓█▓▒░      ░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░     
+--  ░▒▓█▓▒░      ░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░     
+--  ░▒▓█▓▒░      ░▒▓████████▓▒░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░                              
+
+-- ** note: order matters, create entities that need to be referenced by other entities first.
+
+-- @@ first room1, player will start in here
+id 1 room position 0.5 -5 0 shape 10 10 0 color 0.5 0.5 0.5 1.0 renderPriority -1 interior textureGroupPart room1 s115 10 10
+
+-- ## room1 top wall
+id 11 roomwall position 0.5 -11 0 shape 10 2 1 color 0.1 0.2 0.3 1.0 renderPriority 2 inside 1 textureGroupPart room1 s227 10 2
+id 11 roomwall5 position 0.5 -9.5 1 shape 4.5 .1 1 color 0.1 0.2 0.3 1.0 renderPriority 0 inside 1 collidable
+id 12 roomwall55 position 6 -9.5 1 shape 4.5 .1 1 color 0.1 0.2 0.3 1.0 renderPriority 0 inside 1 collidable
+
+-- !! room1 bottom wall
+id 11 roomwall2 position 0.5 -1 1 shape 10 2 1 color 0.1 0.2 0.3 1.0 renderPriority 0 inside 1 textureGroupPart room1 s227 10 2
+id 11 roomwall25 position 0.5 0.5 1 shape 10 .1 1 color 0.1 0.2 0.3 1.0 renderPriority 0 inside 1 collidable
+
+-- ## second room, 2 doors will connect this room and the first
+id 2 room2 position 5 -15 0 shape 2.5 10 0 color 0.5 0.5 0.5 1.0 renderPriority -1 interior textureGroupPart room1 s118 2.5 10
+
+-- ## door connecting room 1 and room 2
+-- ** note that room2 has to be declared first
+
+id 121 door1 position 5 -9.5 0 shape 1 .5 0 color 1 1 1 1 inside 1 renderPriority 2 collidable hoverable interiorPortal 2 1 0 interactable
+-- id 121 tp1 position 5 -9.55 0 shape 1 .05 0 color .2 1 1 1 inside 1 renderPriority 2 collidable hoverable teleporter 5 -10.9 0
+-- id 121 tp2 position 5 -9.55 0 shape 1 .05 0 color .2 1 1 1 inside 2 renderPriority 2 collidable hoverable teleporter 5 -9 0
+-- id 122 door2 position 4.75 -9.8 0 shape 1.5 .5 0 color 1 1 1 1 interiorPortal 1 2 0 inside 2 renderPriority 2 collidable hoverable
+
+-- ## entity in room 2
+id 4 room3 position 8 -20 0 shape 20 5 0 interior renderPriority -1 textureGroupPart room1 s220 20 5
+
+id 3 npc position 5.5 -3 0 shape .5 .5 0 color 0.85 0.21 0.64 0.75 movement 0 1000 0 collidable inside 1 hoverable interactable 3
+
+id 125 door2 position 7.5 -19.5 0 shape 0.5 1 0 color 1 1 1 1 inside 2 renderPriority 2 collidable hoverable interiorPortal 2 4 0 interactable
+
+-- ## player entity, this entity is what will drive the camera 
+id 0 player position 5 -6 0 shape .75 .75 0 color 0.1 0.2 0.3 1 movement 575 .5 0 collidable inside 1 teleportable
+
+id 7 thing position 25 -20 0 shape 1 1 1 color 1 1 1 1 inside 4
