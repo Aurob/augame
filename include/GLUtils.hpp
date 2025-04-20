@@ -118,7 +118,10 @@ void updateUIShader(GLuint &shaderProgram, float _width, float _height, float gr
     glUniform2fv(toplefttileLocation, 1, toplefttile);
 }
 
-void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, float x, float y, float scalex, float scaley, float startX = 0.0f, float startY = 0.0f, float sizeX = 1.0f, float sizeY = 1.0f) {
+void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, float x, float y, 
+                            float scalex, float scaley, 
+                            float startX = 0.0f, float startY = 0.0f, 
+                            float sizeX = 1.0f, float sizeY = 1.0f, float angle = 0.0f) {
     glUseProgram(shaderProgram);
     glBindTexture(GL_TEXTURE_2D, textureID);
 
@@ -133,6 +136,9 @@ void updateUniformsTexture(GLuint &shaderProgram, GLuint textureID, float x, flo
 
     GLint cropSizeLocation = glGetUniformLocation(shaderProgram, "cropSize");
     glUniform2f(cropSizeLocation, sizeX, sizeY);
+    
+    GLint angleLocation = glGetUniformLocation(shaderProgram, "angle");
+    glUniform1f(angleLocation, angle);
 }
 
 void updateUniformsDebug(GLuint &shaderProgram, 
@@ -568,12 +574,16 @@ void renderAll() {
                     shape.scaled_size.x, shape.scaled_size.y, 0.0f);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
             }
+            float angle = 0.0f;
+            if(registry.all_of<Rotation>(entity)) {
+                angle = registry.get<Rotation>(entity).angle;
+            }
 
             updateUniformsTexture(shaderProgramMap["texture"], 
                 textureIDMap[current_texture.name],
                 position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
                 shape.scaled_size.x * current_texture.scalex, shape.scaled_size.y * current_texture.scaley,
-                current_texture.x, current_texture.y, current_texture.w, current_texture.h);
+                current_texture.x, current_texture.y, current_texture.w, current_texture.h, angle);
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
         } else if (registry.all_of<TextureAlts, Player>(entity)) {
@@ -628,8 +638,8 @@ void renderAll() {
 
             updateUniformsDebug(shaderProgramMap["debug_entity"],
                 r, g, b, color.a,
-                position.sx + playerShape.scaled_size.x,
-                position.sy + playerShape.scaled_size.y,// + position.sz + playerShape.scaled_size.z*2,
+                position.sx + playerShape.scaled_size.x, 
+                position.sy + playerShape.scaled_size.y,
                 shape.scaled_size.x, shape.scaled_size.y, 
                 angle);
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);

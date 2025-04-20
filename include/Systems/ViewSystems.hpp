@@ -164,7 +164,7 @@ void updateShapes(entt::registry &registry)
     for (auto &entity : entities)
     {
         auto &shape = entities.get<Shape>(entity);
-        shape.scaled_size.x = shape.size.x * xScale;
-        shape.scaled_size.y = shape.size.y * yScale;
+        shape.scaled_size.x = shape.size.x * xScale*1.1;
+        shape.scaled_size.y = shape.size.y * yScale*1.1;
     }
 }

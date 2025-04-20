@@ -244,11 +244,31 @@ var Module = {
         .then(data => {
           // // Store the config text in the textarea
           // Process the config text
+
+          // data += this.addRoom(1, 'test', 0, 0, 10, 10);
+          // data += this.addRoom(2, 'test', 10, 0, 10, 10);
+          // console.log(data)
           this.processConfigText(data);
         });
       })
   },
 
+  // Add a room to the config
+  addRoom(id, name, x, y, width, height) {
+      // Create room template based on the format in demo.txt
+      const roomTemplate = `
+id ${id} ${name} position ${x} ${y} 0 shape ${width} ${height} 0 color 0.5 0.5 0.5 1.0 renderPriority -1 interior 
+id ${id+1} ${name}wall_top position ${x} ${y-1} 0 shape ${width} 2 1 color 0.1 0.2 0.3 1.0 renderPriority 2 inside ${id} textureGroupPart room1 s227 ${width} 2
+id ${id+2} ${name}wall_top_col position ${x} ${y+0.5} 1 shape ${width} .1 1 color 0.1 0.2 0.3 1.0 renderPriority 0 inside ${id} collidable
+id ${id+3} ${name}wall_bottom position ${x} ${y+height-1} 1 shape ${width} 2 1 color 0.1 0.2 0.3 1.0 renderPriority 1 inside ${id} textureGroupPart room1 s227 ${width} 2
+id ${id+4} ${name}wall_bottom_col position ${x} ${y+height+0.5} 1 shape ${width} .1 1 color 0.1 0.2 0.3 1.0 renderPriority 0 inside ${id} collidable
+id ${id+5} ${name}wall_left position ${x-0.1} ${y+.5} 1 shape .1 ${height} 1 color 0.1 0.2 0.3 1.0 inside ${id} collidable
+id ${id+6} ${name}wall_right position ${x+width} ${y+.5} 1 shape .1 ${height} 1 color 0.1 0.2 0.3 1.0 inside ${id} collidable
+`;
+              
+    //Append the room template to the existing config data
+    return roomTemplate;
+  },
   start() {
     console.log("Starting...");
     this._isready();

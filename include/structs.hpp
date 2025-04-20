@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include "../include/lib/entt.hpp"
 #include "../include/lib/physics.hpp"
-
+#include <emscripten.h>
 using namespace std;
 
 struct context
@@ -243,6 +243,14 @@ struct TextureAlts {
     std::string current;
 };
 
+struct TextureAnimation {
+    double timestamp{emscripten_get_now() / 1000.0};  // Current time position in the animation (in seconds)
+    float interval{1.0f};                            // Total duration of the animation in seconds
+    bool paused{false};                              // Whether the animation is currently paused
+    float currentTime{0.0f};                         // Current time in the animation cycle
+    bool noloop{false};
+};
+
 struct TextureGroupPart {
     std::string groupName;
     std::string partName;
@@ -258,6 +266,8 @@ struct Keys {
 
 struct Cursor {
     Position position;
+    bool firstdown; // Used to check if this is the first time the mouse is down after being up
+    bool firstup; // same but reversed
 };
 
 struct Test { std::string value; };
@@ -277,4 +287,20 @@ struct Interactable {
         toggleState = !toggleState;
         return toggleState;
     }
+};
+
+struct Flag {
+    std::string name;
+    int id;
+};
+struct ActionLimits {
+    std::string name;
+    std::unordered_map<std::string, int> maxInstances;      // Maps effect name to max number of concurrent instances
+    std::unordered_map<std::string, float> timeoutIntervals; // Maps effect name to timeout interval in seconds
+    std::unordered_map<std::string, int> currentInstances;   // Tracks current number of instances per effect
+    std::unordered_map<std::string, float> lastCreationTime; // Tracks when each effect was last created
+};
+
+struct Effect {
+    std::string name;
 };

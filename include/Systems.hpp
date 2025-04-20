@@ -5,6 +5,7 @@
 #include "Systems/ActionSystems.hpp"
 #include "Systems/ViewSystems.hpp"
 #include "Systems/PhysicsSystems.hpp"
+#include "Systems/TextureSystems.hpp"
 
     
 extern float deltaTime;
@@ -15,7 +16,9 @@ void updateFrame()
     updateActions(registry);
     updatePhysics(registry);
     updatePlayer(registry);
-    updateInteractions(registry);
     updateShapes(registry);
-    updatePositions(registry);
+    updatePositions(registry);    
+    updateInteractions(registry);
+
+    updateAnimations(registry);
 }

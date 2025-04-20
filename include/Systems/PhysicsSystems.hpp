@@ -130,26 +130,16 @@ void updatePhysics(entt::registry &registry) {
                     pos.x + shape.size.x/2, pos.y + shape.size.y/2, 
                     mass, restitution, isstatic, entity
                 );
-                if(registry.all_of<InteriorPortal>(entity)) {
+
+                if(registry.any_of<InteriorPortal, Interior>(entity)) {
                     rect.body->ignore = true;
                 }
-                // rect.body = new p2d::CircleBody(shape.size.x / 4, pos.x + shape.size.x / 4, pos.y + shape.size.y / 4, mass, restitution, isstatic);
+
                 physics.add(rect.body);
             }
             else if (!rect.body->isStatic()) {
-                // Skip position update if entity was recently teleported
                 
                 bool update = true;
-                // if (registry.all_of<OnInteriorPortal>(entity)) {
-                //     // auto &tpl = registry.get<Teleportable>(entity);
-                //     // if(tpl.refresh) {
-                //     //     // When teleporting, update physics body position to match component position
-                //         rect.body->setPosition({pos.x + shape.size.x/2, pos.y + shape.size.y/2});
-                //     //     tpl.refresh = false;
-                //     //     tpl.timer = static_cast<int>(emscripten_get_now());
-                //         update = false;
-                //     // }
-                // } 
                 if(update) {
                     p2d::Vec2f currentPos = rect.body->getPosition();
                     pos.x = currentPos.x - shape.size.x/2;
