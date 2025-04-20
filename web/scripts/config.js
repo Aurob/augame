@@ -103,10 +103,20 @@ const basicTextures = [
     // ['doors', 'doors.png'],
     ['instruments', 'instruments.png'],
     // ['ladders', 'ladders.png'],
-    ['font', '42dotSans-Regular-ttf.png']
+    ['font', '42dotSans-Regular-ttf.png'],
+    ['test1', 'test_gif/test1.png'],
+    ['test2', 'test_gif/test2.png'],
+    ['effects', 'Combat-Sheet.png']
 ].map(([name, path]) => createBasicTexture(name, path));
 
 CONFIG.textures = basicTextures;
+
+for(let i = 1; i <= 60; i++) {
+    CONFIG.textures.push(createBasicTexture(`orb${i}`, `orb_gif/${i}.png`));
+}
+for(let i = 1; i <= 290; i++) {
+    CONFIG.textures.push(createBasicTexture(`hit1${i}`, `hit1_gif/${i}.png`));
+}
 
 // Add texture groups
 const tilesetGroups = [
@@ -114,7 +124,8 @@ const tilesetGroups = [
     // ['slime2', 'SlimeGreenIdle.png', 1430, 715, 32, 32],
     ['room1', 'Room_Builder_free_32x32.png', 544, 736, 32, 32],
     ['font', '42dotSans-Regular-ttf.png', 330, 273, 33, 39],
-    ['instruments', 'instruments.png', 512, 544, 32, 32]
+    ['instruments', 'instruments.png', 512, 544, 32, 32],
+    ['effects', 'Combat-Sheet.png', 640, 1856, 64, 64]
 ].map(([name, path, width, height, tileWidth, tileHeight]) => 
     createTilesetGroup(name, path, width, height, tileWidth, tileHeight)
 );

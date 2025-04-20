@@ -160,6 +160,7 @@ namespace p2d {
 		// Custom EnTT features
 		entt::entity m_entity;
 		bool ignore;
+		bool invert;
 
         Body() : m_circle(false), m_rect(false), m_isStatic(false), mass(0.0f), theta(0.0f), 
                  thetaDot(0.0f), thetaDotDot(0.0f), IthetaDotDot(0.0f), inertia(1.0f), 
@@ -173,6 +174,7 @@ namespace p2d {
             m_isStatic = isStatic;
 			m_entity = __entity;
 			ignore = false;
+			invert = false;
         }
 
 		void reset() { setVelocity({ 0.0f, 0.0f }); }
@@ -517,6 +519,16 @@ namespace p2d {
 
 				// Create collision info
 				CollisionInfo info(o, p);
+
+				// Store the collision
+				m_collisions.push_back(info);
+			
+				// Call the callback if set
+				if (onCollision != nullptr) {
+					onCollision(info);
+				}
+				
+				// KEEP THIS FOR REFERENCE LATER
 				// info.normal = normalUnit;
 				// info.penetrationDepth = (dx <= dy) ? dx : dy;
 				
@@ -542,14 +554,6 @@ namespace p2d {
 				// 	(minOverlap.x + maxOverlap.x) / 2.0f,
 				// 	(minOverlap.y + maxOverlap.y) / 2.0f
 				// };
-				
-				// Store the collision
-				m_collisions.push_back(info);
-			
-				// Call the callback if set
-				if (onCollision != nullptr) {
-					onCollision(info);
-				}
 
 			}
 		}

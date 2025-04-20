@@ -5,7 +5,9 @@
 #include "../structs.hpp"
 #include "../JSUtils.hpp"
 #include "../lib/physics.hpp"
+#include "../EntityFactory.hpp"
 #include <vector>
+#include <unordered_map>
 
 extern p2d::Physics physics;
 extern float deltaTime;
@@ -23,6 +25,11 @@ std::vector<std::string> dialog_list = {
     "One more room to go",
     "There it is!",
 };
+std::unordered_map<std::string, int> maxInstances = {{"hit1", 100}};      // Maps effect name to max number of concurrent instances
+std::unordered_map<std::string, float> timeoutIntervals = {{"hit1", 0.01f}}; // Maps effect name to timeout interval in seconds
+std::unordered_map<std::string, int> currentInstances = {{"hit1", 0}};   // Tracks current number of instances per effect
+std::unordered_map<std::string, float> lastCreationTime = {{"hit1", 0.0f}}; // Tracks when each effect was last created
+
 void updateActions(entt::registry &registry)
 {
     auto tickAction_entities = registry.view<Visible, TickAction, Movement>();
@@ -40,11 +47,11 @@ void updateActions(entt::registry &registry)
             // }
         }
 
-        action.time += deltaTime*5;
-        if (action.time >= interval) {
-            action.action(registry, entity);
-            action.time = 0.0f; // Reset the time after triggering the action
-        }
+        // action.time += deltaTime*5;
+        // if (action.time >= interval) {
+        //     action.action(registry, entity);
+        //     action.time = 0.0f; // Reset the time after triggering the action
+        // }
     }
 
 
@@ -114,6 +121,40 @@ void updateActions(entt::registry &registry)
         
         npcPhysics.body->applyForce(direction);
     }
+    
+    auto tickAction_entities2 = registry.view<TickAction>();
+    for(auto e : tickAction_entities2) {
+        auto& tickAction = registry.get<TickAction>(e);
+        
+        // Check if it's time to trigger the action
+        if (tickAction.time + tickAction.interval <= SDL_GetTicks() / 1000.0f) {
+            // Execute the action
+            if (tickAction.action) {
+                tickAction.action(registry, e);
+            }
+            
+            // Reset the timer
+            tickAction.time = SDL_GetTicks() / 1000.0f;
+        }
+    }
+
+    auto flagged = registry.view<Flag>();
+    for(auto e : flagged) {
+        auto& flag = registry.get<Flag>(e);
+        
+        if(flag.name == "delete") {
+            // Check if entity has Effect component and decrement the counter if applicable
+            if (registry.all_of<Effect>(e)) {
+                auto idView = registry.try_get<Id>(e);
+                if (idView && currentInstances.find(idView->name) != currentInstances.end()) {
+                    // Decrement the counter for this effect type
+                    currentInstances[idView->name]--;
+                }
+            }
+            
+            registry.destroy(e);
+        }
+    }
 }
 
 
@@ -148,7 +189,6 @@ void updateInteractions(entt::registry &registry)
         {
             continue;
         }
-
         auto &position = debug_entities.get<Position>(entity);
         auto &shape = debug_entities.get<Shape>(entity);
         auto &interactable = debug_entities.get<Interactable>(entity);
@@ -160,7 +200,11 @@ void updateInteractions(entt::registry &registry)
 
         // Normalize interactable radius using the average of the scaled sizes
         float normalizedRadius = interactable.radius * (shape.scaled_size.x + shape.scaled_size.y) / 2.0f;
-
+        
+        // Calculate cursor position in screen coordinates
+        float cursorScreenX = cursor.position.sx;
+        float cursorScreenY = cursor.position.sy;
+        
         // Check for boundary collision extended by normalized interactable.radius
         if (normalizedCursorX >= position.sx - shape.scaled_size.x - normalizedRadius &&
             normalizedCursorX <= position.sx + shape.scaled_size.x + normalizedRadius &&
@@ -169,6 +213,7 @@ void updateInteractions(entt::registry &registry)
         {
             mouseCollides = true;
         }
+        
         if (mouseCollides)
         {
             if (!registry.all_of<Hovered>(entity))
@@ -205,12 +250,15 @@ void updateInteractions(entt::registry &registry)
                 }
 
                 keys[SDL_BUTTON_LEFT] = false;
+
+                    
             }
             else
             {
                 if (registry.all_of<Interacted>(entity))
                 {
                     registry.remove<Interacted>(entity);
+
                 }
             }
         }
@@ -225,6 +273,47 @@ void updateInteractions(entt::registry &registry)
             if (registry.all_of<Interacted>(entity))
             {
                 registry.remove<Interacted>(entity);
+            }
+
+            if(keys[SDL_BUTTON_LEFT]) {
+                // Check if we can create a new effect based on limits
+                std::string effectName = "hit1";
+                float currentTime = emscripten_get_now() / 1000.0f;
+                
+                // Check if we've exceeded the maximum number of instances
+                if(currentInstances[effectName] < maxInstances[effectName]) {
+                    // Check if enough time has passed since the last creation
+                    if(currentTime - lastCreationTime[effectName] >= timeoutIntervals[effectName]) {
+                    
+                        makeEffectEntity(registry, cursorScreenX, cursorScreenY, 0, effectName, playerInterior);
+                        currentInstances[effectName]++;
+                        lastCreationTime[effectName] = currentTime;
+                    }
+                }
+                // // Add effect entity with TickAction to destroy itself
+                // auto effect = registry.create();
+                // auto idview = registry.view<Id>();
+                // for(auto e : idview) {
+                //     auto id = idview.get<Id>(e);
+                //     if(id.name=="hit1") {
+                //         // Get player cursor position
+                //         auto& cursor = registry.get<Cursor>(_player);
+                        
+                //         // Set the hit effect position to the cursor position
+                //         if (registry.all_of<Position>(e)) {
+                //             Position& position = registry.get<Position>(e);
+                //             position.x = cursor.position.x;
+                //             position.y = cursor.position.y;
+                //         }
+                        
+                //         // Reset animation to first frame
+                //         if (registry.all_of<Textures>(e)) {
+                //             auto& textures = registry.get<Textures>(e);
+                //             textures.current = 1;
+                //         }
+                //     }
+                // }
+
             }
         }
     }

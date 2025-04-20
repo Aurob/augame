@@ -2,6 +2,8 @@
 #include "shaders.hpp"
 #include "lib/entt.hpp"
 #include "../include/structs.hpp"
+#include <vector>
+#include <unordered_map>
 #include "lib/json.hpp"
 
 using namespace std;
@@ -209,6 +211,8 @@ extern "C"
 
         if (js_json.contains("Entities") && js_json["Entities"].is_array())
         {
+
+            std::unordered_map<entt::entity, entt::entity> needsPlaceInside{};
             for (const auto &_el : js_json["Entities"])
             {
                 if (_el.is_object())
@@ -373,31 +377,25 @@ extern "C"
                                     registry.emplace<InteriorPortal>(entity, InteriorPortal{portalA, portalB, locked});
                                 }
                             }, "InteriorPortal");
-
                             safe_emplace(registry, entity, [&]() {
                                 if (components.contains("Inside") && components["Inside"].is_object())
                                 {
                                     auto &inside = components["Inside"];
-                                    auto interiorEntityId = inside["interiorEntity"].get<int>();
-
-                                    auto view = registry.view<Id>();
+                                    int interiorEntityId = inside["interiorEntity"].get<int>();
+                                    
+                                    // Look up the entity with the matching Id component
                                     entt::entity interiorEntity = entt::null;
-                                    for (auto entity : view)
-                                    {
-                                        if (view.get<Id>(entity).id == interiorEntityId)
-                                        {
-                                            interiorEntity = entity;
+                                    auto view = registry.view<Id>();
+                                    for (auto e : view) {
+                                        if (view.get<Id>(e).id == interiorEntityId) {
+                                            interiorEntity = e;
                                             break;
                                         }
                                     }
-
-                                    if (inside.contains("showOutside") && inside["showOutside"].is_boolean())
-                                    {
-                                        registry.emplace<Inside>(entity, Inside{interiorEntity, inside["showOutside"].get<bool>()});
-                                    }
-                                    else
-                                    {
-                                        registry.emplace<Inside>(entity, Inside{interiorEntity, false});
+                                    
+                                    // Only add to needsPlaceInside if we found the interior entity
+                                    if (interiorEntity != entt::null) {
+                                        needsPlaceInside[entity] = interiorEntity;
                                     }
                                 }
                             }, "Inside");
@@ -517,6 +515,16 @@ extern "C"
                         if (registry.all_of<Position, Shape>(entity)) {
                             registry.emplace<PhysicsBodyRect>(entity);
                         }
+
+                        // Process entities that need to be placed inside other entities
+                        for (const auto& [entity_to_place, interior_entity] : needsPlaceInside)
+                        {
+                            if (registry.valid(entity_to_place) && registry.valid(interior_entity))
+                            {
+                                registry.emplace_or_replace<Inside>(entity_to_place, Inside{interior_entity, false});
+                            }
+                        }
+
                     }
                 }
             }

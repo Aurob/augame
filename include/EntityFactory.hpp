@@ -1,10 +1,12 @@
 #pragma once
 #include "lib/entt.hpp"
 #include "JSUtils.hpp"
+#include "WebUtils.hpp"
 #include <random> 
 
 
 extern entt::entity _player;
+extern float gridSpacingValue;
 
 void makePlayer(entt::registry &registry)
 {
@@ -57,7 +59,8 @@ void makePlayer(entt::registry &registry)
     }
 
     registry.emplace_or_replace<TextureAlts>(player, TextureAlts{textureMap, "Idle_Down"});
-
+    
+   
     // TickAction to animate the player, increment the texture index of the current TextureAlts
     registry.emplace_or_replace<TickAction>(player, TickAction{[](entt::registry &registry, entt::entity entity)
         {
@@ -65,11 +68,68 @@ void makePlayer(entt::registry &registry)
             auto &currentTextures = textureAlts.alts[textureAlts.current];
             currentTextures.current = (currentTextures.current + 1) % currentTextures.textures.size();
         },
-        0.12f});
+        .19f});
+
 
     _player = player;
 }
 
+void makeEffectEntity(entt::registry &registry, float _x, float _y, float _z, std::string name, entt::entity inside) {
+    auto entity = registry.create();
+    registry.emplace<Id>(entity, static_cast<int>(emscripten_get_now()), name);
+    registry.emplace<Effect>(entity, name);
+    registry.emplace<Position>(entity, Position{_x, _y, _z});
+    registry.emplace<Shape>(entity, Shape{1, 1, 1});
+    registry.emplace<Color>(entity, Color{1, 1, 1});
+    registry.emplace<RenderPriority>(entity, RenderPriority{2});
+    // Add a rotation component with a random angle
+    float randomAngle = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 360.0f;
+    registry.emplace<Rotation>(entity, Rotation{randomAngle, 0.0f, 0.0f, 1.0f});
+    // auto view = registry.view<Id>();
+    // for(auto e : view) {
+    //     Id eid = view.get<Id>(e);
+    //     if(eid.name == "room1") {
+    //         registry.emplace<Inside>(entity, Inside{e});
+    //     }
+    // }
+
+    if(inside != entt::null) {
+        registry.emplace<Inside>(entity, Inside{inside});
+    }
+
+    float scalex = 1;
+    float scaley = 1;
+    float x = 0;
+    float y = 0;
+    float w = 1;
+    float h = 1;
+
+    std::vector<Texture> hit1Textures;
+    for (int i = 281; i <= 290; i++) {
+        std::string textureName = "hit1" + std::to_string(i);
+        hit1Textures.push_back({textureName, x, y, w, h, scalex, scaley});
+    }
+
+    registry.emplace<TextureAnimation>(entity, TextureAnimation{.interval=.15, .noloop=true});
+    registry.emplace<Textures>(entity, Textures{hit1Textures, 0});
+
+        // TickAction to animate the player, increment the texture index of the current TextureAlts
+    registry.emplace<TickAction>(entity, TickAction{[](entt::registry &registry, entt::entity entity)
+    {
+        if (registry.all_of<Textures>(entity)) {
+            auto& textures = registry.get<Textures>(entity);
+            if (textures.current >= textures.textures.size()-1) {
+                registry.emplace<Flag>(entity, "delete");
+                printf("%d %zu\n", textures.current, textures.textures.size());
+
+            }
+        }
+    },
+    1.0f});
+
+    // registry.emplace<Textures>(entity);
+    // registry.emplace<TextureAnimation>(entity);
+}
 
 /**
  * @brief Runs the factory functions to create entities.
@@ -77,4 +137,37 @@ void makePlayer(entt::registry &registry)
 void runFactories(entt::registry &registry)
 {
   // Generate an entity for each character in the fontmap tileset
+
+  entt::entity test = registry.create();
+  auto view = registry.view<Id>();
+  for(auto e : view) {
+    Id eid = view.get<Id>(e);
+    float scalex = 1;
+    float scaley = 1;
+    float x = 0;
+    float y = 0;
+    float w = 1;
+    float h = 1;
+    if(eid.name == "orb") {
+        std::vector<Texture> orbTextures;
+        for (int i = 1; i <= 60; i++) {
+            std::string textureName = "orb" + std::to_string(i);
+            orbTextures.push_back({textureName, x, y, w, h, scalex, scaley});
+        }
+
+        registry.emplace<TextureAnimation>(e, TextureAnimation{.interval=.15});
+        registry.emplace<Textures>(e, Textures{orbTextures, 0});
+    }
+    else if(eid.name == "hit1") {
+        std::vector<Texture> hit1Textures;
+        for (int i = 51; i <= 55; i++) {
+            std::string textureName = "hit1" + std::to_string(i);
+            hit1Textures.push_back({textureName, x, y, w, h, scalex, scaley});
+        }
+
+        registry.emplace<TextureAnimation>(e, TextureAnimation{.interval=.15});
+        registry.emplace<Textures>(e, Textures{hit1Textures, 0});
+    }
+  }
+  
 }

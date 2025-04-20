@@ -24,6 +24,19 @@ void EventHandler(int type, SDL_Event *event)
         playerKeys[event->key.keysym.sym] = false;
     }
 
+
+    // Mouse/Touch Interactions
+    if (event->type == SDL_MOUSEBUTTONDOWN || event->type == SDL_FINGERDOWN)
+    {
+        playerKeys[SDL_BUTTON_LEFT] = true;
+    }
+    else if (event->type == SDL_MOUSEBUTTONUP || event->type == SDL_FINGERUP)
+    {
+        playerKeys[SDL_BUTTON_LEFT] = false;
+
+    }
+
+
     // Mouse/Touch position
     if (event->type == SDL_MOUSEMOTION || event->type == SDL_FINGERMOTION)
     {
@@ -41,17 +54,21 @@ void EventHandler(int type, SDL_Event *event)
                 cursor.position.x = event->tfinger.x * width;
                 cursor.position.y = event->tfinger.y * height;
             }
-        }
-    }
 
-    // Mouse/Touch Interactions
-    if (event->type == SDL_MOUSEBUTTONDOWN || event->type == SDL_FINGERDOWN)
-    {
-        playerKeys[SDL_BUTTON_LEFT] = true;
-    }
-    else if (event->type == SDL_MOUSEBUTTONUP || event->type == SDL_FINGERUP)
-    {
-        playerKeys[SDL_BUTTON_LEFT] = false;
+            if (playerKeys[SDL_BUTTON_LEFT]) {
+                if (cursor.firstdown == false) {
+                    cursor.firstdown = true;
+                    if (cursor.firstup == true) {
+                        cursor.firstup = false;
+                    }
+                }
+            } else {
+                if (cursor.firstdown == true) {
+                    cursor.firstdown = false;
+                    cursor.firstup = true;
+                }
+            }
+        }
     }
 
     // Zoom in and out (Mouse wheel and pinch)
@@ -133,5 +150,7 @@ void processEvents() {
 
         textureAlts.current = action + "_" + lastDirection;
     }
+
+    auto &playerKeys = registry.get<Keys>(_player).keys;
 
 }
