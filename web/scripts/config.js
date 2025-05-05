@@ -19,6 +19,11 @@ var CONFIG = {
             "name": "debug_entity",
             "vertex": "test_rgb_v.glsl",
             "fragment": "test_rgb_f.glsl"
+        },
+        {
+            "name": "font",
+            "vertex": "font_v.glsl",
+            "fragment": "font_f.glsl"
         }
     ],
     "textures": [],

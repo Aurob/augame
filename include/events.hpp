@@ -106,51 +106,62 @@ void processEvents() {
         EventHandler(0, &event);
     }
 
-    auto keys = registry.get<Keys>(_player).keys;
-    
-    // If B increase player z
-    if(keys[SDLK_b]) {
-        auto& playerPos = registry.get<Position>(_player);
-        playerPos.z += 1;
-        keys[SDLK_b] = false;
-    }
-    // If N decrease player z
-    if(keys[SDLK_n]) {
-        auto& playerPos = registry.get<Position>(_player);
-        playerPos.z -= 1;
-        keys[SDLK_n] = false;
-    }
-    
-    // Get _player shape and increase by 10 only when RSHIFT and '/' are held
-    if (keys[SDLK_RSHIFT] && keys[SDLK_SLASH]) {
-        if (registry.all_of<Shape>(_player)) {
-            auto& playerShape = registry.get<Shape>(_player);
-            playerShape.size.x += 10;
-            playerShape.size.y += 10;
-            playerShape.size.z += 10;
-        }
-    }
-    
-    // Update player's TextureAlts based on direction and movement
-    if (registry.all_of<TextureAlts>(_player)) {
-        auto& textureAlts = registry.get<TextureAlts>(_player);
-        bool isMoving = keys[SDLK_w] || keys[SDLK_s] || keys[SDLK_a] || keys[SDLK_d];
-        std::string action = isMoving ? "Run" : "Idle";
-        static std::string lastDirection = "Down"; // Static variable to remember last direction
+    auto key_entities = registry.view<Keys>();
+    for (auto e: key_entities) {
+        auto &keys = key_entities.get<Keys>(e).keys;
 
-        if (keys[SDLK_w]) {
-            lastDirection = "Up";
-        } else if (keys[SDLK_s]) {
-            lastDirection = "Down";
-        } else if (keys[SDLK_a]) {
-            lastDirection = "Left";
-        } else if (keys[SDLK_d]) {
-            lastDirection = "Right";
+        // If B increase player z
+        if(keys[SDLK_b]) {
+            auto& playerPos = registry.get<Position>(_player);
+            playerPos.z += 1;
+            keys[SDLK_b] = false;
+        }
+        // If N decrease player z
+        if(keys[SDLK_n]) {
+            auto& playerPos = registry.get<Position>(_player);
+            playerPos.z -= 1;
+            keys[SDLK_n] = false;
+        }
+        
+        // Get _player shape and increase by 10 only when RSHIFT and '/' are held
+        if (keys[SDLK_RSHIFT] && keys[SDLK_SLASH]) {
+            if (registry.all_of<Shape>(_player)) {
+                auto& playerShape = registry.get<Shape>(_player);
+                playerShape.size.x += 10;
+                playerShape.size.y += 10;
+                playerShape.size.z += 10;
+            }
         }
 
-        textureAlts.current = action + "_" + lastDirection;
+        // Speed Boost
+        if (registry.all_of<Movement>(e)) {
+            auto &movement = registry.get<Movement>(e);
+            if (keys[SDLK_LSHIFT]) {
+                movement.speed = movement.default_speed * 10;
+            }
+            else if(movement.speed != movement.default_speed) {
+                movement.speed = movement.default_speed;
+            }
+        }
+
+        // Update player's TextureAlts based on direction and movement
+        if (registry.all_of<TextureAlts>(e)) {
+            auto& textureAlts = registry.get<TextureAlts>(e);
+            bool isMoving = keys[SDLK_w] || keys[SDLK_s] || keys[SDLK_a] || keys[SDLK_d];
+            std::string action = isMoving ? "Run" : "Idle";
+            static std::string lastDirection = "Down"; // Static variable to remember last direction
+
+            if (keys[SDLK_w]) {
+                lastDirection = "Up";
+            } else if (keys[SDLK_s]) {
+                lastDirection = "Down";
+            } else if (keys[SDLK_a]) {
+                lastDirection = "Left";
+            } else if (keys[SDLK_d]) {
+                lastDirection = "Right";
+            }
+
+            textureAlts.current = action + "_" + lastDirection;
+        }
     }
-
-    auto &playerKeys = registry.get<Keys>(_player).keys;
-
 }

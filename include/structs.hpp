@@ -118,6 +118,12 @@ struct Color {
         : r(r), g(g), b(b), a(a), defaultR(r), defaultG(g), defaultB(b), defaultA(a) {}
 };
 
+struct Text {
+    std::string text;
+    float scale;
+    bool hide;
+};
+
 struct Visible {};
 struct InView {};
 struct AlwaysInView {};
@@ -183,16 +189,20 @@ struct Collidable {
     bool ignorePlayer;
     bool ignoreCollideAll;
 };
-
 struct Movement {
     float speed{10};
+    float default_speed{10};
     float max_speed{110};
     Vector2f velocity{0, 0};
     Vector2f acceleration{0, 0};
     float friction{1};
     float mass{1};
     float restitution{0.5};
+    
+    Movement(float _speed = 10, float _mass = 1, float _restitution = 0.5) 
+        : speed(_speed), default_speed(_speed), mass(_mass), restitution(_restitution) {}
 };
+
 struct Moveable {};
 
 struct Rotation {
@@ -301,6 +311,30 @@ struct ActionLimits {
     std::unordered_map<std::string, float> lastCreationTime; // Tracks when each effect was last created
 };
 
+struct Terrain{};
 struct Effect {
     std::string name;
+};
+// Alternative struct names:
+// SoundSequencer, MelodyPlayer, ToneGenerator, SoundEmitter, AudioNotes, 
+// NoteSequencer, MusicPlayer, SoundPatterns, AudioSequencer, MelodyEmitter,
+// ToneSequences, SoundProfile, NotePatterns, MusicEmitter, AudioPlayer
+struct MusicNotes {
+    std::vector<std::vector<std::string>> noteSequences; // Each vector contains a sequence of notes like "C4", "D4", "E4", etc.
+    int currentSequence = 0;                            // Index of the current sequence being played
+    bool loop = false;                                  // Whether to loop through sequences
+    float volume = -20.0f;                              // Default volume level
+    std::string instrument;            // Default instrument/sound
+    
+    // Available notes examples:
+    // C4, D4, E4, G4, A4 (pentatonic scale)
+    // C4, D4, E4, F4, G4, A4, B4 (C major scale)
+    // A3, B3, C4, D4, E4, F4, G4 (A minor scale)
+    // C3, E3, G3 (C major chord)
+    // F3, A3, C4 (F major chord)
+    // G3, B3, D4 (G major chord)
+    // C5, B4, A4, G4 (descending melody)
+    // E4, G4, E4, C4 (arpeggio pattern)
+    // C4, C4, G4, G4, A4, A4, G4 (simple melody)
+    // F#4, G#4, A#4, C5, D#5 (chromatic sequence)
 };

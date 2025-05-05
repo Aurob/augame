@@ -12,13 +12,13 @@ extern float deltaTime;
 
 void updateFrame()
 {
+    
     updateOther(registry);
     updateActions(registry);
     updatePhysics(registry);
     updatePlayer(registry);
     updateShapes(registry);
-    updatePositions(registry);    
+    updatePositions(registry);   
     updateInteractions(registry);
-
     updateAnimations(registry);
 }

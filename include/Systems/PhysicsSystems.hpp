@@ -20,17 +20,20 @@ void processCollisionInfo(p2d::CollisionInfo& info) {
     //     auto& physBodyB = registry.get<PhysicsBodyRect>(entityB);
     //     if (physBodyA.body->ignore || physBodyB.body->ignore) return;
     // }
-
     entt::entity door = entt::null;
     entt::entity nonPortalEntity = entt::null;
     entt::entity teleporter = entt::null;
     entt::entity teleportable = entt::null;
-
     bool entityAHasPortal = registry.all_of<InteriorPortal>(entityA);
+
     bool entityBHasPortal = registry.all_of<InteriorPortal>(entityB);
+    
     bool entityAHasTeleport = registry.all_of<Teleport>(entityA);
+    
     bool entityBHasTeleport = registry.all_of<Teleport>(entityB);
+    
     bool entityAIsTeleportable = registry.all_of<Teleportable>(entityA);
+    
     bool entityBIsTeleportable = registry.all_of<Teleportable>(entityB);
 
     if (entityAHasPortal && !entityBHasPortal) {
@@ -49,23 +52,97 @@ void processCollisionInfo(p2d::CollisionInfo& info) {
         teleporter = entityB;
         teleportable = entityA;
     }
-
     if (door != entt::null) {
         // Log if the non-portal entity has Player component
         if (nonPortalEntity != entt::null) {
     
             if(!registry.all_of<OnInteriorPortal>(nonPortalEntity)) {
-                
                 // Add or update the Inside component for the non-interiorportal entity
                 auto doorIP = registry.get<InteriorPortal>(door);
                 if (registry.all_of<Inside>(nonPortalEntity)) {
                     auto& inside = registry.get<Inside>(nonPortalEntity);
                     if(inside.interior == doorIP.A) inside.interior = doorIP.B;
                     else inside.interior = doorIP.A;
-                    auto &body = registry.get<PhysicsBodyRect>(door).body;
-                        _js__play_tone("C5", "1n", -20.0f, "sparkle1.mp3");
-
-                } 
+                    
+                    // Generate random note count between 3 and 7
+                    int noteCount = 3 + (rand() % 5);
+                    
+                    // Available notes
+                    std::string availableNotes[] = {"C4", "D4", "E4", "G4", "A4"};
+                    
+                    // Generate first note randomly
+                    int firstNoteIndex = rand() % 5;
+                    std::string currentNote = availableNotes[firstNoteIndex];
+                    
+                    // Determine how many rests to include (0-2)
+                    int restCount = rand() % 3;
+                    std::vector<int> restPositions;
+                    for (int i = 0; i < restCount; i++) {
+                        restPositions.push_back(rand() % noteCount);
+                    }
+                    
+                    // Play sequence of notes
+                    for (int i = 0; i < noteCount; i++) {
+                        // Check if this position should be a rest
+                        bool isRest = std::find(restPositions.begin(), restPositions.end(), i) != restPositions.end();
+                        
+                        if (!isRest) {
+                            _js__play_tone(currentNote, "8n", -20.0f);
+                            
+                            // Generate next note based on current note using sin/cos
+                            float angle = (firstNoteIndex + i) * 0.7853f; // π/4 radians
+                            int nextIndex = (firstNoteIndex + (int)(3 * sin(angle))) % 5;
+                            if (nextIndex < 0) nextIndex += 5;
+                            currentNote = availableNotes[nextIndex];
+                        } else {
+                            // Rest - wait the same duration without playing
+                            // No tone is played
+                        }
+                        
+                        // Small delay between notes would be handled by the "8n" duration
+                    }
+                } else {
+                    // If not inside, they are outside, use any value < 0
+                    registry.emplace_or_replace<Inside>(nonPortalEntity, Inside{doorIP.A});
+                    
+                    // Generate random note count between 3 and 7
+                    int noteCount = 3 + (rand() % 5);
+                    
+                    // Available notes
+                    std::string availableNotes[] = {"C4", "D4", "E4", "G4", "A4"};
+                    
+                    // Generate first note randomly
+                    int firstNoteIndex = rand() % 5;
+                    std::string currentNote = availableNotes[firstNoteIndex];
+                    
+                    // Determine how many rests to include (0-2)
+                    int restCount = rand() % 3;
+                    std::vector<int> restPositions;
+                    for (int i = 0; i < restCount; i++) {
+                        restPositions.push_back(rand() % noteCount);
+                    }
+                    
+                    // Play sequence of notes
+                    for (int i = 0; i < noteCount; i++) {
+                        // Check if this position should be a rest
+                        bool isRest = std::find(restPositions.begin(), restPositions.end(), i) != restPositions.end();
+                        
+                        if (!isRest) {
+                            _js__play_tone(currentNote, "8n", -20.0f);
+                            
+                            // Generate next note based on current note using cos
+                            float angle = (firstNoteIndex + i) * 0.7853f; // π/4 radians
+                            int nextIndex = (firstNoteIndex + (int)(3 * cos(angle))) % 5;
+                            if (nextIndex < 0) nextIndex += 5;
+                            currentNote = availableNotes[nextIndex];
+                        } else {
+                            // Rest - wait the same duration without playing
+                            // No tone is played
+                        }
+                        
+                        // Small delay between notes would be handled by the "8n" duration
+                    }
+                }
 
                 registry.emplace<OnInteriorPortal>(nonPortalEntity, OnInteriorPortal{door});
             }
@@ -108,7 +185,6 @@ void updatePhysics(entt::registry &registry) {
     for(auto entity : view) {
         auto &rect = view.get<PhysicsBodyRect>(entity);
         auto &pos = view.get<Position>(entity);
-        
         // Handle Collidable and Shape components
         if(registry.all_of<Collidable, Shape>(entity)) {
             auto &shape = registry.get<Shape>(entity);
@@ -152,18 +228,18 @@ void updatePhysics(entt::registry &registry) {
         if(registry.all_of<Keys, Movement, InView>(entity)) {
             auto &keys = registry.get<Keys>(entity).keys;
             auto &movement = registry.get<Movement>(entity);
-
             Vector3f input{
                 static_cast<float>(keys[SDLK_d]) - static_cast<float>(keys[SDLK_a]),
                 static_cast<float>(keys[SDLK_s]) - static_cast<float>(keys[SDLK_w]),
                 0.0f
-            };
+            };            
+
             float length = std::sqrt(input.x * input.x + input.y * input.y);
             if (length != 0) {
                 float fx = (input.x / length) * movement.speed;
                 float fy = (input.y / length) * movement.speed;
                 rect.body->applyForce({fx, fy});
-                // rect.body->applyThetaDotDot(1.0);
+                rect.body->applyThetaDotDot(1.0);
             }
         }
     }    
@@ -173,9 +249,6 @@ void updatePhysics(entt::registry &registry) {
     // // After update, you can also access all collisions that occurred
     const auto& collisions = physics.getCollisions();
     for(auto info : collisions) {
-        // char collisionMsg[100];
-        // sprintf(collisionMsg, "Collision at: %f, %f", info.collisionPoint.x, info.collisionPoint.y);
-        // emlog(collisionMsg);
         processCollisionInfo(info);
     }
 

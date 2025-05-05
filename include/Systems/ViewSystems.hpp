@@ -24,15 +24,12 @@ void updatePositions(entt::registry &registry)
         auto playerInside = registry.get<Inside>(_player);
         playerInterior = playerInside.interior;
     }
-
+    
     auto entities = registry.view<Position, Shape>();
     for (auto entity : entities)
     {
         bool logit;
-        if(registry.all_of<Id>(entity)) {
-            if(registry.get<Id>(entity).name == "door2") logit = true;
-        }
-
+  
         auto &position = entities.get<Position>(entity);
         auto &shape = entities.get<Shape>(entity);
 
@@ -127,6 +124,7 @@ void updatePositions(entt::registry &registry)
                 }
             }
         }
+        
         if (isVisible) {
             registry.emplace_or_replace<Visible>(entity);
         } else if (registry.all_of<Visible>(entity)) {
@@ -147,6 +145,7 @@ void updatePositions(entt::registry &registry)
             // }
         }
     }
+
 }
 
 

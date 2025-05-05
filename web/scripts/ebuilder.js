@@ -17,17 +17,25 @@ class EntityBuilder {
         moveable: 1,
         hoverable: 1,
         interactable: 3,
-        configurable: 1,
+        configurable: 2,
         teleporter: 4,
-        teleportable: 1,
+        teleportable: 2,
         draggable: 2,
         tone: 5,
         ui: 5,
+        text: 4,
+        player: 2,
+        _world: 2,
+        terrain: 1
     };
     
     static componentParsers = {
         id: (parts, i) => ({ Id: { id: parseInt(parts[i], 10), name: parts[i+1] } }),
+        player: () => ({ Player: true }),
+        terrain: () => ({ Terrain: true }),
+        world: (parts, i) => ({ World: parts[i] }),
         test: (parts, i) => ({ Test: { value: parts[i] } }),
+        text: (parts, i) => ({ Text: { text: parts[i], scale: parseFloat(parts[i+1]), hide: parseInt(parts[i+2])}}),
         position: (parts, i) => ({ Position: { x: parseFloat(parts[i]), y: parseFloat(parts[i+1]), z: parseFloat(parts[i+2]) } }),
         shape: (parts, i) => ({ Shape: { size: [parseFloat(parts[i]), parseFloat(parts[i+1]), parseFloat(parts[i+2])] } }),
         color: (parts, i) => {
@@ -90,10 +98,37 @@ class EntityBuilder {
     constructor() {
         this.components = {};
     }
-
+    
     parseInput(input) {
-        const parts = input.split(/\s+/).filter(part => part.length > 0);
+        const parts = [];
         let i = 0;
+        let inQuotes = false;
+        let currentQuote = '';
+        
+        // Split the input handling quoted strings
+        const tokens = input.split(/\s+/).filter(part => part.length > 0);
+        for (const token of tokens) {
+            if (inQuotes) {
+                currentQuote += ' ' + token;
+                if (token.endsWith('"')) {
+                    // End of quoted string
+                    parts.push(currentQuote.substring(0, currentQuote.length - 1));
+                    inQuotes = false;
+                    currentQuote = '';
+                }
+            } else if (token.startsWith('"') && !token.endsWith('"')) {
+                // Start of quoted string
+                inQuotes = true;
+                currentQuote = token.substring(1);
+            } else if (token.startsWith('"') && token.endsWith('"') && token.length > 1) {
+                // Complete quoted string in one token
+                parts.push(token.substring(1, token.length - 1));
+            } else {
+                parts.push(token);
+            }
+        }
+        
+        i = 0;
         while (i < parts.length) {
             const componentName = parts[i];
             const parser = EntityBuilder.componentParsers[componentName];
@@ -102,7 +137,6 @@ class EntityBuilder {
                 Object.assign(this.components, result);
                 i += this.getComponentParameterCount(componentName, result);
             } else {
-                console.log(parts[i-1])
                 console.warn(`Unknown component or parser not implemented: ${componentName}`);
                 i++;
             }

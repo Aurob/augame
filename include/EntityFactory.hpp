@@ -2,6 +2,7 @@
 #include "lib/entt.hpp"
 #include "JSUtils.hpp"
 #include "WebUtils.hpp"
+#include "structs.hpp"
 #include <random> 
 
 
@@ -10,66 +11,76 @@ extern float gridSpacingValue;
 
 void makePlayer(entt::registry &registry)
 {
-
+    bool defaultPlayer;
 
     // Player
     float px = 13.05, py = 12.45, pz = 5.0;
     float pw = 1.0f, ph = 1.0f, pd = 1.0f;
-    auto player = registry.create();
 
-    auto player_id_view = registry.view<Id>();
-    for (auto entity : player_id_view)
+    entt::entity player = entt::null;
+    auto player_view = registry.view<Player>();
+    for (auto entity : player_view)
     {
-        if (player_id_view.get<Id>(entity).name == "player")
-        {
-            player = entity;
-            break;
-        }
+        player = entity;
+        printf("123 %d\n", registry.all_of<Movement>(entity));
     }
+
+    if(player == entt::null) {
+        player = registry.create();
+        registry.emplace<Position>(player);
+        registry.emplace<Shape>(player);
+        registry.emplace<PhysicsBodyRect>(player);
+        registry.emplace<Collidable>(player);
+        registry.emplace<Movement>(player, Movement{1000});
+
+        defaultPlayer = true;
+    }
+    // if (player == entt::null) return;
 
     registry.emplace_or_replace<Player>(player);
     registry.emplace<Keys>(player);
     registry.emplace<Cursor>(player);
 
-    // Add textures to the player
-    std::vector<Textures> textureAlts;
-    const std::vector<std::string> actions = {"Idle", "Run"};
-    const std::vector<std::string> directions = {"Down", "Left", "Right", "Up"};
-    std::unordered_map<std::string, Textures> textureMap;
+    if (!defaultPlayer) {
+        // Add textures to the player
+        std::vector<Textures> textureAlts;
+        const std::vector<std::string> actions = {"Idle", "Run"};
+        const std::vector<std::string> directions = {"Down", "Left", "Right", "Up"};
+        std::unordered_map<std::string, Textures> textureMap;
 
-    const int numFrames = 6;
-    const float frameWidth = 1.0f / numFrames;
-    const float frameHeight = 1.0f;
-    const int textureWidth = 8;
-    const int textureHeight = 8;
+        const int numFrames = 6;
+        const float frameWidth = 1.0f / numFrames;
+        const float frameHeight = 1.0f;
+        const int textureWidth = 8;
+        const int textureHeight = 8;
 
-    for (size_t actionIndex = 0; actionIndex < actions.size(); ++actionIndex)
-    {
-        for (size_t directionIndex = 0; directionIndex < directions.size(); ++directionIndex)
+        for (size_t actionIndex = 0; actionIndex < actions.size(); ++actionIndex)
         {
-            std::string textureName = std::to_string(actionIndex + 1) + "_Template_" + actions[actionIndex] + "_" + directions[directionIndex] + "-Sheet";
-            std::vector<Texture> textures;
-            for (int i = 0; i < numFrames; ++i)
+            for (size_t directionIndex = 0; directionIndex < directions.size(); ++directionIndex)
             {
-                textures.push_back({textureName, i * frameWidth, 0, frameWidth, frameHeight, textureWidth, textureHeight});
+                std::string textureName = std::to_string(actionIndex + 1) + "_Template_" + actions[actionIndex] + "_" + directions[directionIndex] + "-Sheet";
+                std::vector<Texture> textures;
+                for (int i = 0; i < numFrames; ++i)
+                {
+                    textures.push_back({textureName, i * frameWidth, 0, frameWidth, frameHeight, textureWidth, textureHeight});
+                }
+                Texture metadata = {textureName, 0, 0, 0, 0, 0, 0};
+                textureMap[actions[actionIndex] + "_" + directions[directionIndex]] = Textures{textures, 0, metadata};
             }
-            Texture metadata = {textureName, 0, 0, 0, 0, 0, 0};
-            textureMap[actions[actionIndex] + "_" + directions[directionIndex]] = Textures{textures, 0, metadata};
         }
-    }
 
-    registry.emplace_or_replace<TextureAlts>(player, TextureAlts{textureMap, "Idle_Down"});
+        registry.emplace_or_replace<TextureAlts>(player, TextureAlts{textureMap, "Idle_Down"});
+        
     
-   
-    // TickAction to animate the player, increment the texture index of the current TextureAlts
-    registry.emplace_or_replace<TickAction>(player, TickAction{[](entt::registry &registry, entt::entity entity)
-        {
-            auto &textureAlts = registry.get<TextureAlts>(entity);
-            auto &currentTextures = textureAlts.alts[textureAlts.current];
-            currentTextures.current = (currentTextures.current + 1) % currentTextures.textures.size();
-        },
-        .19f});
-
+        // TickAction to animate the player, increment the texture index of the current TextureAlts
+        registry.emplace_or_replace<TickAction>(player, TickAction{[](entt::registry &registry, entt::entity entity)
+            {
+                auto &textureAlts = registry.get<TextureAlts>(entity);
+                auto &currentTextures = textureAlts.alts[textureAlts.current];
+                currentTextures.current = (currentTextures.current + 1) % currentTextures.textures.size();
+            },
+            .19f});
+    }
 
     _player = player;
 }
@@ -85,13 +96,7 @@ void makeEffectEntity(entt::registry &registry, float _x, float _y, float _z, st
     // Add a rotation component with a random angle
     float randomAngle = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 360.0f;
     registry.emplace<Rotation>(entity, Rotation{randomAngle, 0.0f, 0.0f, 1.0f});
-    // auto view = registry.view<Id>();
-    // for(auto e : view) {
-    //     Id eid = view.get<Id>(e);
-    //     if(eid.name == "room1") {
-    //         registry.emplace<Inside>(entity, Inside{e});
-    //     }
-    // }
+
 
     if(inside != entt::null) {
         registry.emplace<Inside>(entity, Inside{inside});
@@ -120,15 +125,11 @@ void makeEffectEntity(entt::registry &registry, float _x, float _y, float _z, st
             auto& textures = registry.get<Textures>(entity);
             if (textures.current >= textures.textures.size()-1) {
                 registry.emplace<Flag>(entity, "delete");
-                printf("%d %zu\n", textures.current, textures.textures.size());
-
             }
         }
     },
     1.0f});
 
-    // registry.emplace<Textures>(entity);
-    // registry.emplace<TextureAnimation>(entity);
 }
 
 /**
