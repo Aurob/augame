@@ -1,18 +1,15 @@
 #pragma once
 
 #include <SDL2/SDL.h>
-#include "entt.hpp"
+#include "lib/entt.hpp"
 #include "structs.hpp"
-#include "../include/imgui/imgui.h"
-#include "../include/imgui/imgui_impl_sdl.h"
-#include "../include/imgui/imgui_impl_opengl3.h"
-
-using namespace std;
+#include "../include/lib/physics.hpp"
 
 extern int width, height;
 extern float gridSpacingValue;
 extern entt::entity _player;
 extern entt::registry registry;
+extern p2d::Physics physics;
 
 void EventHandler(int type, SDL_Event *event)
 {
@@ -26,6 +23,19 @@ void EventHandler(int type, SDL_Event *event)
     {
         playerKeys[event->key.keysym.sym] = false;
     }
+
+
+    // Mouse/Touch Interactions
+    if (event->type == SDL_MOUSEBUTTONDOWN || event->type == SDL_FINGERDOWN)
+    {
+        playerKeys[SDL_BUTTON_LEFT] = true;
+    }
+    else if (event->type == SDL_MOUSEBUTTONUP || event->type == SDL_FINGERUP)
+    {
+        playerKeys[SDL_BUTTON_LEFT] = false;
+
+    }
+
 
     // Mouse/Touch position
     if (event->type == SDL_MOUSEMOTION || event->type == SDL_FINGERMOTION)
@@ -44,17 +54,21 @@ void EventHandler(int type, SDL_Event *event)
                 cursor.position.x = event->tfinger.x * width;
                 cursor.position.y = event->tfinger.y * height;
             }
-        }
-    }
 
-    // Mouse/Touch Interactions
-    if (event->type == SDL_MOUSEBUTTONDOWN || event->type == SDL_FINGERDOWN)
-    {
-        playerKeys[SDL_BUTTON_LEFT] = true;
-    }
-    else if (event->type == SDL_MOUSEBUTTONUP || event->type == SDL_FINGERUP)
-    {
-        playerKeys[SDL_BUTTON_LEFT] = false;
+            if (playerKeys[SDL_BUTTON_LEFT]) {
+                if (cursor.firstdown == false) {
+                    cursor.firstdown = true;
+                    if (cursor.firstup == true) {
+                        cursor.firstup = false;
+                    }
+                }
+            } else {
+                if (cursor.firstdown == true) {
+                    cursor.firstdown = false;
+                    cursor.firstup = true;
+                }
+            }
+        }
     }
 
     // Zoom in and out (Mouse wheel and pinch)
@@ -89,43 +103,65 @@ void processEvents() {
     SDL_Event event;
     while (SDL_PollEvent(&event))
     {
-        ImGui_ImplSDL2_ProcessEvent(&event);
         EventHandler(0, &event);
     }
 
-    auto keys = registry.get<Keys>(_player).keys;
-    
-    // If B increase player z
-    if(keys[SDLK_b]) {
-        auto& playerPos = registry.get<Position>(_player);
-        playerPos.z += 1;
-        keys[SDLK_b] = false;
-    }
-    // If N decrease player z
-    if(keys[SDLK_n]) {
-        auto& playerPos = registry.get<Position>(_player);
-        playerPos.z -= 1;
-        keys[SDLK_n] = false;
-    }
-    
-    // Update player's TextureAlts based on direction and movement
-    if (registry.all_of<TextureAlts>(_player)) {
-        auto& textureAlts = registry.get<TextureAlts>(_player);
-        bool isMoving = keys[SDLK_w] || keys[SDLK_s] || keys[SDLK_a] || keys[SDLK_d];
-        std::string action = isMoving ? "Run" : "Idle";
-        static std::string lastDirection = "Down"; // Static variable to remember last direction
+    auto key_entities = registry.view<Keys>();
+    for (auto e: key_entities) {
+        auto &keys = key_entities.get<Keys>(e).keys;
 
-        if (keys[SDLK_w]) {
-            lastDirection = "Up";
-        } else if (keys[SDLK_s]) {
-            lastDirection = "Down";
-        } else if (keys[SDLK_a]) {
-            lastDirection = "Left";
-        } else if (keys[SDLK_d]) {
-            lastDirection = "Right";
+        // If B increase player z
+        if(keys[SDLK_b]) {
+            auto& playerPos = registry.get<Position>(_player);
+            playerPos.z += 1;
+            keys[SDLK_b] = false;
+        }
+        // If N decrease player z
+        if(keys[SDLK_n]) {
+            auto& playerPos = registry.get<Position>(_player);
+            playerPos.z -= 1;
+            keys[SDLK_n] = false;
+        }
+        
+        // Get _player shape and increase by 10 only when RSHIFT and '/' are held
+        if (keys[SDLK_RSHIFT] && keys[SDLK_SLASH]) {
+            if (registry.all_of<Shape>(_player)) {
+                auto& playerShape = registry.get<Shape>(_player);
+                playerShape.size.x += 10;
+                playerShape.size.y += 10;
+                playerShape.size.z += 10;
+            }
         }
 
-        textureAlts.current = action + "_" + lastDirection;
-    }
+        // Speed Boost
+        if (registry.all_of<Movement>(e)) {
+            auto &movement = registry.get<Movement>(e);
+            if (keys[SDLK_LSHIFT]) {
+                movement.speed = movement.default_speed * 10;
+            }
+            else if(movement.speed != movement.default_speed) {
+                movement.speed = movement.default_speed;
+            }
+        }
 
+        // Update player's TextureAlts based on direction and movement
+        if (registry.all_of<TextureAlts>(e)) {
+            auto& textureAlts = registry.get<TextureAlts>(e);
+            bool isMoving = keys[SDLK_w] || keys[SDLK_s] || keys[SDLK_a] || keys[SDLK_d];
+            std::string action = isMoving ? "Run" : "Idle";
+            static std::string lastDirection = "Down"; // Static variable to remember last direction
+
+            if (keys[SDLK_w]) {
+                lastDirection = "Up";
+            } else if (keys[SDLK_s]) {
+                lastDirection = "Down";
+            } else if (keys[SDLK_a]) {
+                lastDirection = "Left";
+            } else if (keys[SDLK_d]) {
+                lastDirection = "Right";
+            }
+
+            textureAlts.current = action + "_" + lastDirection;
+        }
+    }
 }

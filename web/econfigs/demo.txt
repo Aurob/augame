@@ -1,0 +1,25 @@
+
+id 1 room1 position -50.5 -10 0 shape 100 10 0 color 0.5 0.5 0.5 1.0 renderPriority -1 interior
+id 11 roomwall position -50.5 -11 0 shape 100 2 1 color 0.1 0.2 0.3 1.0 renderPriority 2 inside 1 textureGroupPart room1 s227 100 2
+id 11 roomwall5 position 0.5 -9.5 1 shape 4.5 .1 1 color 0.1 0.2 0.3 1.0 renderPriority 0 inside 1 collidable
+id 12 roomwall55 position 6 -9.5 1 shape 4.5 .1 1 color 0.1 0.2 0.3 1.0 renderPriority 0 inside 1 collidable
+
+id 11 roomwall2 position -50.5 -1 1 shape 100 2 1 color 0.1 0.2 0.3 1.0 renderPriority 0 inside 1 textureGroupPart room1 s227 100 2
+id 11 roomwall25 position 0.5 0.5 1 shape 10 .1 1 color 0.1 0.2 0.3 1.0 renderPriority 0 inside 1 collidable
+
+id 2 room2 position 5 -15 0 shape 2.5 10 0 color 0.5 0.5 0.5 1.0 renderPriority -1 interior textureGroupPart room1 s118 2.5 10 terrain
+id 121 door1 position 5 -9.5 0 shape 1 .5 0 color 1 1 1 1 inside 1 renderPriority 2 collidable hoverable interiorPortal 2 1 0 interactable
+id 4 room3 position 8 -20 0 shape 20 5 0 interior renderPriority -1 textureGroupPart room1 s220 20 5
+id 125 door2 position 7.5 -19.5 0 shape 0.5 1 0 color 1 1 1 1 inside 2 renderPriority 2 collidable hoverable interiorPortal 2 4 0 interactable
+
+id 5 room4 position 8 -25 0 shape 5 5 0 interior renderPriority -1 textureGroupPart room1 s115 5 5
+id 11 roomwall position 8 -25 0 shape 5 .1 1 color 0.1 0.2 0.3 1.0 renderPriority 2 inside 5 collidable
+id 126 door3 position 8 -22.5 0 shape 1 0.5 0 color 1 1 1 1 inside 4 renderPriority 2 collidable hoverable interiorPortal 4 5 0 interactable
+
+-- ## player entity, this entity is what will drive the camera 
+id 0 player position 0 0 0 shape .75 .75 0 color 0.1 0.2 0.3 .1 movement 575 .5 0 collidable inside 1 player
+
+-- ## Other Entities
+id 7 hit1 position 7 -5 0 shape 1 1 1 color 1 1 1 0 inside 1 collidable
+id 7 orb position 5 -4 0 shape 1 1 1 color 1 1 1 0 inside 1 collidable 
+-- id 99 text1 position 5 -6 0 shape 1 1 1 color 1 1 1 1 inside 1 collidable movement 100 .5 0 moveable hoverable text "@resources/text/test1.txt" 1 0 interactable 1 
