@@ -1,9 +1,9 @@
 ## TODO
- - If there is no Player entity then an error occurs
- - Revisit collisions
+ - ~~If there is no Player entity then an error occurs~~
  - generalize the screen calculation stuff
  - Only update shapes if a zoom update occurred
- - Add text/ui component
+ - ~~Add text/ui component~~
+ 
  ## Entity Configuration Changes
  - Rename the Id component to metadata
  - Use the name value in metadata as an entity lookup in EntityConfig.hpp
@@ -13,3 +13,5 @@
      - Or just update it?
    - also don't allow multiple entities with the same name?
     - this might be emergent 
+
+- Player texture is currently hardcoded, make it component based

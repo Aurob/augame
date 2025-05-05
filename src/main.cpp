@@ -40,7 +40,7 @@ GLfloat gridSpacingValue = 1024.0f;
 bool first_start = false;
 float seed = 0.0f;
 
-entt::entity _player;
+entt::entity _player = entt::null;
 entt::registry registry;
 
 context ctx;
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
     printf("Seed: %f\n", seed);
 
     physics.setGravity(p2d::Vec2f{0, 0}); // No gravity for top-down game
-    physics.setDrag({3.9f, 3.9f}); // Adjust drag for realistic movement
+    physics.setDrag({4.9f, 4.9f}); // Adjust drag for realistic movement
 
     // Set the main loop
     ctx.window = mpWindow;
@@ -86,8 +86,11 @@ bool js_loaded() {
         first_start = true;
         
         loadTextures();
+        loadFont();
+
         makePlayer(registry);
         runFactories(registry);
+        // _js__speak("Loading Complete");
     }
     return true; 
 }
@@ -98,6 +101,7 @@ void mainloop(void *arg)
 
     deltaTime = (SDL_GetTicks() - lastTime) / 5000.0f;
     lastTime = SDL_GetTicks();
+    
     // Handle events
     processEvents();
     
@@ -113,6 +117,7 @@ void mainloop(void *arg)
 
     // Update frame
     updateFrame();
+
     // Render
     renderAll();
 

@@ -13,21 +13,21 @@ var Module = {
       toastContainer.style.cssText = 'position: fixed; bottom: 20px; right: 20px; z-index: 9999; max-width: 80%;';
       document.body.appendChild(toastContainer);
     }
-    
+
     // Create the toast element
     const toast = document.createElement('div');
     toast.style.cssText = 'background-color: rgba(0, 0, 0, 0.8); color: white; padding: 12px 20px; border-radius: 4px; margin-top: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); opacity: 0; transition: opacity 0.3s, transform 0.3s; transform: translateY(20px); max-width: 100%; word-wrap: break-word;';
     toast.textContent = message;
-    
+
     // Add to container
     toastContainer.appendChild(toast);
-    
+
     // Trigger animation
     setTimeout(() => {
       toast.style.opacity = '1';
       toast.style.transform = 'translateY(0)';
     }, 10);
-    
+
     // Remove after 5 seconds
     setTimeout(() => {
       toast.style.opacity = '0';
@@ -38,6 +38,53 @@ var Module = {
         }
       }, 300);
     }, 5000);
+  },
+  speak(text, options = {}) {
+    const synth = window.speechSynthesis;
+    if (!synth) return console.error('Speech synthesis not supported');
+    
+    // Cancel any ongoing speech
+    synth.cancel();
+  
+    const utterance = new SpeechSynthesisUtterance(text);
+    
+    // Apply options
+    Object.assign(utterance, {
+      rate: options.rate ?? 1,
+      pitch: options.pitch ?? 1,
+      volume: options.volume ?? 1,
+      voice: options.voice ?? null,
+      lang: options.lang ?? 'en-US',
+    });
+  
+    if (options.onEnd) utterance.onend = options.onEnd;
+    if (options.onError) utterance.onerror = options.onError;
+    
+    // Add event listener for page unload/refresh to stop speech
+    const cancelSpeechOnUnload = () => synth.cancel();
+    window.addEventListener('beforeunload', cancelSpeechOnUnload);
+    
+    // Clean up event listener when speech ends
+    utterance.onend = (event) => {
+      window.removeEventListener('beforeunload', cancelSpeechOnUnload);
+      if (options.onEnd) options.onEnd(event);
+    };
+    
+    // Also clean up on error
+    utterance.onerror = (event) => {
+      window.removeEventListener('beforeunload', cancelSpeechOnUnload);
+      if (options.onError) options.onError(event);
+    };
+  
+    synth.speak(utterance);
+    
+    // Return a function that can be used to manually stop the speech
+    return {
+      stop: () => {
+        synth.cancel();
+        window.removeEventListener('beforeunload', cancelSpeechOnUnload);
+      }
+    };
   },
   play_tone(note, duration, volume, type) {
     if (type === "sine") {
@@ -52,7 +99,7 @@ var Module = {
           release: 1.5
         }
       }).toDestination();
-      
+
       synth.volume.value = volume;
       synth.triggerAttackRelease(note, duration);
     } else {
@@ -78,92 +125,14 @@ var Module = {
     }
     const shadersPromise = Array.isArray(json.shaders) ? this.processShaders(json.shaders) : Promise.resolve();
     shadersPromise.then(() => {
-      
+
       // Function to process config text
       this.processConfigText = (configText) => {
         // Store the config text for future use
         this.configText = configText;
-        
+
         // Reset current comment block
         this.currentCommentBlock = null;
-        
-      // / Create a floating control panel window
-      var configTextarea = '';
-      const headerDiv = document.getElementById('header');
-      const toggleButton = document.createElement('button');
-      toggleButton.textContent = 'Open Control Panel';
-      toggleButton.className = 'toggle-btn';
-      
-      // Create the popup window when the button is clicked
-      toggleButton.onclick = () => {
-        const controlPanel = window.open('', 'ControlPanel', 'width=400,height=300,resizable=yes');
-        
-        // Style the control panel window
-        controlPanel.document.write(`
-          <html>
-          <head>
-            <title>Game Control Panel</title>
-            <style>
-              body {
-                font-family: Arial, sans-serif;
-                background-color: #2a2a2a;
-                color: #e0e0e0;
-                margin: 0;
-                padding: 15px;
-              }
-              .panel-title {
-                margin-top: 0;
-                margin-bottom: 15px;
-                font-size: 18px;
-              }
-              #configEditor {
-                width: 100%;
-                height: 150px;
-                font-family: monospace;
-                background-color: #333;
-                color: #e0e0e0;
-                border: 1px solid #555;
-                padding: 8px;
-                margin-bottom: 10px;
-                box-sizing: border-box;
-              }
-              .btn {
-                background-color: #4a4a4a;
-                border: none;
-                color: #e0e0e0;
-                padding: 8px 12px;
-                cursor: pointer;
-                border-radius: 4px;
-                margin-right: 8px;
-              }
-              .btn:hover {
-                background-color: #5a5a5a;
-              }
-            </style>
-          </head>
-          <body>
-            <h3 class="panel-title">Game Control Panel</h3>
-            <pre contenteditable id="configEditor">${configText}</pre>
-            <button id="applyBtn" class="btn">Apply Config</button>
-          </body>
-          </html>
-        `);
-        
-        // Add event listener to the apply button
-        controlPanel.document.getElementById('applyBtn').addEventListener('click', () => {
-          const configText = controlPanel.document.getElementById('configEditor').innerText;
-          this._reload();
-          this.processConfigText(configText);
-        });
-        
-        // Prevent the window from being closed when the main window refreshes
-        controlPanel.onbeforeunload = () => {
-          controlPanel.opener = null;
-        };
-      };
-      
-      headerDiv.appendChild(toggleButton);
-    
         // Helper method to send the accumulated comment block to C++
         const flushCommentBlock = () => {
           if (this.currentCommentBlock && this.currentCommentBlock.content.length > 0) {
@@ -173,9 +142,9 @@ var Module = {
             this.currentCommentBlock = null;
           }
         };
-        
+
         const configstr = configText.split("\n").filter(line => {
-          if (line.length === 0)  {
+          if (line.length === 0) {
             flushCommentBlock();
             return false;
           }
@@ -226,46 +195,98 @@ var Module = {
 
           return true;
         });
-        
-        ECONFIG = {
-          "Entities": configstr.map(input => {
-            const builder = new EntityBuilder().parseInput(input);
-            const entity = builder.build();
-            return entity;
+        // Create entities from config strings
+        const entities = configstr.map(input => {
+          const builder = new EntityBuilder().parseInput(input);
+          const entity = builder.build();
+          return entity;
+        });
+
+        // Collect all fetch promises for text components
+        const fetchPromises = [];
+
+        // Process each entity for text components that need fetching
+        entities.forEach(entity => {
+          if (entity.Components && entity.Components.Text) {
+            const text = entity.Components.Text.text;
+
+            // If text starts with @, treat it as a file path and fetch it
+            if (text.startsWith('@')) {
+              const filePath = text.substring(1).trim();
+              const fetchPromise = fetch(filePath)
+                .then(response => response.text())
+                .then(fileContent => {
+                  // Update the entity's Text component with the file content
+                  entity.Components.Text.text = fileContent;
+                })
+                .catch(error => {
+                  console.error(`Failed to fetch file: ${filePath}`, error);
+                });
+
+              fetchPromises.push(fetchPromise);
+            }
+          }
+        });
+
+        // Wait for all fetches to complete before sending to C++
+        Promise.all(fetchPromises)
+          .then(() => {
+            ECONFIG = {
+              "Entities": entities
+            };
+
+            this.js_to_c(ECONFIG);
+            this.start();
           })
-        };
-        
-        this.js_to_c(ECONFIG);
-        this.start();
+          .catch(error => {
+            console.error("Error processing entity text components:", error);
+            // Still proceed with available data
+            ECONFIG = {
+              "Entities": entities
+            };
+
+            this.js_to_c(ECONFIG);
+            this.start();
+          });
       };
 
-      fetch('web/econfigs/demo.txt?'+Math.random())
+      // Check URL parameters for config file
+      const urlParams = new URLSearchParams(window.location.search);
+      const configParam = urlParams.get('c') || urlParams.get('config');
+      const configFile = configParam ? `web/econfigs/${configParam}.txt` : 'web/econfigs/default.txt';
+      
+      fetch(`${configFile}?` + Math.random())
         .then(res => res.text())
         .then(data => {
-          // // Store the config text in the textarea
-          // Process the config text
-
-          // data += this.addRoom(1, 'test', 0, 0, 10, 10);
-          // data += this.addRoom(2, 'test', 10, 0, 10, 10);
-          // console.log(data)
           this.processConfigText(data);
+        })
+        .catch(error => {
+          console.error(`Failed to load config file: ${configFile}`, error);
+          // Fallback to demo.txt if specified config fails
+          if (configParam) {
+            fetch('web/econfigs/default.txt?' + Math.random())
+              .then(res => res.text())
+              .then(data => {
+                this.processConfigText(data);
+              });
+          }
         });
-      })
+    })
   },
 
   // Add a room to the config
   addRoom(id, name, x, y, width, height) {
-      // Create room template based on the format in demo.txt
-      const roomTemplate = `
+    // Create room template based on the format in demo.txt
+    const roomTemplate = `
 id ${id} ${name} position ${x} ${y} 0 shape ${width} ${height} 0 color 0.5 0.5 0.5 1.0 renderPriority -1 interior 
-id ${id+1} ${name}wall_top position ${x} ${y-1} 0 shape ${width} 2 1 color 0.1 0.2 0.3 1.0 renderPriority 2 inside ${id} textureGroupPart room1 s227 ${width} 2
-id ${id+2} ${name}wall_top_col position ${x} ${y+0.5} 1 shape ${width} .1 1 color 0.1 0.2 0.3 1.0 renderPriority 0 inside ${id} collidable
-id ${id+3} ${name}wall_bottom position ${x} ${y+height-1} 1 shape ${width} 2 1 color 0.1 0.2 0.3 1.0 renderPriority 1 inside ${id} textureGroupPart room1 s227 ${width} 2
-id ${id+4} ${name}wall_bottom_col position ${x} ${y+height+0.5} 1 shape ${width} .1 1 color 0.1 0.2 0.3 1.0 renderPriority 0 inside ${id} collidable
-id ${id+5} ${name}wall_left position ${x-0.1} ${y+.5} 1 shape .1 ${height} 1 color 0.1 0.2 0.3 1.0 inside ${id} collidable
-id ${id+6} ${name}wall_right position ${x+width} ${y+.5} 1 shape .1 ${height} 1 color 0.1 0.2 0.3 1.0 inside ${id} collidable
+id ${id + 1} ${name}wall_top position ${x} ${y - 1} 0 shape ${width} 2 1 color 0.1 0.2 0.3 1.0 renderPriority 2 inside ${id} textureGroupPart room1 s227 ${width} 2
+id ${id + 2} ${name}wall_top_col position ${x} ${y + 0.5} 1 shape ${width} .1 1 color 0.1 0.2 0.3 1.0 renderPriority 0 inside ${id} collidable
+id ${id + 3} ${name}wall_bottom position ${x} ${y + height - 1} 1 shape ${width} 2 1 color 0.1 0.2 0.3 1.0 renderPriority 1 inside ${id} textureGroupPart room1 s227 ${width} 2
+id ${id + 4} ${name}wall_bottom_col position ${x} ${y + height + 0.5} 1 shape ${width} .1 1 color 0.1 0.2 0.3 1.0 renderPriority 0 inside ${id} collidable
+id ${id + 5} ${name}wall_left position ${x - 0.1} ${y + .5} 1 shape .1 ${height} 1 color 0.1 0.2 0.3 1.0 inside ${id} collidable
+id ${id + 6} ${name}wall_right position ${x + width} ${y + .5} 1 shape .1 ${height} 1 color 0.1 0.2 0.3 1.0 inside ${id} collidable
 `;
-              
+
     //Append the room template to the existing config data
     return roomTemplate;
   },

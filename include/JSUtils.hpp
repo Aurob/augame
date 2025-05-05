@@ -16,6 +16,11 @@ void _js__kvdata(string k, float v)
     EM_ASM_({ Module.setkv(UTF8ToString($0), $1); }, k.c_str(), v);
 }
 
+void _js__speak(string text)
+{
+    EM_ASM_({ Module.speak(UTF8ToString($0))}, text.c_str());
+}
+
 void _js__log(string str)
 {
     // Send a log to JS

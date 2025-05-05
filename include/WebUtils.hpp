@@ -155,17 +155,19 @@ extern "C"
                         shaderGLSLMap[shader["name"]] = {
                             vertexSource,
                             fragmentSource};
+
+                        printf("Created shader map %s\n", shader["name"].get<std::string>().c_str());
                     }
                 }
             }
         }
 
+        // Loads predefined texture paths from config
         if (js_json.contains("texture") && js_json["texture"].is_object())
         {
             auto texture = js_json["texture"];
             if (texture.contains("name") && texture["name"].is_string())
             {
-                // printf("Texture: %s\n", texture["name"].get<std::string>().c_str());
                 bool texture_exists = textureMap.find(texture["name"]) != textureMap.end();
                 if (!texture_exists)
                 {
@@ -302,6 +304,18 @@ extern "C"
                                 }
                             }, "Id");
 
+                            // Player 
+                            safe_emplace(registry, entity, [&]() {
+                                if (components.contains("Player") && components["Player"].is_boolean())
+                                {
+                                    // Check if there's already an entity with Player component
+                                    auto view = registry.view<Player>();
+                                    if (view.empty()) {
+                                        registry.emplace<Player>(entity);
+                                    }
+                                }
+                            }, "Player");
+
                             safe_emplace(registry, entity, [&]() {
                                 if (components.contains("Position") && components["Position"].is_object())
                                 {
@@ -412,13 +426,9 @@ extern "C"
                                 {
                                     auto &movement = components["Movement"];
                                     registry.emplace<Movement>(entity, Movement{
-                                                                           movement["speed"].get<float>(),
-                                                                        //    movement["maxSpeed"].get<float>(),
-                                                                        //    {movement["acceleration"]["x"].get<float>(), movement["acceleration"]["y"].get<float>()},
-                                                                        //    {movement["velocity"]["x"].get<float>(), movement["velocity"]["y"].get<float>()},
-                                                                        //    movement["friction"].get<float>(),
-                                                                           movement["mass"].get<float>(),
-                                                                           movement["restitution"].get<float>()});
+                                        movement["speed"].get<float>(),
+                                        movement["mass"].get<float>(),
+                                        movement["restitution"].get<float>()});
                                 }
                             }, "Movement");
 
@@ -510,8 +520,24 @@ extern "C"
                                     registry.emplace<Teleportable>(entity);
                                 }
                             }, "Teleportable");
+
+                            // Text
+                            safe_emplace(registry, entity, [&]() {
+                                if(components.contains("Text") && components["Text"].is_object()) {
+                                    auto &text = components["Text"];
+                                    bool hide = text["hide"] == 1 || text["hide"] == true;
+                                    registry.emplace<Text>(entity, text["text"], text["scale"], hide);
+                                }
+                            }, "Text");
+
+                            // Text
+                            safe_emplace(registry, entity, [&]() {
+                                if(components.contains("Terrain") && components["Terrain"].is_boolean()) {
+                                    registry.emplace<Terrain>(entity);
+                                }
+                            }, "Text");
                         }
-                    
+
                         if (registry.all_of<Position, Shape>(entity)) {
                             registry.emplace<PhysicsBodyRect>(entity);
                         }

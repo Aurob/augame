@@ -180,15 +180,20 @@ void updateInteractions(entt::registry &registry)
         // Skip entities that are not in the same interior as the player
         if (playerInside)
         {
+
             if (!registry.all_of<Inside>(entity) || registry.get<Inside>(entity).interior != playerInterior)
             {
+
                 continue;
             }
         }
         else if (registry.all_of<Inside>(entity))
         {
+
             continue;
         }
+        printf("3\n");
+
         auto &position = debug_entities.get<Position>(entity);
         auto &shape = debug_entities.get<Shape>(entity);
         auto &interactable = debug_entities.get<Interactable>(entity);
@@ -247,6 +252,11 @@ void updateInteractions(entt::registry &registry)
                         if(inside.interior == door.A) inside.interior = door.B;
                         else inside.interior = door.A;
                     } 
+                }
+
+                if(registry.all_of<Text>(entity)) {
+                    auto text = registry.get<Text>(entity);
+                    _js__speak(text.text);
                 }
 
                 keys[SDL_BUTTON_LEFT] = false;

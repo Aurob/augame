@@ -7,18 +7,17 @@ varying vec3 color;
 uniform vec2 playerPos;
 uniform vec2 toplefttile;
 uniform vec2 cursorPos;
-uniform vec2 generationSize; // Add uniform for width and height of generation area
-// Add a lot of grass with patches of dirt and a sandy shore around small seas, sparse stone and rare snow
-const float waterMax = 0.01;  // Less water
-const float sandMax = 0.10;   // Sandy shore around seas
-const float dirtMax = 0.15;   // Less dirt
-const float grassMax = 0.80;  // More grass
-const float stoneMax = 0.90;  // More stone
-const float snowMax = 1.0;    // Rare snow
+uniform vec2 generationSize;
+const float waterMax = 0.01;
+const float sandMax = 0.02;
+const float dirtMax = 0.03;
+const float grassMax = 0.40;
+const float stoneMax = 0.60;
+const float snowMax = .95;
 const float frequency = 0.25;
 const float amplitude = 1.0;
 const float persistence = 0.5;
-const float lacunarity = 2.0;
+const float lacunarity = 4.0;
 const int octaves = 4;
 uniform float scale;
 uniform float seed;
@@ -30,23 +29,35 @@ vec4 taylorInvSqrt(in vec4 r) {return 1.79284291400159 - 0.85373472095314 * r;}
 vec3 simple_tile_color(vec2 _coord, float n) {
     vec3 color;
     if (n < waterMax) {
-        // Water
-        color = vec3(20.0 / 255.0, 24.0 / 255.0, 34.0 / 255.0); // Darker deep water color
+        // Water - slightly lighter ocean
+        color = vec3(30.0 / 255.0, 40.0 / 255.0, 60.0 / 255.0);
     } else if (n < sandMax) {
-        // Sand 
-        color = vec3(0.95, 0.87, 0.70); // Lighter sand color
+        // Sand - more pale
+        color = vec3(0.92, 0.88, 0.78);
     } else if (n < dirtMax) {
-        // Dirt
-        color = vec3(164.0 / 255.0, 158.0 / 255.0, 130.0 / 255.0); // Lightest dirt color
+        // Dirt - browner
+        color = vec3(119.0 / 255.0, 95.0 / 255.0, 65.0 / 255.0);
     } else if (n < grassMax) {
-        // Grass
-        color = vec3(48.0 / 255.0, 71.0 / 255.0, 40.0 / 255.0); // Darkest grass color
+        // Three types of grass based on elevation, darker to lighter
+        float grassRange = grassMax - dirtMax;
+        float grassPosition = (n - dirtMax) / grassRange;
+        
+        if (grassPosition < 0.33) {
+            // Darker grass (lower elevation)
+            color = vec3(42.0 / 255.0, 65.0 / 255.0, 35.0 / 255.0);
+        } else if (grassPosition < 0.66) {
+            // Medium grass (middle elevation)
+            color = vec3(48.0 / 255.0, 71.0 / 255.0, 40.0 / 255.0);
+        } else {
+            // Lighter grass (higher elevation)
+            color = vec3(55.0 / 255.0, 80.0 / 255.0, 45.0 / 255.0);
+        }
     } else if (n < stoneMax) {
         // Stone
-        color = vec3(144.0 / 255.0, 144.0 / 255.0, 144.0 / 255.0); // Lightest stone color
+        color = vec3(144.0 / 255.0, 144.0 / 255.0, 144.0 / 255.0);
     } else {
         // Snow
-        color = vec3(1.0, 1.0, 1.0); // Lighter snow color
+        color = vec3(1.0, 1.0, 1.0);
     }
     return color;
 }
@@ -92,18 +103,18 @@ void main() {
     vec2 adjustedCoord = (coord / grid_spacing) + toplefttile + (offset / grid_spacing) + generationOffset;
 
     // Limit generation to specified area
-    if (adjustedCoord.x < 0.0 || adjustedCoord.x > generationSize.x ||
-        adjustedCoord.y < 0.0 || adjustedCoord.y > generationSize.y) {
-        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); // Set color to black for areas outside generation bounds
-        return;
-    }
+    //if (adjustedCoord.x < 0.0 || adjustedCoord.x > generationSize.x ||
+    //    adjustedCoord.y < 0.0 || adjustedCoord.y > generationSize.y) {
+    //    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); // Set color to black for areas outside generation bounds
+    //    return;
+    //}
 
     vec2 _coord = adjustedCoord;
 
     float n = 0.0;
     float layerFrequency = frequency;
     float layerAmplitude = amplitude;
-    const int numLayers = 9; // Adjust as needed for desired complexity
+    const int numLayers = 10; // Adjust as needed for desired complexity
 
     for (int i = 0; i < numLayers; i++) {
         vec2 z = _coord * layerFrequency;
