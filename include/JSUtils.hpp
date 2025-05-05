@@ -1,7 +1,7 @@
 #pragma once
 #include <emscripten.h>
 #include "shaders.hpp"
-#include "../include/entt.hpp"
+#include "lib/entt.hpp"
 #include "../include/structs.hpp"
 
 using namespace std;
@@ -14,6 +14,11 @@ void _js__kvdata(string k, float v)
 {
     // Send a float to JS
     EM_ASM_({ Module.setkv(UTF8ToString($0), $1); }, k.c_str(), v);
+}
+
+void _js__speak(string text)
+{
+    EM_ASM_({ Module.speak(UTF8ToString($0))}, text.c_str());
 }
 
 void _js__log(string str)
@@ -30,20 +35,11 @@ void _js__ready()
     });
 }
 
-void _js__refresh()
+void _js__show_alert(string message) 
 {
-    // Refresh the UI
     EM_ASM({
-        Module.refresh();
-    });
-}
-
-void _js__fetch_configs()
-{
-    // Fetch the configs from JS
-    EM_ASM({
-        Module.fetch_configs();
-    });
+        Module.show_alert(UTF8ToString($0));
+    }, message.c_str());
 }
 
 void _js__play_tone(string note, string duration, float volume = 0.5, string type = "sine")
@@ -53,16 +49,42 @@ void _js__play_tone(string note, string duration, float volume = 0.5, string typ
         Module.play_tone(UTF8ToString($0), UTF8ToString($1), $2, UTF8ToString($3));
     }, note.c_str(), duration.c_str(), volume, type.c_str());
 }
-
-
-void _js__update_client() {
-    Position &playerPos = registry.get<Position>(_player);
-    Shape &playerShape = registry.get<Shape>(_player);
-
-    // Update info on front end
-    _js__kvdata("x", playerPos.x);
-    _js__kvdata("y", playerPos.y);
-    _js__kvdata("z", playerPos.z);
-    _js__kvdata("gridSpacingValue", gridSpacingValue);
+void _js__fetch_configs()
+{
+    // Fetch the configs from JS
+    EM_ASM({
+        Module.fetch_configs();
+    });
 }
+enum LogLevel {
+    CONSOLE = 1,       // Output to console
+    WARN = 2,          // Output to console as a warning
+    ERROR = 4,         // Output to console as an error
+    INFO = 512,        // Output to console as info
+    DEBUG = 256,       // Output to console as debug
+    JS_STACK = 16,     // Add a JS stack trace to the message
+    NO_PATHS = 64,     // Omit file paths in stack traces
+};
 
+void emlog(const char* msg, LogLevel level = CONSOLE) {
+    // Supports log levels:
+    // LogLevel::CONSOLE - Standard output (default)
+    // LogLevel::WARN - Warnings 
+    // LogLevel::ERROR - Errors
+    // LogLevel::DEBUG - Debug
+    // LogLevel::INFO - Info
+    // LogLevel::JS_STACK - Add a JS stack trace
+    // LogLevel::NO_PATHS - Omit file paths in stack traces
+    // Can combine with | for multiple flags
+    
+    // Use emscripten_log which will be compiled to call emscriptenLog internally
+    // This ensures proper warning coloring based on the flags
+    int flags = static_cast<int>(level);
+    
+    // Make sure CONSOLE flag is set if any output is desired
+    if (!(flags & CONSOLE) && (flags & (WARN | ERROR | INFO | DEBUG))) {
+        flags |= CONSOLE;
+    }
+    
+    emscripten_log(flags, "%s", msg);
+}

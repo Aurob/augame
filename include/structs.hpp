@@ -5,8 +5,9 @@
 #include <any>
 #include <optional>
 #include <unordered_map>
-#include "entt.hpp"
-
+#include "../include/lib/entt.hpp"
+#include "../include/lib/physics.hpp"
+#include <emscripten.h>
 using namespace std;
 
 struct context
@@ -68,6 +69,8 @@ struct Id {
     int id;
     /// @brief include
     string name;
+
+    bool other1;
 };
 
 /// \ingroup client_components
@@ -115,6 +118,12 @@ struct Color {
         : r(r), g(g), b(b), a(a), defaultR(r), defaultG(g), defaultB(b), defaultA(a) {}
 };
 
+struct Text {
+    std::string text;
+    float scale;
+    bool hide;
+};
+
 struct Visible {};
 struct InView {};
 struct AlwaysInView {};
@@ -131,7 +140,11 @@ struct Teleport {
     bool reverse{false};
     bool disabled{false};
 };
-struct Teleportable {};
+struct Teleportable {
+    bool refresh;
+    bool done{false};
+    int timer;
+};
 
 struct Hoverable {
     int duration;
@@ -167,21 +180,6 @@ struct TickAction {
     float time;
 };
 
-struct Interactable {
-    int interactions;
-    float radius;
-    bool toggleState;
-    bool toggle() {
-        toggleState = !toggleState;
-        return toggleState;
-    }
-};
-
-struct Draggable {
-    float radius;
-    float sradius;
-};
-
 struct Colliding{
     std::vector<entt::entity> collidables;
     std::vector<Vector3f> overlaps;
@@ -191,16 +189,20 @@ struct Collidable {
     bool ignorePlayer;
     bool ignoreCollideAll;
 };
-
 struct Movement {
     float speed{10};
+    float default_speed{10};
     float max_speed{110};
     Vector2f velocity{0, 0};
     Vector2f acceleration{0, 0};
     float friction{1};
     float mass{1};
     float restitution{0.5};
+    
+    Movement(float _speed = 10, float _mass = 1, float _restitution = 0.5) 
+        : speed(_speed), default_speed(_speed), mass(_mass), restitution(_restitution) {}
 };
+
 struct Moveable {};
 
 struct Rotation {
@@ -208,34 +210,6 @@ struct Rotation {
     float angular_velocity{0};
     float angular_acceleration{0};
     float angular_friction{1};
-};
-
-
-struct Linkable {};
-struct Linked {
-    entt::entity parent;
-    float distance;
-    bool keepCollisions{false};
-};
-
-struct Associated {
-    std::vector<entt::entity> entities;
-    bool destroy;
-
-    template<typename... Components>
-    std::vector<entt::entity> filterByComponents(entt::registry &registry) const {
-        std::vector<entt::entity> filteredEntities;
-        for (auto entity : entities) {
-            if (registry.all_of<Components...>(entity)) {
-                filteredEntities.push_back(entity);
-            }
-        }
-        return filteredEntities;
-    }
-};
-
-struct Flag {
-    std::unordered_map<std::string, std::any> flags;
 };
 
 // Interiors
@@ -258,18 +232,8 @@ struct OnInteriorPortal {
     entt::entity portal;
 };
 
-// Basic Pathfinding
-struct BasicPathfinding {
-    entt::entity target;
-    Position targetPos;
-};
-
 struct RenderPriority {
     int priority;
-};
-
-struct Test {
-    std::string value;
 };
 
 struct Texture {
@@ -289,6 +253,14 @@ struct TextureAlts {
     std::string current;
 };
 
+struct TextureAnimation {
+    double timestamp{emscripten_get_now() / 1000.0};  // Current time position in the animation (in seconds)
+    float interval{1.0f};                            // Total duration of the animation in seconds
+    bool paused{false};                              // Whether the animation is currently paused
+    float currentTime{0.0f};                         // Current time in the animation cycle
+    bool noloop{false};
+};
+
 struct TextureGroupPart {
     std::string groupName;
     std::string partName;
@@ -298,51 +270,71 @@ struct TextureGroupPart {
     
 };
 
-struct CollideColorAlt {
-    Color inactive;
-    Color active;
-};
-
-struct InteriorPortalTexture {
-    entt::entity portal;
-};
-
-struct Elevate {
-    int direction{1};
-};
-
 struct Keys {
     std::unordered_map<SDL_Keycode, bool> keys;
 };
 
 struct Cursor {
     Position position;
+    bool firstdown; // Used to check if this is the first time the mouse is down after being up
+    bool firstup; // same but reversed
 };
 
-struct Configurable {};
+struct Test { std::string value; };
 
-// UI
-struct UIElement {
-    std::string content;
-    bool visible;
-    Vector2f offset;
-    Vector2f soffset;
+struct PhysicsBodyRect {
+    p2d::RectangleBody *body;
+    // p2d::CircleBody *body;
+    bool added;
+    bool ignore;
 };
 
-struct Tone {
-    std::string note;
-    std::string duration;
-    std::string type;
-    float volume;
-    bool playing{false};
-    int iterations{0};
+struct Interactable {
+    int interactions;
+    float radius;
+    bool toggleState;
+    bool toggle() {
+        toggleState = !toggleState;
+        return toggleState;
+    }
 };
 
-struct Puzzle {
-    std::vector<entt::entity> pieces;
-    bool solved;
+struct Flag {
+    std::string name;
+    int id;
+};
+struct ActionLimits {
+    std::string name;
+    std::unordered_map<std::string, int> maxInstances;      // Maps effect name to max number of concurrent instances
+    std::unordered_map<std::string, float> timeoutIntervals; // Maps effect name to timeout interval in seconds
+    std::unordered_map<std::string, int> currentInstances;   // Tracks current number of instances per effect
+    std::unordered_map<std::string, float> lastCreationTime; // Tracks when each effect was last created
 };
 
-struct PuzzlePiece {
-    bool active;
+struct Terrain{};
+struct Effect {
+    std::string name;
+};
+// Alternative struct names:
+// SoundSequencer, MelodyPlayer, ToneGenerator, SoundEmitter, AudioNotes, 
+// NoteSequencer, MusicPlayer, SoundPatterns, AudioSequencer, MelodyEmitter,
+// ToneSequences, SoundProfile, NotePatterns, MusicEmitter, AudioPlayer
+struct MusicNotes {
+    std::vector<std::vector<std::string>> noteSequences; // Each vector contains a sequence of notes like "C4", "D4", "E4", etc.
+    int currentSequence = 0;                            // Index of the current sequence being played
+    bool loop = false;                                  // Whether to loop through sequences
+    float volume = -20.0f;                              // Default volume level
+    std::string instrument;            // Default instrument/sound
+    
+    // Available notes examples:
+    // C4, D4, E4, G4, A4 (pentatonic scale)
+    // C4, D4, E4, F4, G4, A4, B4 (C major scale)
+    // A3, B3, C4, D4, E4, F4, G4 (A minor scale)
+    // C3, E3, G3 (C major chord)
+    // F3, A3, C4 (F major chord)
+    // G3, B3, D4 (G major chord)
+    // C5, B4, A4, G4 (descending melody)
+    // E4, G4, E4, C4 (arpeggio pattern)
+    // C4, C4, G4, G4, A4, A4, G4 (simple melody)
+    // F#4, G#4, A#4, C5, D#5 (chromatic sequence)
 };
