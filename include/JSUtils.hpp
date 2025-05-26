@@ -56,6 +56,13 @@ void _js__fetch_configs()
         Module.fetch_configs();
     });
 }
+
+void _js__update_color(float r, float g, float b) {
+    EM_ASM({
+        Module.update_color($0, $1, $2);
+    }, r, g, b);
+}
+
 enum LogLevel {
     CONSOLE = 1,       // Output to console
     WARN = 2,          // Output to console as a warning

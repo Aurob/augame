@@ -5,6 +5,7 @@
 
 #include "../include/shaders.hpp"
 #include "events.hpp"
+#include "JSUtils.hpp"
 
 extern float seed;
 extern float gridSpacingValue;
@@ -53,6 +54,166 @@ SDL_Window* loadSDL() {
 
     return mpWindow;
 }
+bool _log_uniform = true;
+
+inline float fract(float x) {
+    return x - std::floor(x);
+}
+
+// Helper function to hash a 3D point
+// Renamed to hashPoint to avoid ambiguity with std::hash
+float* hashPoint(float p[3]) {
+    static float result[3];
+    float dot1 = p[0] * 127.1f + p[1] * 311.7f + p[2] * 74.7f;
+    float dot2 = p[0] * 269.5f + p[1] * 183.3f + p[2] * 246.1f;
+    float dot3 = p[0] * 113.5f + p[1] * 271.9f + p[2] * 101.5f;
+    
+    result[0] = -1.0f + 2.0f * fract(sin(dot1 + seed) * 43758.5453f);
+    result[1] = -1.0f + 2.0f * fract(sin(dot2 + seed) * 43758.5453f);
+    result[2] = -1.0f + 2.0f * fract(sin(dot3 + seed) * 43758.5453f);
+    
+    return result;
+}
+
+// Helper function for smooth noise, matching the shader implementation
+float smoothNoise(float x, float y) {
+    // More complex noise using multiple trigonometric functions with phase shifts
+    const float xFreq1 = 0.1f;  // Primary frequency for x component
+    const float yFreq1 = 0.1f;  // Primary frequency for y component
+    const float xFreq2 = 0.05f; // Secondary frequency for x component
+    const float yFreq2 = 0.07f; // Secondary frequency for y component
+    
+    // Add phase shifts based on seed for more variation
+    float phaseX = sin(seed * 0.1f) * 3.14f;
+    float phaseY = cos(seed * 0.1f) * 3.14f;
+    
+    // Combine multiple sine and cosine waves with different frequencies and phases
+    float noise1 = 0.5f * sin(x * xFreq1 + phaseX) + 0.5f * cos(y * yFreq1 + phaseY);
+    float noise2 = 0.3f * sin(x * xFreq2 + y * 0.08f) + 0.3f * cos(y * yFreq2 - x * 0.06f);
+    float noise3 = 0.2f * sin((x + y) * 0.12f) * cos((x - y) * 0.09f);
+    
+    // Combine the noise components with some non-linear operations
+    float combinedNoise = noise1 + noise2 * (1.0f + 0.2f * sin(x * 0.3f)) + noise3;
+    
+    // Normalize to 0.0-1.0 range
+    return (combinedNoise + 1.5f) * 0.33f;
+}
+
+float frequency = 9.5f;
+float amplitude = 0.70f;
+
+// Helper function to calculate n value for terrain, matching the shader implementation
+float calculate_n(float x, float y) {
+    float n = 0.0f;
+    float layerFrequency = frequency;
+    float layerAmplitude = amplitude;
+    const int numLayers = 10; // Adjust as needed for desired complexity
+
+    // Add a slight rotation to each octave for more natural patterns
+    float rotationAngle = 0.15f;
+    float sinRot = sin(rotationAngle);
+    float cosRot = cos(rotationAngle);
+
+    for (int i = 0; i < numLayers; i++) {
+        // Apply slight rotation to coordinates for each layer
+        float rotatedCoord_x = x * layerFrequency;
+        float rotatedCoord_y = y * layerFrequency;
+        
+        if (i > 0) {
+            float rotAmount = float(i) * rotationAngle;
+            float s = sin(rotAmount);
+            float c = cos(rotAmount);
+            float temp_x = rotatedCoord_x;
+            rotatedCoord_x = rotatedCoord_x * c - rotatedCoord_y * s;
+            rotatedCoord_y = temp_x * s + rotatedCoord_y * c;
+        }
+        
+        // Get noise value and apply domain warping for more complex patterns
+        float noiseVal = smoothNoise(rotatedCoord_x, rotatedCoord_y);
+        
+        // Apply domain warping for higher octaves
+        if (i > 3) {
+            float warp_x = sin(rotatedCoord_y * 0.5f + seed * 0.1f) * 0.15f;
+            float warp_y = cos(rotatedCoord_x * 0.5f + seed * 0.2f) * 0.15f;
+            noiseVal = smoothNoise(rotatedCoord_x + warp_x, rotatedCoord_y + warp_y);
+        }
+        
+        n += layerAmplitude * noiseVal;
+        
+        // Adjust frequency and amplitude for next layer
+        layerFrequency *= 1.5f;
+        layerAmplitude *= 0.55f;
+    }
+
+    // Apply a subtle ridge effect to create more interesting terrain features
+    n = abs(n * 2.0f - 1.0f);
+    n = 1.0f - n;
+    n = n * n;
+    
+    // Ensure n stays within reasonable bounds (0.0 to 1.0)
+    n = (n < 0.0f) ? 0.0f : ((n > 1.0f) ? 1.0f : n);
+    
+    return n;
+}
+
+// Log uniform values and update color in JS
+void logUniformValues(float _width, float _height, float gridSpacingValue, 
+                     float offsetValue[2], float toplefttile[2], float generationSize[2]) {
+    // Calculate the same values as in the shader
+    // Example coordinates at the center of the screen
+    float coord_x = _width / 2.0f;
+    float coord_y = _height / 2.0f;
+    
+    // Invert y-coordinate as in the shader
+    coord_y = _height - coord_y;
+    
+    // Calculate generationOffset
+    float generationOffset_x = generationSize[0] / 2.0f;
+    float generationOffset_y = generationSize[1] / 2.0f;
+    
+    // Adjust coordinates with grid spacing, toplefttile, offset, and generationOffset
+    float adjustedCoord_x = (coord_x / gridSpacingValue) + toplefttile[0] + (offsetValue[0] / gridSpacingValue) + generationOffset_x;
+    float adjustedCoord_y = (coord_y / gridSpacingValue) + toplefttile[1] + (offsetValue[1] / gridSpacingValue) + generationOffset_y;
+    
+    // Calculate n using helper function
+    float n = calculate_n(adjustedCoord_x, adjustedCoord_y);
+    // Determine color based on n value, similar to simple_tile_color in shader
+    float r, g, b;
+    if (n < 0.1f) {
+        // Water - slightly lighter ocean
+        float depth = 0.1f - n;  // Deeper water is darker
+        float depthFactor = depth / 0.1f;  // Normalize to 0-1 range
+        r = 0.12f * (1.0f - depthFactor) + 0.08f * depthFactor;
+        g = 0.16f * (1.0f - depthFactor) + 0.12f * depthFactor;
+        b = 0.24f * (1.0f - depthFactor) + 0.20f * depthFactor;
+    } else if (n < 0.3f) {
+        // Sand - more pale with variation
+        float sandFactor = (n - 0.1f) / 0.2f;  // Normalize to 0-1 range
+        r = 0.92f * (1.0f - sandFactor) + 0.85f * sandFactor;
+        g = 0.88f * (1.0f - sandFactor) + 0.82f * sandFactor;
+        b = 0.78f * (1.0f - sandFactor) + 0.70f * sandFactor;
+    } else if (n < 0.6f) {
+        // Grass with variation
+        float grassFactor = (n - 0.3f) / 0.3f;  // Normalize to 0-1 range
+        r = 0.2f * (1.0f - grassFactor) + 0.15f * grassFactor;
+        g = 0.6f * (1.0f - grassFactor) + 0.5f * grassFactor;
+        b = 0.3f * (1.0f - grassFactor) + 0.2f * grassFactor;
+    } else if (n < 0.8f) {
+        // Greyish brownish green transition zone
+        float transitionFactor = (n - 0.6f) / 0.2f;  // Normalize to 0-1 range
+        r = 0.4f * (1.0f - transitionFactor) + 0.35f * transitionFactor;
+        g = 0.4f * (1.0f - transitionFactor) + 0.35f * transitionFactor;
+        b = 0.3f * (1.0f - transitionFactor) + 0.25f * transitionFactor;
+    } else {
+        // Stone/mountain
+        float stoneFactor = (n - 0.8f) / 0.2f;  // Normalize to 0-1 range
+        r = 0.5f * (1.0f - stoneFactor) + 0.4f * stoneFactor;
+        g = 0.5f * (1.0f - stoneFactor) + 0.4f * stoneFactor;
+        b = 0.5f * (1.0f - stoneFactor) + 0.45f * stoneFactor;
+    }
+    // Update color in JS
+    _js__update_color(r*256, g*256, b*256);
+}
 
 void updateUniforms(GLuint &shaderProgram,
                     float gridSpacingValue,
@@ -85,8 +246,9 @@ void updateUniforms(GLuint &shaderProgram,
     // glUniform2f(cursorPosLocation, cursor.position.x, cursor.position.y);
 
     // time
+    float timeValue = SDL_GetTicks() / 1000000.0f;
     GLint timeLocation = glGetUniformLocation(shaderProgram, "time");
-    glUniform1f(timeLocation, SDL_GetTicks() / 1000000.0f);
+    glUniform1f(timeLocation, timeValue);
 
     // generationSize
     GLint generationSizeLocation = glGetUniformLocation(shaderProgram, "generationSize");
@@ -95,6 +257,10 @@ void updateUniforms(GLuint &shaderProgram,
     // seed
     GLint seedLocation = glGetUniformLocation(shaderProgram, "seed");
     glUniform1f(seedLocation, seed);
+    
+    if (_log_uniform) {
+        logUniformValues(_width, _height, gridSpacingValue, offsetValue, toplefttile, generationSize);
+    }
 }
 
 void updateUIShader(GLuint &shaderProgram, float _width, float _height, float gridSpacingValue, float toplefttile[2])
@@ -398,7 +564,6 @@ GLuint loadGLTexture(GLuint &shaderProgram, std::string textureSrc, int &width, 
     GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
     glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
     glEnableVertexAttribArray(posAttrib);
-
     // Get the location of the 'texCoord' attribute in the shader program
     GLint texAttrib = glGetAttribLocation(shaderProgram, "texCoord");
     glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
@@ -444,7 +609,7 @@ void renderText(const std::string& text, float x, float y, float scale, float r,
     SDL_Color color = {static_cast<Uint8>(r * 255), static_cast<Uint8>(g * 255), static_cast<Uint8>(b * 255), static_cast<Uint8>(a * 255)};
     
     // Load font for rendering
-    TTF_Font* font = TTF_OpenFont("resources/fonts/42dotSans-Regular.ttf", 48);
+    TTF_Font* font = TTF_OpenFont("resources/fonts/42dotSans-Regular.ttf", 18);
     if (!font) {
         printf("TTF_OpenFont: %s\n", TTF_GetError());
         return;

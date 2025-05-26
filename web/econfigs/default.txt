@@ -1,1 +1,2 @@
 world demo
+id 0 player position 800 1000 0 shape .75 .75 0 color 0.1 0.2 0.3 .1 movement 575 .5 1 collidable player
