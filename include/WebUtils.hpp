@@ -536,6 +536,13 @@ extern "C"
                                     registry.emplace<Terrain>(entity);
                                 }
                             }, "Text");
+
+                            // World
+                            safe_emplace(registry, entity, [&]() {
+                                if(components.contains("World") && components["World"].is_boolean()) {
+                                    printf("World\n");
+                                }
+                            }, "World");
                         }
 
                         if (registry.all_of<Position, Shape>(entity)) {

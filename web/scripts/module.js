@@ -304,7 +304,10 @@ id ${id + 6} ${name}wall_right position ${x + width} ${y + .5} 1 shape .1 ${heig
 
   ready() {
   },
-
+  update_color(r, g, b) {
+    // console.log(r, g, b);
+    document.querySelector('#tcolor').style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+  },
   setkv(key, value) {
     const parsedValue = parseFloat(value.toFixed(2));
     this.c_kv_data[key] = parsedValue;
