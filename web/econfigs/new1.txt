@@ -1,4 +1,0 @@
-id 1 room1 position -50 -50 0 shape 100 100 0 color 1 1 1 1.0 renderPriority -1
-id 0 player position 0 0 0 shape .75 .75 0 color 0.1 0.2 0.3 0 movement 500 0 0 collidable
-
-id 2 text1 position 0 10 0 shape 1 1 0 color 1 1 1 1 text "@resources/text/readme.txt" 1 0

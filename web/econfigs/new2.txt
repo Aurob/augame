@@ -1,5 +1,0 @@
-
-id 1 room1 position 0 -10 0 shape 5 5 0 color 0.5 0.5 0.5 1.0 renderPriority -1 interior
-id 121 door1 position 0 -8 0 shape 1 .5 0 color 1 1 1 1 renderPriority 1 collidable hoverable interiorPortal -1 1 0 interactable
-id 0 player position 0 -10 0 shape .75 .75 0 color 0.1 0.2 0.3 .1 movement 575 .5 0 collidable player 1 renderPriority 4
-

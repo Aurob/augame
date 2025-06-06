@@ -128,7 +128,7 @@ const tilesetGroups = [
     ['tileset1', 'tileset1.png', 207, 153, 8, 8],
     // ['slime2', 'SlimeGreenIdle.png', 1430, 715, 32, 32],
     ['room1', 'Room_Builder_free_32x32.png', 544, 736, 32, 32],
-    ['font', '42dotSans-Regular-ttf.png', 330, 273, 33, 39],
+    // ['font', '42dotSans-Regular-ttf.png', 330, 273, 33, 39],
     ['instruments', 'instruments.png', 512, 544, 32, 32],
     ['effects', 'Combat-Sheet.png', 640, 1856, 64, 64]
 ].map(([name, path, width, height, tileWidth, tileHeight]) => 
@@ -138,8 +138,8 @@ const tilesetGroups = [
 CONFIG.textureGroups.push(...tilesetGroups);
 
 // // // Add JSON tileset
-const jsonTileset = createJsonTileset('font', '42dotSans-Regular-ttf.png', FONT_DATA);
-CONFIG.textureGroups.push(jsonTileset);
+// const jsonTileset = createJsonTileset('font', '42dotSans-Regular-ttf.png', FONT_DATA);
+// CONFIG.textureGroups.push(jsonTileset);
 
 // Add sprite sheet textures
 const playerTextures = createSpriteSheetTextures(

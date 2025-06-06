@@ -63,6 +63,12 @@ void _js__update_color(float r, float g, float b) {
     }, r, g, b);
 }
 
+void _js__update_user_position(float x, float y) {
+    EM_ASM({
+        Module.update_user_position($0, $1);
+    }, x, y);
+}
+
 enum LogLevel {
     CONSOLE = 1,       // Output to console
     WARN = 2,          // Output to console as a warning
