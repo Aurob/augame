@@ -35,11 +35,16 @@ function interact() {
 
 
 function update_worldsize(width, height) {
-  Module.js_to_c(
-    {"world": {
+  if (width == null && height == null) {
+    width = window.innerWidth;
+    height = window.innerHeight;
+  }
+  Module.js_to_c({
+    "world": {
       "width": width,
       "height": height
-    }});
+    }
+  });
 }
 
 function zoom(zoom) {

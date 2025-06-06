@@ -22,7 +22,6 @@ void makePlayer(entt::registry &registry)
     for (auto entity : player_view)
     {
         player = entity;
-        printf("123 %d\n", registry.all_of<Movement>(entity));
     }
 
     if(player == entt::null) {

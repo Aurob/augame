@@ -42,12 +42,12 @@ var Module = {
   speak(text, options = {}) {
     const synth = window.speechSynthesis;
     if (!synth) return console.error('Speech synthesis not supported');
-    
+
     // Cancel any ongoing speech
     synth.cancel();
-  
+
     const utterance = new SpeechSynthesisUtterance(text);
-    
+
     // Apply options
     Object.assign(utterance, {
       rate: options.rate ?? 1,
@@ -56,28 +56,28 @@ var Module = {
       voice: options.voice ?? null,
       lang: options.lang ?? 'en-US',
     });
-  
+
     if (options.onEnd) utterance.onend = options.onEnd;
     if (options.onError) utterance.onerror = options.onError;
-    
+
     // Add event listener for page unload/refresh to stop speech
     const cancelSpeechOnUnload = () => synth.cancel();
     window.addEventListener('beforeunload', cancelSpeechOnUnload);
-    
+
     // Clean up event listener when speech ends
     utterance.onend = (event) => {
       window.removeEventListener('beforeunload', cancelSpeechOnUnload);
       if (options.onEnd) options.onEnd(event);
     };
-    
+
     // Also clean up on error
     utterance.onerror = (event) => {
       window.removeEventListener('beforeunload', cancelSpeechOnUnload);
       if (options.onError) options.onError(event);
     };
-  
+
     synth.speak(utterance);
-    
+
     // Return a function that can be used to manually stop the speech
     return {
       stop: () => {
@@ -213,7 +213,7 @@ var Module = {
             // If text starts with @, treat it as a file path and fetch it
             if (text.startsWith('@')) {
               const filePath = text.substring(1).trim();
-              const fetchPromise = fetch(filePath)
+              const fetchPromise = fetch(filePath+'?'+Math.random())
                 .then(response => response.text())
                 .then(fileContent => {
                   // Update the entity's Text component with the file content
@@ -254,7 +254,7 @@ var Module = {
       const urlParams = new URLSearchParams(window.location.search);
       const configParam = urlParams.get('c') || urlParams.get('config');
       const configFile = configParam ? `web/econfigs/${configParam}.txt` : 'web/econfigs/default.txt';
-      
+
       fetch(`${configFile}?` + Math.random())
         .then(res => res.text())
         .then(data => {
@@ -293,6 +293,7 @@ id ${id + 6} ${name}wall_right position ${x + width} ${y + .5} 1 shape .1 ${heig
   start() {
     console.log("Starting...");
     this._isready();
+    this.canvas.style.display = "block"
   },
 
   onRuntimeInitialized() {
@@ -300,13 +301,41 @@ id ${id + 6} ${name}wall_right position ${x + width} ${y + .5} 1 shape .1 ${heig
     this.canvas.height = window.innerHeight;
 
     update_worldsize(window.innerWidth, window.innerHeight);
+
+    // Set up window resize event to update world size
+    window.addEventListener('resize', () => {
+      update_worldsize(window.innerWidth, window.innerHeight);
+    });
+
+    // only load the tone.js library on user interaction
+    // this isn't neccessary, but it suppresses a warning that browsers show
+    //  about the library being loaded without a user gesture
+    function loadToneOnce() {
+      if (!window.toneLoaded) {
+        window.toneLoaded = true;
+        var script = document.createElement('script');
+        script.src = "web/lib/tone.js";
+        document.head.appendChild(script);
+      }
+      // Remove all event listeners after first trigger
+      this.removeEventListener('mousedown', loadToneOnce);
+      this.removeEventListener('touchstart', loadToneOnce);
+      this.removeEventListener('pointerdown', loadToneOnce);
+      this.removeEventListener('keydown', loadToneOnce);
+    }
+    this.canvas.addEventListener('mousedown', loadToneOnce);
+    this.canvas.addEventListener('touchstart', loadToneOnce);
+    this.canvas.addEventListener('pointerdown', loadToneOnce);
+    window.addEventListener('keydown', loadToneOnce);
   },
 
   ready() {
   },
   update_color(r, g, b) {
-    // console.log(r, g, b);
     document.querySelector('#tcolor').style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+  },
+  update_user_position(x, y) {
+    document.querySelector('#upos').innerText = `${Math.round(x)}, ${Math.round(y)}`;
   },
   setkv(key, value) {
     const parsedValue = parseFloat(value.toFixed(2));

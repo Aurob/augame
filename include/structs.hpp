@@ -315,10 +315,8 @@ struct Terrain{};
 struct Effect {
     std::string name;
 };
-// Alternative struct names:
-// SoundSequencer, MelodyPlayer, ToneGenerator, SoundEmitter, AudioNotes, 
-// NoteSequencer, MusicPlayer, SoundPatterns, AudioSequencer, MelodyEmitter,
-// ToneSequences, SoundProfile, NotePatterns, MusicEmitter, AudioPlayer
+
+
 struct MusicNotes {
     std::vector<std::vector<std::string>> noteSequences; // Each vector contains a sequence of notes like "C4", "D4", "E4", etc.
     int currentSequence = 0;                            // Index of the current sequence being played

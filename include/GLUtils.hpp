@@ -604,10 +604,10 @@ void loadTextures() {
 void renderText(const std::string& text, float x, float y, float scale, float r, float g, float b, float a) {
     // Use the font shader program
     glUseProgram(shaderProgramMap["font"]);
-    
-    // Render the entire text as one texture instead of individual glyphs
+
+    // // Render the entire text as one texture instead of individual glyphs
     SDL_Color color = {static_cast<Uint8>(r * 255), static_cast<Uint8>(g * 255), static_cast<Uint8>(b * 255), static_cast<Uint8>(a * 255)};
-    
+
     // Load font for rendering
     TTF_Font* font = TTF_OpenFont("resources/fonts/42dotSans-Regular.ttf", 18);
     if (!font) {
@@ -615,13 +615,16 @@ void renderText(const std::string& text, float x, float y, float scale, float r,
         return;
     }
 
-    // Render text to surface
-    SDL_Surface* surface = TTF_RenderText_Blended_Wrapped(font, text.c_str(), color, width/1.3);
+    // // Render text to surface
+    // We'll use a temporary width for wrapping, as before
+    int wrapWidth = width / 1.3;
+    SDL_Surface* surface = TTF_RenderUTF8_Blended_Wrapped(font, text.c_str(), color, wrapWidth);
     if (!surface) {
         printf("Failed to render text: %s\n", TTF_GetError());
         TTF_CloseFont(font);
         return;
     }
+    
     // Create texture from surface
     GLuint texture;
     glGenTextures(1, &texture);
@@ -658,21 +661,24 @@ void renderText(const std::string& text, float x, float y, float scale, float r,
     float width = rgba_surface->w * scale;
     float height = rgba_surface->h * scale;
 
+    // Offset the text x position by width/1.3
+    float x_offset = x - width / 1.3f;
+
     // Update uniforms for rendering
-    updateUniformFont(shaderProgramMap["font"], r, g, b, a, x, y, width, height);
+    updateUniformFont(shaderProgramMap["font"], r, g, b, a, x_offset, y, width, height);
     
     // Bind texture and draw
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
     GLint texLoc = glGetUniformLocation(shaderProgramMap["font"], "uTexture");
     glUniform1i(texLoc, 0);
+
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    
-    // Clean up
-    glDeleteTextures(1, &texture);
+
     SDL_FreeSurface(rgba_surface);
     SDL_FreeSurface(surface);
     TTF_CloseFont(font);
+
 }
 
 void loadFont() {
@@ -761,7 +767,6 @@ void renderAll() {
 
         if(registry.all_of<Terrain>(entity)) {
             // Update uniforms for terrain shader
-            printf("2\n");
             updateUniforms(
                 shaderProgramMap["terrain"],
                 gridSpacingValue, 

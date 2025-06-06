@@ -192,7 +192,6 @@ void updateInteractions(entt::registry &registry)
 
             continue;
         }
-        printf("3\n");
 
         auto &position = debug_entities.get<Position>(entity);
         auto &shape = debug_entities.get<Shape>(entity);
