@@ -86,42 +86,10 @@ var Module = {
       }
     };
   },
-  play_tone(note, duration, volume, type) {
-    if (type === "sine") {
-      const synth = new Tone.Synth({
-        oscillator: {
-          type: "sine"
-        },
-        envelope: {
-          attack: 0.01,
-          decay: 0.5,
-          sustain: 0.3,
-          release: 1.5
-        }
-      }).toDestination();
-
-      synth.volume.value = volume;
-      synth.triggerAttackRelease(note, duration);
-    } else {
-      const player = new Tone.Player(`resources/audio/${type}`, () => {
-        if (note !== 'R') {
-          player.playbackRate = Tone.Frequency(note).toFrequency() / 440; // Assuming A4 = 440Hz
-        } else {
-          const randomNote = Tone.Frequency(Math.random() * 400 + 600).toNote(); // Keep it within a higher octave, slightly under and over
-          player.playbackRate = Tone.Frequency(randomNote).toFrequency() / 440;
-        }
-        player.volume.value = volume;
-        player.start();
-      }).toDestination();
-    }
-  },
   fetch_configs() {
     const json = CONFIG;
     if (Array.isArray(json.textures)) {
       this.processTextures(json.textures);
-    }
-    if (Array.isArray(json.textureGroups)) {
-      this.js_to_c({ textureGroups: json.textureGroups });
     }
     const shadersPromise = Array.isArray(json.shaders) ? this.processShaders(json.shaders) : Promise.resolve();
     shadersPromise.then(() => {
@@ -307,26 +275,6 @@ id ${id + 6} ${name}wall_right position ${x + width} ${y + .5} 1 shape .1 ${heig
       update_worldsize(window.innerWidth, window.innerHeight);
     });
 
-    // only load the tone.js library on user interaction
-    // this isn't neccessary, but it suppresses a warning that browsers show
-    //  about the library being loaded without a user gesture
-    function loadToneOnce() {
-      if (!window.toneLoaded) {
-        window.toneLoaded = true;
-        var script = document.createElement('script');
-        script.src = "web/lib/tone.js";
-        document.head.appendChild(script);
-      }
-      // Remove all event listeners after first trigger
-      this.removeEventListener('mousedown', loadToneOnce);
-      this.removeEventListener('touchstart', loadToneOnce);
-      this.removeEventListener('pointerdown', loadToneOnce);
-      this.removeEventListener('keydown', loadToneOnce);
-    }
-    this.canvas.addEventListener('mousedown', loadToneOnce);
-    this.canvas.addEventListener('touchstart', loadToneOnce);
-    this.canvas.addEventListener('pointerdown', loadToneOnce);
-    window.addEventListener('keydown', loadToneOnce);
   },
 
   ready() {

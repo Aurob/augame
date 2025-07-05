@@ -91,7 +91,6 @@ class EntityBuilder {
         teleporter: (parts, i) => ({ Teleporter: { destination: { x: parseFloat(parts[i]), y: parseFloat(parts[i+1]), z: parseFloat(parts[i+2]) }, interiorEntity: parseInt(parts[i+3], 10) } }),
         teleportable: () => ({ Teleportable: true }),
         draggable: (parts, i) => ({ Draggable: { radius: parseFloat(parts[i]) } }),
-        tone: (parts, i) => ({ Tone: { note: parts[i], duration: parts[i+1], volume: parseFloat(parts[i+2]), type: parts[i+3] || 'sine' } }),
         ui: (parts, i) => ({ UIElement: { content: parts[i], visible: parseInt(parts[i+1], 10) === 1 || parts[i+1] === "true", offset: { x: parseFloat(parts[i+2]), y: parseFloat(parts[i+3]) } } }),
     };
 

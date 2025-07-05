@@ -136,38 +136,11 @@ void makeEffectEntity(entt::registry &registry, float _x, float _y, float _z, st
  */
 void runFactories(entt::registry &registry)
 {
-  // Generate an entity for each character in the fontmap tileset
-
-  entt::entity test = registry.create();
-  auto view = registry.view<Id>();
-  for(auto e : view) {
-    Id eid = view.get<Id>(e);
-    float scalex = 1;
-    float scaley = 1;
-    float x = 0;
-    float y = 0;
-    float w = 1;
-    float h = 1;
-    if(eid.name == "orb") {
-        std::vector<Texture> orbTextures;
-        for (int i = 1; i <= 60; i++) {
-            std::string textureName = "orb" + std::to_string(i);
-            orbTextures.push_back({textureName, x, y, w, h, scalex, scaley});
-        }
-
-        registry.emplace<TextureAnimation>(e, TextureAnimation{.interval=.15});
-        registry.emplace<Textures>(e, Textures{orbTextures, 0});
-    }
-    else if(eid.name == "hit1") {
-        std::vector<Texture> hit1Textures;
-        for (int i = 51; i <= 55; i++) {
-            std::string textureName = "hit1" + std::to_string(i);
-            hit1Textures.push_back({textureName, x, y, w, h, scalex, scaley});
-        }
-
-        registry.emplace<TextureAnimation>(e, TextureAnimation{.interval=.15});
-        registry.emplace<Textures>(e, Textures{hit1Textures, 0});
-    }
-  }
+    // entt::entity test = registry.create();
+    // registry.emplace<Text>(test, Text{"Hello World"});
+    // registry.emplace<Id>(test, Id{.name="menu_entity"});
+    // registry.emplace<Position>(test);
+    // registry.emplace<Shape>(test);
+    // registry.emplace<Visible>(test);
   
 }

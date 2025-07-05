@@ -10,6 +10,7 @@ extern float gridSpacingValue;
 extern entt::entity _player;
 extern entt::registry registry;
 extern p2d::Physics physics;
+extern int GAMESTATE;
 
 void EventHandler(int type, SDL_Event *event)
 {
@@ -71,29 +72,31 @@ void EventHandler(int type, SDL_Event *event)
         }
     }
 
-    // Zoom in and out (Mouse wheel and pinch)
-    if (event->type == SDL_MOUSEWHEEL)
-    {
-        if (event->wheel.y > 0)
+    if(GAMESTATE > 0) {
+        // Zoom in and out (Mouse wheel and pinch)
+        if (event->type == SDL_MOUSEWHEEL)
         {
-            gridSpacingValue *= 1.08f;
-        }
-        else if (event->wheel.y < 0)
-        {
-            gridSpacingValue /= 1.08f;
-        }
-    }
-    else if (event->type == SDL_MULTIGESTURE)
-    {
-        if (event->mgesture.numFingers == 2)
-        {
-            if (event->mgesture.dDist > 0)
+            if (event->wheel.y > 0)
             {
-                gridSpacingValue *= (1.0f + event->mgesture.dDist);
+                gridSpacingValue *= 1.08f;
             }
-            else if (event->mgesture.dDist < 0)
+            else if (event->wheel.y < 0)
             {
-                gridSpacingValue /= (1.0f - event->mgesture.dDist);
+                gridSpacingValue /= 1.08f;
+            }
+        }
+        else if (event->type == SDL_MULTIGESTURE)
+        {
+            if (event->mgesture.numFingers == 2)
+            {
+                if (event->mgesture.dDist > 0)
+                {
+                    gridSpacingValue *= (1.0f + event->mgesture.dDist);
+                }
+                else if (event->mgesture.dDist < 0)
+                {
+                    gridSpacingValue /= (1.0f - event->mgesture.dDist);
+                }
             }
         }
     }
@@ -110,58 +113,82 @@ void processEvents() {
     for (auto e: key_entities) {
         auto &keys = key_entities.get<Keys>(e).keys;
 
-        // If B increase player z
-        if(keys[SDLK_b]) {
-            auto& playerPos = registry.get<Position>(_player);
-            playerPos.z += 1;
-            keys[SDLK_b] = false;
-        }
-        // If N decrease player z
-        if(keys[SDLK_n]) {
-            auto& playerPos = registry.get<Position>(_player);
-            playerPos.z -= 1;
-            keys[SDLK_n] = false;
-        }
-        
-        // Get _player shape and increase by 10 only when RSHIFT and '/' are held
-        if (keys[SDLK_RSHIFT] && keys[SDLK_SLASH]) {
-            if (registry.all_of<Shape>(_player)) {
-                auto& playerShape = registry.get<Shape>(_player);
-                playerShape.size.x += 10;
-                playerShape.size.y += 10;
-                playerShape.size.z += 10;
+        if(GAMESTATE > 0) {
+            // If B increase player z
+            if(keys[SDLK_b]) {
+                auto& playerPos = registry.get<Position>(_player);
+                playerPos.z += 1;
+                keys[SDLK_b] = false;
+            }
+            // If N decrease player z
+            if(keys[SDLK_n]) {
+                auto& playerPos = registry.get<Position>(_player);
+                playerPos.z -= 1;
+                keys[SDLK_n] = false;
+            }
+            
+            // Get _player shape and increase by 10 only when RSHIFT and '/' are held
+            if (keys[SDLK_RSHIFT] && keys[SDLK_SLASH]) {
+                if (registry.all_of<Shape>(_player)) {
+                    auto& playerShape = registry.get<Shape>(_player);
+                    playerShape.size.x += 10;
+                    playerShape.size.y += 10;
+                    playerShape.size.z += 10;
+                }
+            }
+
+            // Speed Boost
+            if (registry.all_of<Movement>(e)) {
+                auto &movement = registry.get<Movement>(e);
+                if (keys[SDLK_LSHIFT]) {
+                    movement.speed = movement.default_speed * 10;
+                }
+                else if(movement.speed != movement.default_speed) {
+                    movement.speed = movement.default_speed;
+                }
+            }
+
+            // Update player's TextureAlts based on direction and movement
+            if (registry.all_of<TextureAlts>(e)) {
+                auto& textureAlts = registry.get<TextureAlts>(e);
+                bool isMoving = keys[SDLK_w] || keys[SDLK_s] || keys[SDLK_a] || keys[SDLK_d];
+                std::string action = isMoving ? "Run" : "Idle";
+                static std::string lastDirection = "Down"; // Static variable to remember last direction
+
+                if (keys[SDLK_w]) {
+                    lastDirection = "Up";
+                } else if (keys[SDLK_s]) {
+                    lastDirection = "Down";
+                } else if (keys[SDLK_a]) {
+                    lastDirection = "Left";
+                } else if (keys[SDLK_d]) {
+                    lastDirection = "Right";
+                }
+
+                textureAlts.current = action + "_" + lastDirection;
             }
         }
 
-        // Speed Boost
-        if (registry.all_of<Movement>(e)) {
-            auto &movement = registry.get<Movement>(e);
-            if (keys[SDLK_LSHIFT]) {
-                movement.speed = movement.default_speed * 10;
+        // Check for ESC key press to toggle GAMESTATE between 1 and 0
+        if ((GAMESTATE == 0 || GAMESTATE == 1)  && keys[SDLK_ESCAPE]) {
+            if (GAMESTATE == 1) {
+                GAMESTATE = 0;
+            } else {
+                GAMESTATE = 1;
             }
-            else if(movement.speed != movement.default_speed) {
-                movement.speed = movement.default_speed;
-            }
+            keys[SDLK_ESCAPE] = false; // Prevent repeated toggling while holding ESC
         }
 
-        // Update player's TextureAlts based on direction and movement
-        if (registry.all_of<TextureAlts>(e)) {
-            auto& textureAlts = registry.get<TextureAlts>(e);
-            bool isMoving = keys[SDLK_w] || keys[SDLK_s] || keys[SDLK_a] || keys[SDLK_d];
-            std::string action = isMoving ? "Run" : "Idle";
-            static std::string lastDirection = "Down"; // Static variable to remember last direction
+        // If GAMESTATE is 0 and 1 key is pressed, change state to -2
+        if (GAMESTATE == 0 && keys[SDLK_1]) {
+            GAMESTATE = -1;
+            keys[SDLK_1] = false;
+        }
 
-            if (keys[SDLK_w]) {
-                lastDirection = "Up";
-            } else if (keys[SDLK_s]) {
-                lastDirection = "Down";
-            } else if (keys[SDLK_a]) {
-                lastDirection = "Left";
-            } else if (keys[SDLK_d]) {
-                lastDirection = "Right";
+        if (GAMESTATE == -1) {
+            if (keys[SDL_BUTTON_LEFT]) {
+                GAMESTATE = 1;
             }
-
-            textureAlts.current = action + "_" + lastDirection;
         }
     }
 }
