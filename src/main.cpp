@@ -12,6 +12,8 @@
 using namespace std;
 // External variables
 extern entt::registry registry;
+extern entt::registry registry2;
+extern entt::registry registry_temp;
 extern int width, height;
 extern float deltaTime;
 extern bool windowResized;
@@ -22,12 +24,13 @@ extern GLfloat toplefttile[2];
 extern entt::entity _player;
 extern float seed;
 extern p2d::Physics physics;
+extern int GAMESTATE;
 
 // General variables
 
 p2d::Physics physics;
-int width = 2024;
-int height = 2024;
+int width = 1024;
+int height = 1024;
 float deltaTime = 0;
 GLfloat offsetValue[2] = {0.0f, 0.0f};
 GLfloat toplefttile[2] = {0.0f, 0.0f};
@@ -39,9 +42,12 @@ GLfloat generationSize[2] = {defaultGSV*2, defaultGSV*2};
 GLfloat gridSpacingValue = 1024.0f;
 bool first_start = false;
 float seed = 0.0f;
+int GAMESTATE = -2;
 
 entt::entity _player = entt::null;
 entt::registry registry;
+entt::registry registry2;
+entt::registry registry_temp;
 
 context ctx;
 // 
@@ -90,22 +96,22 @@ bool js_loaded() {
 
         makePlayer(registry);
         runFactories(registry);
-        // _js__speak("Loading Complete");
+
+        GAMESTATE = -1;
     }
     return true; 
 }
-
 void mainloop(void *arg)
 {
     if(!js_loaded()) return;
 
     deltaTime = (SDL_GetTicks() - lastTime) / 5000.0f;
     lastTime = SDL_GetTicks();
-    
+        
+    context *ctx = (context *)arg;
+
     // Handle events
     processEvents();
-    
-    context *ctx = (context *)arg;
 
     // Check if the window size has been updated
     if (windowResized)
@@ -114,7 +120,7 @@ void mainloop(void *arg)
         SDL_SetWindowSize(ctx->window, width, height);
         windowResized = false;
     }
-
+    
     // Update frame
     updateFrame();
 
@@ -123,4 +129,7 @@ void mainloop(void *arg)
 
     // Swap buffers
     SDL_GL_SwapWindow(ctx->window);
+
+    ctx->iteration++;
+
 }

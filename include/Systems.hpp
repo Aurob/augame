@@ -10,7 +10,6 @@
 
     
 extern float deltaTime;
-
 void updateFrame()
 {
     

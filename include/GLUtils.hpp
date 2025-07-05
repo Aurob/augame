@@ -9,21 +9,13 @@
 
 extern float seed;
 extern float gridSpacingValue;
+extern float defaultGSV;
 extern float offsetValue[2];
 extern float toplefttile[2];
 extern float generationSize[2];
 extern entt::registry registry;
+extern int GAMESTATE;
 
-// Character structure
-struct Character {
-    GLuint textureID;
-    int minx, miny, maxx, maxy;
-    int width;
-    int height;
-    int advance;
-};
-
-std::map<char, Character> characters;
 GLuint textShaderProgram;
 
 SDL_Window* loadSDL() {
@@ -220,7 +212,8 @@ void updateUniforms(GLuint &shaderProgram,
                     float offsetValue[2],
                     float _width, float _height,
                     float toplefttile[2],
-                    float generationSize[2])   
+                    float generationSize[2],
+                    float rgb[3] = nullptr)   // Optional rgb parameter, default nullptr
 {
 
     glUseProgram(shaderProgram);
@@ -257,6 +250,12 @@ void updateUniforms(GLuint &shaderProgram,
     // seed
     GLint seedLocation = glGetUniformLocation(shaderProgram, "seed");
     glUniform1f(seedLocation, seed);
+
+    // rgb uniform (optional)
+    if (rgb != nullptr) {
+        GLint rgbLocation = glGetUniformLocation(shaderProgram, "rgb");
+        glUniform3fv(rgbLocation, 1, rgb);
+    }
     
     if (_log_uniform) {
         logUniformValues(_width, _height, gridSpacingValue, offsetValue, toplefttile, generationSize);
@@ -575,9 +574,7 @@ GLuint loadGLTexture(GLuint &shaderProgram, std::string textureSrc, int &width, 
 void loadTextures() {
     createShader(shaderProgramMap["terrain"], "terrain");
     createShader(shaderProgramMap["ui_layer"], "ui_layer");
-    createShader(shaderProgramMap["debug_entity"], "debug_entity");
     createShader(shaderProgramMap["texture"], "texture");
-    // createShader(shaderProgramMap["font"], "font");
 
     // Load textures from textureMap
     for(auto& [name, src] : textureMap) {
@@ -609,7 +606,7 @@ void renderText(const std::string& text, float x, float y, float scale, float r,
     SDL_Color color = {static_cast<Uint8>(r * 255), static_cast<Uint8>(g * 255), static_cast<Uint8>(b * 255), static_cast<Uint8>(a * 255)};
 
     // Load font for rendering
-    TTF_Font* font = TTF_OpenFont("resources/fonts/42dotSans-Regular.ttf", 18);
+    TTF_Font* font = TTF_OpenFont("resources/fonts/DejaVuSansMono-Bold.ttf", 12);
     if (!font) {
         printf("TTF_OpenFont: %s\n", TTF_GetError());
         return;
@@ -662,7 +659,7 @@ void renderText(const std::string& text, float x, float y, float scale, float r,
     float height = rgba_surface->h * scale;
 
     // Offset the text x position by width/1.3
-    float x_offset = x - width / 1.3f;
+    float x_offset = x - width/1.48;
 
     // Update uniforms for rendering
     updateUniformFont(shaderProgramMap["font"], r, g, b, a, x_offset, y, width, height);
@@ -694,256 +691,286 @@ void loadFont() {
 }
 
 void renderAll() {
-    // Get player entity from Player view
+    // Only proceed if there is at least one Player entity
     auto playerView = registry.view<Player>();
-    auto _player = playerView.front();
+    Position playerPos = {0, 0, 0}; // Default to zeroed Position
+    Shape playerShape = {0, 0};  // Default to zeroed Shape
 
-    Position &playerPos = registry.get<Position>(_player);
-    Shape &playerShape = registry.get<Shape>(_player);
+    bool hasPlayer = !playerView.empty();
+    entt::entity _player;
+    if (hasPlayer) {
+        _player = playerView.front();
+        playerPos = registry.get<Position>(_player);
+        playerShape = registry.get<Shape>(_player);
+    }
 
     glClear(GL_COLOR_BUFFER_BIT);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    bool playerIsInside = registry.all_of<Inside>(_player);
-    Inside playerInside = (playerIsInside) ? registry.get<Inside>(_player) : Inside{};
-    
-    if(!playerIsInside) {
-        // Render terrain
-        updateUniforms(
-            shaderProgramMap["terrain"],
-            gridSpacingValue, 
-            offsetValue, 
-            width, height, 
-            toplefttile,
-            generationSize
-        );
-        
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    }
-
-   registry.sort<Visible>([&](const entt::entity lhs, const entt::entity rhs) {
-        bool lhsHasPrio = registry.all_of<RenderPriority>(lhs);
-        bool rhsHasPrio = registry.all_of<RenderPriority>(rhs);
-        
-        // If one has priority and the other doesn't, prioritize the one with priority
-        if (lhsHasPrio && !rhsHasPrio)
-            return false; // lhs has higher priority
-        if (!lhsHasPrio && rhsHasPrio)
-            return true;  // rhs has higher priority
-            
-        // If both have priority, compare their priority values
-        if (lhsHasPrio && rhsHasPrio) {
-            const auto& lhsPrio = registry.get<RenderPriority>(lhs);
-            const auto& rhsPrio = registry.get<RenderPriority>(rhs);
-            
-            if (lhsPrio.priority != rhsPrio.priority)
-                return lhsPrio.priority < rhsPrio.priority;
+    if(GAMESTATE > 0) {
+        bool playerIsInside = false;
+        Inside playerInside{};
+        if (hasPlayer) {
+            playerIsInside = registry.all_of<Inside>(_player);
+            playerInside = (playerIsInside) ? registry.get<Inside>(_player) : Inside{};
         }
-        
-        // If neither has priority or they have the same priority, sort by position
-        const auto& lhsPos = registry.get<Position>(lhs);
-        const auto& rhsPos = registry.get<Position>(rhs);
-        const auto& lhsShape = registry.get<Shape>(lhs);
-        const auto& rhsShape = registry.get<Shape>(rhs);
 
-        // Compare y + z + shape.z
-        float lhsYZS = lhsPos.y;// + lhsPos.z + lhsShape.size.z;
-        float rhsYZS = rhsPos.y;// + rhsPos.z + rhsShape.size.z;
-        return lhsYZS < rhsYZS;
-    });
-
-    // Render visible entities
-    auto visible_entities = registry.view<Visible, InView>();
-    for(auto& entity : visible_entities) {
-        auto position = registry.get<Position>(entity);
-        auto shape = registry.get<Shape>(entity);
-        
-        bool isDebug = registry.all_of<Debug>(entity);
-        bool is = registry.all_of<Teleport>(entity);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-        if(registry.all_of<Terrain>(entity)) {
-            // Update uniforms for terrain shader
+        float rgb[3] = {0.2f, 0.5f, 0.2f}; // lightish dark green
+        if (!playerIsInside) {
+            // Render terrain
             updateUniforms(
                 shaderProgramMap["terrain"],
                 gridSpacingValue, 
                 offsetValue, 
                 width, height, 
                 toplefttile,
-                generationSize
+                generationSize,
+                rgb
             );
+        }
             
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        }
-        else if (registry.all_of<Texture>(entity)) {
-            const auto& texture = registry.get<Texture>(entity);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-            updateUniformsTexture(shaderProgramMap["texture"], 
-                textureIDMap[texture.name],
-                position.sx + playerShape.scaled_size.x,
-                position.sy + playerShape.scaled_size.y, // + shape.scaled_size.z,
-                shape.scaled_size.x, 
-                shape.scaled_size.y, // + shape.scaled_size.z,
-                texture.x, texture.y, texture.w, texture.h
-            );
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        }
-        else if (registry.all_of<TextureGroupPart>(entity)) {
-            const auto& textureGroupPart = registry.get<TextureGroupPart>(entity);
-            auto groupName = textureGroupPart.groupName;
-            auto partName = textureGroupPart.partName;
+        registry.sort<Visible>([&](const entt::entity lhs, const entt::entity rhs) {
+            bool lhsHasPrio = registry.all_of<RenderPriority>(lhs);
+            bool rhsHasPrio = registry.all_of<RenderPriority>(rhs);
+            
+            // If one has priority and the other doesn't, prioritize the one with priority
+            if (lhsHasPrio && !rhsHasPrio)
+                return false; // lhs has higher priority
+            if (!lhsHasPrio && rhsHasPrio)
+                return true;  // rhs has higher priority
+                
+            // If both have priority, compare their priority values
+            if (lhsHasPrio && rhsHasPrio) {
+                const auto& lhsPrio = registry.get<RenderPriority>(lhs);
+                const auto& rhsPrio = registry.get<RenderPriority>(rhs);
+                
+                if (lhsPrio.priority != rhsPrio.priority)
+                    return lhsPrio.priority < rhsPrio.priority;
+            }
+            
+            // If neither has priority or they have the same priority, sort by position
+            const auto& lhsPos = registry.get<Position>(lhs);
+            const auto& rhsPos = registry.get<Position>(rhs);
+            const auto& lhsShape = registry.get<Shape>(lhs);
+            const auto& rhsShape = registry.get<Shape>(rhs);
 
-            auto rootTexture = textureIDMap[groupName];
-            const auto& texture = textureGroupMap[groupName].at(partName);
+            // Compare y + z + shape.z
+            float lhsYZS = lhsPos.y;// + lhsPos.z + lhsShape.size.z;
+            float rhsYZS = rhsPos.y;// + rhsPos.z + rhsShape.size.z;
+            return lhsYZS < rhsYZS;
+        });
 
-            auto IdName = registry.get<Id>(entity).name;
-            if (textureGroupPart.tilex > 0 && textureGroupPart.tiley > 0) {
-                int divisorX = textureGroupPart.tilex;
-                int divisorY = textureGroupPart.tiley;
-                auto ssizex = shape.scaled_size.x / divisorX;
-                auto ssizey = shape.scaled_size.y / divisorY;
-                auto posX = position.sx + playerShape.scaled_size.x;
-                auto posY = position.sy + playerShape.scaled_size.y; // + position.sz + playerShape.scaled_size.z;
+        // Render visible entities
+        auto visible_entities = registry.view<Visible, InView>();
+        for(auto& entity : visible_entities) {
+            auto position = registry.get<Position>(entity);
+            auto shape = registry.get<Shape>(entity);
+            
+            bool isDebug = registry.all_of<Debug>(entity);
+            bool is = registry.all_of<Teleport>(entity);
 
-                // Increase size by 1%
-                auto increasedSsizex = ssizex;// * 1.01f;
-                auto increasedSsizey = ssizey;// * 1.01f;
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            
+            if (registry.all_of<Texture>(entity)) {
+                const auto& texture = registry.get<Texture>(entity);
 
-                for (int i = 0; i < divisorX; ++i) {
-                    for (int j = 0; j < divisorY; ++j) {
-                        updateUniformsTexture(shaderProgramMap["texture"], 
-                            rootTexture,
-                            (posX + i * ssizex*2) - shape.scaled_size.x + ssizex - (increasedSsizex - ssizex) / 2,
-                            (posY + j * ssizey*2),
-                            increasedSsizex, increasedSsizey,
-                            texture.x, texture.y, texture.w, texture.h
-                        );
-                        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-                    }
-                }
-            } 
-            else {
                 updateUniformsTexture(shaderProgramMap["texture"], 
-                    rootTexture,
+                    textureIDMap[texture.name],
                     position.sx + playerShape.scaled_size.x,
-                    position.sy + playerShape.scaled_size.y, // + position.sz + playerShape.scaled_size.z,
-                    shape.scaled_size.x,
-                    shape.scaled_size.y,
+                    position.sy + playerShape.scaled_size.y, // + shape.scaled_size.z,
+                    shape.scaled_size.x, 
+                    shape.scaled_size.y, // + shape.scaled_size.z,
                     texture.x, texture.y, texture.w, texture.h
                 );
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
             }
-        } 
-        else if (registry.all_of<Textures>(entity)) {
-            const auto& textures = registry.get<Textures>(entity);
-            const auto& current_texture = textures.textures[textures.current];
+            else if (registry.all_of<TextureGroupPart>(entity)) {
+                const auto& textureGroupPart = registry.get<TextureGroupPart>(entity);
+                auto groupName = textureGroupPart.groupName;
+                auto partName = textureGroupPart.partName;
+
+                auto rootTexture = textureIDMap[groupName];
+                const auto& texture = textureGroupMap[groupName].at(partName);
+
+                auto IdName = registry.get<Id>(entity).name;
+                if (textureGroupPart.tilex > 0 && textureGroupPart.tiley > 0) {
+                    int divisorX = textureGroupPart.tilex;
+                    int divisorY = textureGroupPart.tiley;
+                    auto ssizex = shape.scaled_size.x / divisorX;
+                    auto ssizey = shape.scaled_size.y / divisorY;
+                    auto posX = position.sx + playerShape.scaled_size.x;
+                    auto posY = position.sy + playerShape.scaled_size.y; // + position.sz + playerShape.scaled_size.z;
+
+                    // Increase size by 1%
+                    auto increasedSsizex = ssizex;// * 1.01f;
+                    auto increasedSsizey = ssizey;// * 1.01f;
+
+                    for (int i = 0; i < divisorX; ++i) {
+                        for (int j = 0; j < divisorY; ++j) {
+                            updateUniformsTexture(shaderProgramMap["texture"], 
+                                rootTexture,
+                                (posX + i * ssizex*2) - shape.scaled_size.x + ssizex - (increasedSsizex - ssizex) / 2,
+                                (posY + j * ssizey*2),
+                                increasedSsizex, increasedSsizey,
+                                texture.x, texture.y, texture.w, texture.h
+                            );
+                            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                        }
+                    }
+                } 
+                else {
+                    updateUniformsTexture(shaderProgramMap["texture"], 
+                        rootTexture,
+                        position.sx + playerShape.scaled_size.x,
+                        position.sy + playerShape.scaled_size.y, // + position.sz + playerShape.scaled_size.z,
+                        shape.scaled_size.x,
+                        shape.scaled_size.y,
+                        texture.x, texture.y, texture.w, texture.h
+                    );
+                    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                }
+            } 
+            else if (registry.all_of<Textures>(entity)) {
+                const auto& textures = registry.get<Textures>(entity);
+                const auto& current_texture = textures.textures[textures.current];
 
 
-            if (registry.all_of<RenderDebug>(entity)) {
-                updateUniformsDebug(shaderProgramMap["debug_entity"],
-                    1.0f, 1.0f, 1.0f, 0.2f,
+                float angle = 0.0f;
+                if(registry.all_of<Rotation>(entity)) {
+                    angle = registry.get<Rotation>(entity).angle;
+                }
+
+                updateUniformsTexture(shaderProgramMap["texture"], 
+                    textureIDMap[current_texture.name],
                     position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
-                    shape.scaled_size.x, shape.scaled_size.y, 0.0f);
+                    shape.scaled_size.x * current_texture.scalex, shape.scaled_size.y * current_texture.scaley,
+                    current_texture.x, current_texture.y, current_texture.w, current_texture.h, angle);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+            } else if (registry.all_of<TextureAlts, Player>(entity)) {
+                const auto& textureAlts = registry.get<TextureAlts>(entity);
+                const auto& currentTextures = textureAlts.alts.at(textureAlts.current);
+                const auto& current_texture = currentTextures.textures[currentTextures.current];
+
+                updateUniformsTexture(shaderProgramMap["texture"], 
+                    textureIDMap[current_texture.name],
+                    position.sx + playerShape.scaled_size.x,
+                    position.sy + playerShape.scaled_size.y, // + position.sz + playerShape.scaled_size.z*2,
+                    shape.scaled_size.x * current_texture.scalex, 
+                    shape.scaled_size.y * current_texture.scaley,
+                    current_texture.x, current_texture.y, 
+                    current_texture.w, current_texture.h);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
             }
-            float angle = 0.0f;
-            if(registry.all_of<Rotation>(entity)) {
-                angle = registry.get<Rotation>(entity).angle;
-            }
-
-            updateUniformsTexture(shaderProgramMap["texture"], 
-                textureIDMap[current_texture.name],
-                position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
-                shape.scaled_size.x * current_texture.scalex, shape.scaled_size.y * current_texture.scaley,
-                current_texture.x, current_texture.y, current_texture.w, current_texture.h, angle);
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-        } else if (registry.all_of<TextureAlts, Player>(entity)) {
-            const auto& textureAlts = registry.get<TextureAlts>(entity);
-            const auto& currentTextures = textureAlts.alts.at(textureAlts.current);
-            const auto& current_texture = currentTextures.textures[currentTextures.current];
-
-            // Check if the entity has RenderDebug
-            if (registry.all_of<Color>(entity)) {
-                // Render a small transparent square to indicate bounding box
+            else if(registry.all_of<Color>(entity) && !registry.all_of<Text>(entity)) {
                 auto color = registry.get<Color>(entity);
+
+                float angle = 0.0f;
+                if(registry.all_of<Rotation>(entity)) {
+                    angle = registry.get<Rotation>(entity).angle;
+                }
+
+                float r = color.r;
+                float g = color.g; 
+                float b = color.b;
+
+                if(registry.all_of<Hovered>(entity)) {
+                    r = 0.0f;
+                    g = 0.0f;
+                    b = 1.0f;
+                }
+                if(registry.all_of<Interacted>(entity)) {
+                    r = 0.0f;
+                    g = 1.0f;
+                    b = 0.0f;
+                }
+
                 updateUniformsDebug(shaderProgramMap["debug_entity"],
-                    color.r, color.g, color.b, color.a, // Set color to Color
+                    r, g, b, color.a,
                     position.sx + playerShape.scaled_size.x, 
                     position.sy + playerShape.scaled_size.y,
-                    shape.scaled_size.x, shape.scaled_size.y, 0.0f);
+                    shape.scaled_size.x, shape.scaled_size.y, 
+                    angle);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
             }
-
-            updateUniformsTexture(shaderProgramMap["texture"], 
-                textureIDMap[current_texture.name],
-                position.sx + playerShape.scaled_size.x,
-                position.sy + playerShape.scaled_size.y, // + position.sz + playerShape.scaled_size.z*2,
-                shape.scaled_size.x * current_texture.scalex, 
-                shape.scaled_size.y * current_texture.scaley,
-                current_texture.x, current_texture.y, 
-                current_texture.w, current_texture.h);
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
         }
-        else if(registry.all_of<Color>(entity) && !registry.all_of<Text>(entity)) {
-            auto color = registry.get<Color>(entity);
 
-            float angle = 0.0f;
-            if(registry.all_of<Rotation>(entity)) {
-                angle = registry.get<Rotation>(entity).angle;
+        auto textView = registry.view<Text, Position, Shape, Visible>();
+        for (auto e : textView) {
+            Text text = textView.get<Text>(e);
+            Position pos = textView.get<Position>(e);
+            Shape shape = textView.get<Shape>(e);
+            // Determine text visibility based on hide flag
+
+            float r = 1.0f, g = 1.0f, b = 1.0f, a = 1.0f;
+            if (registry.all_of<Color>(e)) {
+                auto color = registry.get<Color>(e);
+                r = color.r;
+                g = color.g;
+                b = color.b;
+                a = color.a;
             }
+            a = text.hide ? 0.0f : a;
 
-            float r = color.r;
-            float g = color.g; 
-            float b = color.b;
+            std::string textStr = text.text;
+            float xVal = pos.sx + playerShape.scaled_size.x + shape.scaled_size.x*2;
+            float yVal = pos.sy + playerShape.scaled_size.y;
+            float scaleVal = (shape.scaled_size.x+shape.scaled_size.y)/200;
+            // printf("renderText params: text=\"%s\", x=%f, y=%f, scale=%f, r=%f, g=%f, b=%f, a=%f\n",
+            //     textStr.c_str(), xVal, yVal, scaleVal, r, g, b, a);
 
-            if(registry.all_of<Hovered>(entity)) {
-                r = 0.0f;
-                g = 0.0f;
-                b = 1.0f;
-            }
-            if(registry.all_of<Interacted>(entity)) {
-                r = 0.0f;
-                g = 1.0f;
-                b = 0.0f;
-            }
-
-            updateUniformsDebug(shaderProgramMap["debug_entity"],
-                r, g, b, color.a,
-                position.sx + playerShape.scaled_size.x, 
-                position.sy + playerShape.scaled_size.y,
-                shape.scaled_size.x, shape.scaled_size.y, 
-                angle);
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            renderText(textStr, xVal, yVal, scaleVal, r, g, b, a);
         }
     }
 
-    auto textView = registry.view<Text, Position, Shape, Visible>();
-    for (auto e : textView) {
-        Text text = textView.get<Text>(e);
-        Position pos = textView.get<Position>(e);
-        Shape shape = textView.get<Shape>(e);
-        // Determine text visibility based on hide flag
-        
-        float r = 1.0f, g = 1.0f, b = 1.0f, a = 1.0f;
-        if (registry.all_of<Color>(e)) {
-            auto color = registry.get<Color>(e);
-            r = color.r;
-            g = color.g;
-            b = color.b;
-            a = color.a;
+    // Only render menu entity's Text if GAMESTATE == 0
+    if (GAMESTATE <= 0) {
+        // Find the entity with Id.name == "menu_entity" and a Text component
+        auto view = registry.view<Id, Text>();
+        for (auto e : view) {
+            const auto& id = view.get<Id>(e);
+            if ((GAMESTATE == 0 && id.name == "pause_entity") || (GAMESTATE == -1 && id.name == "start_entity")) {
+                const auto& textComp = view.get<Text>(e);
+                float r = 0.0f, g = 0.0f, b = 0.0f, a = 1.0f;
+                // Use color from entity if it has a Color component
+                if (registry.all_of<Color>(e)) {
+                    const auto& color = registry.get<Color>(e);
+                    r = color.r;
+                    g = color.g;
+                    b = color.b;
+                    a = color.a;
+                }
+                a = textComp.hide ? 0.0f : a;
+
+                // Center of the screen (use same values as before)
+                // Pre-calculate common scaling factors
+                float xScale = gridSpacingValue / (defaultGSV * width);
+                float yScale = gridSpacingValue / (defaultGSV * height);
+                float x = xScale;
+                float y = yScale;
+                float scale = 0.003698f;
+                
+                float rgb[3] = {0.0f, 0.0f, 0.0f};
+                updateUniforms(
+                    shaderProgramMap["terrain"],
+                    gridSpacingValue, 
+                    offsetValue, 
+                    width, height, 
+                    toplefttile,
+                    generationSize,
+                    rgb
+                );
+                renderText(textComp.text, x, y, scale, r, g, b, a);
+                break; // Only render the first found menu_entity
+            }
         }
-        a = text.hide ? 0.0f : a;
-        renderText(text.text, 
-            pos.sx + playerShape.scaled_size.x + shape.scaled_size.x*2,
-            pos.sy + playerShape.scaled_size.y, 
-            (shape.scaled_size.x+shape.scaled_size.y)/200, 
-        r, g, b, a);
     }
+    
 }
 
 SDL_GLContext loadGl(SDL_Window *mpWindow)

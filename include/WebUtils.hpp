@@ -109,12 +109,12 @@ extern "C"
         {
             if (js_json["world"].contains("width") && js_json["world"]["width"].is_number())
             {
-                width = js_json["world"]["width"];
+                // width = js_json["world"]["width"];
                 windowResized = true;
             }
             if (js_json["world"].contains("height") && js_json["world"]["height"].is_number())
             {
-                height = js_json["world"]["height"];
+                // height = js_json["world"]["height"];
                 windowResized = true;
             }
 
@@ -530,12 +530,6 @@ extern "C"
                                 }
                             }, "Text");
 
-                            // Text
-                            safe_emplace(registry, entity, [&]() {
-                                if(components.contains("Terrain") && components["Terrain"].is_boolean()) {
-                                    registry.emplace<Terrain>(entity);
-                                }
-                            }, "Text");
 
                             // World
                             safe_emplace(registry, entity, [&]() {
