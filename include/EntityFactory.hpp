@@ -34,12 +34,11 @@ void makePlayer(entt::registry &registry)
 
         defaultPlayer = true;
     }
-    // if (player == entt::null) return;
+    if (player == entt::null) return;
 
     registry.emplace_or_replace<Player>(player);
     registry.emplace<Keys>(player);
     registry.emplace<Cursor>(player);
-
     if (!defaultPlayer) {
         // Add textures to the player
         std::vector<Textures> textureAlts;
@@ -87,7 +86,6 @@ void makePlayer(entt::registry &registry)
 void makeEffectEntity(entt::registry &registry, float _x, float _y, float _z, std::string name, entt::entity inside) {
     auto entity = registry.create();
     registry.emplace<Id>(entity, static_cast<int>(emscripten_get_now()), name);
-    registry.emplace<Effect>(entity, name);
     registry.emplace<Position>(entity, Position{_x, _y, _z});
     registry.emplace<Shape>(entity, Shape{1, 1, 1});
     registry.emplace<Color>(entity, Color{1, 1, 1});

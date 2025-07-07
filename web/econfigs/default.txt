@@ -1,5 +1,12 @@
 world demo
-id 0 player position 0 0 0 shape .75 .75 0 color 0.1 0.2 0.3 .1 movement 575 .5 1 collidable player
 id 1 introtext position 0 1 0 shape 1 1 1 color 1 1 1 1 text "@resources/text/intro.txt" 1 0
 id 1 pause_entity text "@resources/text/pause.txt" 1 0
 id 1 start_entity text "@resources/text/start.txt" 1 0
+
+
+id 1 room1 position -5.5 -10 0 shape 15 10 0 color 0.5 0.5 0.5 1.0 renderPriority -1 interior
+
+id 2 room2 position 5 -15 0 shape 2.5 10 0 color 0.5 0.5 0.5 1.0 renderPriority -1 interior textureGroupPart room1 s118 2.5 10 terrain
+id 121 door1 position 5 -9.5 0 shape 1 .5 0 color 1 1 1 1 inside 1 renderPriority 2 collidable hoverable interiorPortal 2 1 0 interactable
+
+id 0 test position 0 -5 0 shape .75 .75 0 color 0.1 0.2 0.3 .1 movement 575 .5 1 collidable inside 1 player 

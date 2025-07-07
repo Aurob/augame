@@ -1,7 +1,7 @@
 #!/bin/bash
 echo "compile commenced at:" $(date)
 start_time=$(date +%s)
-  em++ -std=c++1z src/$1.cpp \
+  em++ -std=c++1z src/$1.cpp src/microui.c \
   -s WASM=1 -s USE_SDL=2 -s USE_WEBGL2=1\
   -s USE_SDL_IMAGE=2\
   -s STB_IMAGE=1\

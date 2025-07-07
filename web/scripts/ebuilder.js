@@ -24,7 +24,7 @@ class EntityBuilder {
         tone: 5,
         ui: 5,
         text: 4,
-        player: 2,
+        player: 1,
         world: 2,
         terrain: 1
     };

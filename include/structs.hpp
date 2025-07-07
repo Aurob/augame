@@ -54,65 +54,31 @@ struct Vector3f {
     Vector3f normalized() const { float len = length(); return len > 0 ? *this / len : *this; }
 };
 
-/**
- * \defgroup client_components Client Components
- * This group includes all components relevant to the client.
- */
-
 struct Internal {
     bool internal;
 };
 
-/// \ingroup client_components
 struct Id {
-    /// @brief include
     int id;
-    /// @brief include
     string name;
-
     bool other1;
 };
 
-/// \ingroup client_components
-/// @brief tag
 struct Player {};
 
-
-/// \ingroup client_components
 struct Position {
-    /// @brief include
-    float x;
-    /// @brief include
-    float y;
-    /// @brief include
-    float z;
-    float sx;
-    float sy;
-    float sz;
+    float x, y, z;
+    float sx, sy, sz;
 };
 
-
-/// \ingroup client_components
 struct Shape {
-    /// @brief include
     Vector3f size{1, 1, .1};
     Vector3f scaled_size;
 };
 
-/// \ingroup client_components
 struct Color {
-    /// @brief include
-    float r; 
-    /// @brief include
-    float g; 
-    /// @brief include
-    float b; 
-    /// @brief include
-    float a; 
-    float defaultR;
-    float defaultG;
-    float defaultB;
-    float defaultA;
+    float r, g, b, a;
+    float defaultR, defaultG, defaultB, defaultA;
 
     Color(float r = 0.0f, float g = 0.0f, float b = 0.0f, float a = 1.0f)
         : r(r), g(g), b(b), a(a), defaultR(r), defaultG(g), defaultB(b), defaultA(a) {}
@@ -126,14 +92,11 @@ struct Text {
 
 struct Visible {};
 struct InView {};
-struct AlwaysInView {};
 
 struct Debug {
     Color defaultColor;
     std::string value1;
 };
-struct RenderDebug {};
-
 struct Teleport {
     Position origin;
     Position destination;
@@ -155,23 +118,6 @@ struct Hovered {
 struct Interacted {
     entt::entity interactor;
     int interactions;
-};
-
-struct InteractionAction {
-    std::function<void(entt::registry&, entt::entity, std::optional<entt::entity>)> action;
-    bool toggle;
-};
-
-struct InteractionActions {
-    std::vector<InteractionAction> actions;
-};
-
-struct HoverAction {
-    std::function<void(entt::registry&, entt::entity)> action;
-};
-
-struct CollisionAction {
-    std::function<void(entt::registry&, entt::entity)> action;
 };
 
 struct TickAction {
@@ -302,37 +248,4 @@ struct Interactable {
 struct Flag {
     std::string name;
     int id;
-};
-struct ActionLimits {
-    std::string name;
-    std::unordered_map<std::string, int> maxInstances;      // Maps effect name to max number of concurrent instances
-    std::unordered_map<std::string, float> timeoutIntervals; // Maps effect name to timeout interval in seconds
-    std::unordered_map<std::string, int> currentInstances;   // Tracks current number of instances per effect
-    std::unordered_map<std::string, float> lastCreationTime; // Tracks when each effect was last created
-};
-
-struct Terrain{};
-struct Effect {
-    std::string name;
-};
-
-
-struct MusicNotes {
-    std::vector<std::vector<std::string>> noteSequences; // Each vector contains a sequence of notes like "C4", "D4", "E4", etc.
-    int currentSequence = 0;                            // Index of the current sequence being played
-    bool loop = false;                                  // Whether to loop through sequences
-    float volume = -20.0f;                              // Default volume level
-    std::string instrument;            // Default instrument/sound
-    
-    // Available notes examples:
-    // C4, D4, E4, G4, A4 (pentatonic scale)
-    // C4, D4, E4, F4, G4, A4, B4 (C major scale)
-    // A3, B3, C4, D4, E4, F4, G4 (A minor scale)
-    // C3, E3, G3 (C major chord)
-    // F3, A3, C4 (F major chord)
-    // G3, B3, D4 (G major chord)
-    // C5, B4, A4, G4 (descending melody)
-    // E4, G4, E4, C4 (arpeggio pattern)
-    // C4, C4, G4, G4, A4, A4, G4 (simple melody)
-    // F#4, G#4, A#4, C5, D#5 (chromatic sequence)
 };
