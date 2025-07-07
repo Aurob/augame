@@ -8,6 +8,7 @@
 #include "../include/EntityFactory.hpp"
 #include "../include/Systems.hpp"
 #include "../include/lib/physics.hpp"
+#include "../include/microui.h"
 
 using namespace std;
 // External variables
@@ -129,7 +130,4 @@ void mainloop(void *arg)
 
     // Swap buffers
     SDL_GL_SwapWindow(ctx->window);
-
-    ctx->iteration++;
-
 }

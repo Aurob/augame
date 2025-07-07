@@ -15,11 +15,6 @@ void processCollisionInfo(p2d::CollisionInfo& info) {
     auto entityA = info.bodyA->m_entity;
     auto entityB = info.bodyB->m_entity;
 
-    // if (registry.all_of<PhysicsBodyRect>(entityA) && registry.all_of<PhysicsBodyRect>(entityB)) {
-    //     auto& physBodyA = registry.get<PhysicsBodyRect>(entityA);
-    //     auto& physBodyB = registry.get<PhysicsBodyRect>(entityB);
-    //     if (physBodyA.body->ignore || physBodyB.body->ignore) return;
-    // }
     entt::entity door = entt::null;
     entt::entity nonPortalEntity = entt::null;
     entt::entity teleporter = entt::null;
@@ -63,113 +58,15 @@ void processCollisionInfo(p2d::CollisionInfo& info) {
                     auto& inside = registry.get<Inside>(nonPortalEntity);
                     if(inside.interior == doorIP.A) inside.interior = doorIP.B;
                     else inside.interior = doorIP.A;
-                    
-                    // Generate random note count between 3 and 7
-                    int noteCount = 3 + (rand() % 5);
-                    
-                    // Available notes
-                    std::string availableNotes[] = {"C4", "D4", "E4", "G4", "A4"};
-                    
-                    // Generate first note randomly
-                    int firstNoteIndex = rand() % 5;
-                    std::string currentNote = availableNotes[firstNoteIndex];
-                    
-                    // Determine how many rests to include (0-2)
-                    int restCount = rand() % 3;
-                    std::vector<int> restPositions;
-                    for (int i = 0; i < restCount; i++) {
-                        restPositions.push_back(rand() % noteCount);
-                    }
-                    
-                    // Play sequence of notes
-                    for (int i = 0; i < noteCount; i++) {
-                        // Check if this position should be a rest
-                        bool isRest = std::find(restPositions.begin(), restPositions.end(), i) != restPositions.end();
-                        
-                        if (!isRest) {
-                            _js__play_tone(currentNote, "8n", -20.0f);
-                            
-                            // Generate next note based on current note using sin/cos
-                            float angle = (firstNoteIndex + i) * 0.7853f; // π/4 radians
-                            int nextIndex = (firstNoteIndex + (int)(3 * sin(angle))) % 5;
-                            if (nextIndex < 0) nextIndex += 5;
-                            currentNote = availableNotes[nextIndex];
-                        } else {
-                            // Rest - wait the same duration without playing
-                            // No tone is played
-                        }
-                        
-                        // Small delay between notes would be handled by the "8n" duration
-                    }
                 } else {
                     // If not inside, they are outside, use any value < 0
                     registry.emplace_or_replace<Inside>(nonPortalEntity, Inside{doorIP.A});
-                    
-                    // Generate random note count between 3 and 7
-                    int noteCount = 3 + (rand() % 5);
-                    
-                    // Available notes
-                    std::string availableNotes[] = {"C4", "D4", "E4", "G4", "A4"};
-                    
-                    // Generate first note randomly
-                    int firstNoteIndex = rand() % 5;
-                    std::string currentNote = availableNotes[firstNoteIndex];
-                    
-                    // Determine how many rests to include (0-2)
-                    int restCount = rand() % 3;
-                    std::vector<int> restPositions;
-                    for (int i = 0; i < restCount; i++) {
-                        restPositions.push_back(rand() % noteCount);
-                    }
-                    
-                    // Play sequence of notes
-                    for (int i = 0; i < noteCount; i++) {
-                        // Check if this position should be a rest
-                        bool isRest = std::find(restPositions.begin(), restPositions.end(), i) != restPositions.end();
-                        
-                        if (!isRest) {
-                            _js__play_tone(currentNote, "8n", -20.0f);
-                            
-                            // Generate next note based on current note using cos
-                            float angle = (firstNoteIndex + i) * 0.7853f; // π/4 radians
-                            int nextIndex = (firstNoteIndex + (int)(3 * cos(angle))) % 5;
-                            if (nextIndex < 0) nextIndex += 5;
-                            currentNote = availableNotes[nextIndex];
-                        } else {
-                            // Rest - wait the same duration without playing
-                            // No tone is played
-                        }
-                        
-                        // Small delay between notes would be handled by the "8n" duration
-                    }
                 }
 
                 registry.emplace<OnInteriorPortal>(nonPortalEntity, OnInteriorPortal{door});
             }
         }
     }
-
-    // if (teleporter != entt::null && teleportable != entt::null) {
-    //     auto& teleport = registry.get<Teleport>(teleporter);
-    //     auto& position = registry.get<Position>(teleportable);
-    //     auto &tpl = registry.get<Teleportable>(teleportable);
-
-    //     if(!tpl.refresh) {
-    //         // Teleport the entity to the destination
-    //         tpl.refresh = true;
-    //     }
-    //     else {
-    //         int currentTime = static_cast<int>(emscripten_get_now());
-    //         if (currentTime > tpl.timer + 5000) { // Check if more than 5 seconds have passed since last teleport
-    //             if(tpl.refresh) {
-    //                 tpl.refresh = false;
-    //             }
-    //         }
-    //     }
-    //     position.x = teleport.destination.x;
-    //     position.y = teleport.destination.y;
-    //     position.z = teleport.destination.z;
-    // }
 }
 
 void onCollision(p2d::CollisionInfo& info) {
@@ -178,9 +75,6 @@ void onCollision(p2d::CollisionInfo& info) {
 
 void updatePhysics(entt::registry &registry) {
     
-    // physics.setOnCollision(onCollision);
-
-
     auto view = registry.view<PhysicsBodyRect, Position>();
     for(auto entity : view) {
         auto &rect = view.get<PhysicsBodyRect>(entity);

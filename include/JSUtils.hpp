@@ -42,13 +42,7 @@ void _js__show_alert(string message)
     }, message.c_str());
 }
 
-void _js__play_tone(string note, string duration, float volume = 0.5, string type = "sine")
-{
-    // Play a tone
-    EM_ASM_({
-        Module.play_tone(UTF8ToString($0), UTF8ToString($1), $2, UTF8ToString($3));
-    }, note.c_str(), duration.c_str(), volume, type.c_str());
-}
+
 void _js__fetch_configs()
 {
     // Fetch the configs from JS

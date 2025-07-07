@@ -575,6 +575,7 @@ void loadTextures() {
     createShader(shaderProgramMap["terrain"], "terrain");
     createShader(shaderProgramMap["ui_layer"], "ui_layer");
     createShader(shaderProgramMap["texture"], "texture");
+    createShader(shaderProgramMap["debug_entity"], "debug_entity");
 
     // Load textures from textureMap
     for(auto& [name, src] : textureMap) {

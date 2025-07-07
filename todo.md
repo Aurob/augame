@@ -15,3 +15,5 @@
     - this might be emergent 
 
 - Player texture is currently hardcoded, make it component based
+
+- Remove the Vector2f and Vector3f structs and instead use the physics vec2/vec3
