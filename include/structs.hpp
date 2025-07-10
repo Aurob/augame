@@ -8,6 +8,7 @@
 #include "../include/lib/entt.hpp"
 #include "../include/lib/physics.hpp"
 #include <emscripten.h>
+
 using namespace std;
 
 struct context
@@ -248,4 +249,10 @@ struct Interactable {
 struct Flag {
     std::string name;
     int id;
+};
+
+struct Static {};
+
+struct world {
+    bool start_menu;
 };

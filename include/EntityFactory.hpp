@@ -39,6 +39,8 @@ void makePlayer(entt::registry &registry)
     registry.emplace_or_replace<Player>(player);
     registry.emplace<Keys>(player);
     registry.emplace<Cursor>(player);
+    registry.emplace<Rotation>(player, Rotation{0.0f, 0.0f, 0.0f, 1.0f});
+
     if (!defaultPlayer) {
         // Add textures to the player
         std::vector<Textures> textureAlts;

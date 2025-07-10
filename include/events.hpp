@@ -166,6 +166,21 @@ void processEvents() {
                 }
 
                 textureAlts.current = action + "_" + lastDirection;
+
+                // If entity has Rotation, set angle to 90 degree increments based on direction
+                if (registry.all_of<Rotation>(e)) {
+                    auto& rotation = registry.get<Rotation>(e);
+                    // Use .angle field as defined in structs.hpp
+                    if (lastDirection == "Up") {
+                        rotation.angle = 270.0f;
+                    } else if (lastDirection == "Down") {
+                        rotation.angle = 90.0f;
+                    } else if (lastDirection == "Left") {
+                        rotation.angle = 180.0f;
+                    } else if (lastDirection == "Right") {
+                        rotation.angle = 0.0f;
+                    }
+                }
             }
         }
 
