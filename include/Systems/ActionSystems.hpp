@@ -180,12 +180,33 @@ void updateInteractions(entt::registry &registry)
         }
     }
 
-
     // View entities with Interacted component
     auto interactedView = registry.view<Interacted>();
     for(auto entity : interactedView) {
         auto& interacted = registry.get<Interacted>(entity);
-        
+        printf("%d\n", interacted.interactor);
+        // If the interactor has the Player component
+        if (registry.valid(interacted.interactor) && registry.all_of<Player>(interacted.interactor)) {
+            // Get the player's rotation
+            if (registry.all_of<Rotation>(interacted.interactor)) {
+                auto& rotation = registry.get<Rotation>(interacted.interactor);
+
+                // Calculate the direction vector from the rotation angle (assuming angle is in degrees)
+                float radians = rotation.angle * (3.14159265f / 180.0f);
+                float forceMagnitude = 100.0f; // You can adjust this value as needed
+                float forceX = std::cos(radians) * forceMagnitude;
+                float forceY = std::sin(radians) * forceMagnitude;
+
+                // Apply the force to the entity's physics body if it has one
+                if (registry.all_of<PhysicsBodyRect>(entity)) {
+                    auto& body = registry.get<PhysicsBodyRect>(entity);
+                    if (body.body) {
+                        body.body->applyForce({forceX, forceY});
+                    }
+                }
+            }
+        }
+
         // Check if the entity is an InteriorPortal
         if (registry.all_of<InteriorPortal>(entity)) {
             auto &body = registry.get<PhysicsBodyRect>(entity).body;

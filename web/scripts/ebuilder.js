@@ -25,7 +25,7 @@ class EntityBuilder {
         ui: 5,
         text: 4,
         player: 1,
-        world: 2,
+        world: 1,
         terrain: 1
     };
     
@@ -33,7 +33,7 @@ class EntityBuilder {
         id: (parts, i) => ({ Id: { id: parseInt(parts[i], 10), name: parts[i+1] } }),
         player: () => ({ Player: true }),
         terrain: () => ({ Terrain: true }),
-        world: (parts, i) => ({ World: parts[i] }),
+        world: (parts, i) => ({ World: true }),
         test: (parts, i) => ({ Test: { value: parts[i] } }),
         text: (parts, i) => ({ Text: { text: parts[i], scale: parseFloat(parts[i+1]), hide: parseInt(parts[i+2])}}),
         position: (parts, i) => ({ Position: { x: parseFloat(parts[i]), y: parseFloat(parts[i+1]), z: parseFloat(parts[i+2]) } }),

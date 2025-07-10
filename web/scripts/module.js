@@ -125,7 +125,6 @@ var Module = {
                 messageType: "",
                 content: []
               };
-
               // Determine the comment type from the first line
               const symbol = line.substring(3, 4);
               if (symbol === "@") {
