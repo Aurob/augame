@@ -1,15 +1,22 @@
 id -1 meta world
 
-id 1 introtext position 0 1 0 shape 1 1 1 color 1 1 1 1 text "@resources/text/intro.txt" 1 0
-id 1 pause_entity text "@resources/text/pause.txt" 1 0
-id 1 start_entity text "@resources/text/start.txt" 1 0
+id -1 pause_entity text "@resources/text/pause.txt" 1 0
+id -1 start_entity text "@resources/text/start.txt" 1 0
 
+id 1 room1 position -5 -5 0 shape 10 10 0 color 0.5 0.5 0.5 1.0 renderPriority -1 interior
+id 3 introtext position 0 1 0 shape 1 1 1 color 1 1 1 1 text "@resources/text/intro.txt" 1 0 renderPriority 4 inside 1
 
-id 1 room1 position -5.5 -10 0 shape 15 10 0 color 0.5 0.5 0.5 1.0 renderPriority -1 interior
+-- id 2 room2 position 5 -15 0 shape 2.5 10 0 color 0.5 0.5 0.5 1.0 renderPriority -1 interior textureGroupPart room1 s118 2.5 10 terrain
+-- id 121 door1 position 5 -9.5 0 shape 1 .5 0 color 1 1 1 1 inside 1 renderPriority 2 collidable hoverable interiorPortal 2 1 0 interactable
 
-id 2 room2 position 5 -15 0 shape 2.5 10 0 color 0.5 0.5 0.5 1.0 renderPriority -1 interior textureGroupPart room1 s118 2.5 10 terrain
-id 121 door1 position 5 -9.5 0 shape 1 .5 0 color 1 1 1 1 inside 1 renderPriority 2 collidable hoverable interiorPortal 2 1 0 interactable
+id 0 test position 0 0 0 shape .75 .75 0 color 0.1 0.2 0.3 .1 movement 573 .5 1 inside 1 player renderPriority 4  hoverable interactable 
 
-id 0 test position 0 -5 0 shape .75 .75 0 color 0.1 0.2 0.3 .1 movement 575 .5 1 collidable inside 1 player 
 --! testing
-id 91 ui_test position 0 -7 0 shape 1 1 1 color 0.1 0.2 0.3 1 inside 1 renderPriority 2 collidable hoverable interactable 10 1 movement 575 .5 1 
+
+id 91 ui_test position 1 1 0 shape 1 1 1 color 0.26 0.34 0.59 1 inside 1 renderPriority 2 hoverable interactable .1 1  movement 575 .5 1 
+id 91 ui_test position 3.32 -3.10 0 shape 0.12 0.31 0.24 color 0.68 0.09 0.37 1 inside 1 renderPriority 2 hoverable interactable .1 1 movement 575 .5 1
+id 91 ui_test position 0.63 -0.61 0 shape 0.32 0.44 0.43 color 0.01 0.71 0.77 1 inside 1 renderPriority 2 hoverable interactable .1 1 movement 575 .5 1
+id 91 ui_test position 2.86 -3.35 0 shape 0.34 0.05 0.55 color 0.17 0.99 0.09 1 inside 1 renderPriority 2 hoverable interactable .1 1 movement 575 .5 1
+id 91 ui_test position 0.71 4.32 0 shape 0.38 0.50 0.31 color 0.01 0.01 0.60 1 inside 1 renderPriority 2 hoverable interactable .1 1 movement 575 .5 1
+id 91 ui_test position 0.26 0.32 0 shape 0.39 0.25 0.05 color 0.56 0.69 0.71 1 inside 1 renderPriority 2 hoverable interactable .1 1 movement 575 .5 1
+id 91 player_cursor position 5.26 0.32 0 shape .1 .1 0.05 color 0.96 0.39 0.11 1 inside 1 renderPriority 2

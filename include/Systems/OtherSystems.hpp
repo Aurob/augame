@@ -16,6 +16,20 @@ extern bool windowResized;
 
 void updateOther(entt::registry &registry) {
 
+    auto idEntities = registry.view<Id, Position>();
+    for (auto entity : idEntities) {
+        auto &id = idEntities.get<Id>(entity);
+        if (id.name == "player_cursor") {
+            auto &pos = idEntities.get<Position>(entity);
+            // Get the Cursor from the _player entity
+            if (registry.all_of<Cursor>(_player)) {
+                auto &cursor = registry.get<Cursor>(_player);
+                auto &shape = registry.get<Shape>(entity);
+                pos.x = cursor.position.sx - shape.size.x/2;
+                pos.y = cursor.position.sy - shape.size.y/2;
+            }
+        }
+    }
     // auto interiors = registry.view<InteriorPortal, PhysicsBodyRect>();
     // for(auto e : interiors) {
     //     auto &interior = registry.get<InteriorPortal>(e);

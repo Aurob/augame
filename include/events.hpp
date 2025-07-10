@@ -25,7 +25,6 @@ void EventHandler(int type, SDL_Event *event)
         playerKeys[event->key.keysym.sym] = false;
     }
 
-
     // Mouse/Touch Interactions
     if (event->type == SDL_MOUSEBUTTONDOWN || event->type == SDL_FINGERDOWN)
     {
@@ -34,9 +33,22 @@ void EventHandler(int type, SDL_Event *event)
     else if (event->type == SDL_MOUSEBUTTONUP || event->type == SDL_FINGERUP)
     {
         playerKeys[SDL_BUTTON_LEFT] = false;
-
     }
 
+    // Handle downtime increment/reset for Cursor while button is held or released
+    auto view = registry.view<Cursor, Player>();
+    for (auto entity : view)
+    {
+        auto &cursor = view.get<Cursor>(entity);
+        if (playerKeys[SDL_BUTTON_LEFT])
+        {
+            cursor.downtime += 1;
+        }
+        else
+        {
+            cursor.downtime = 0;
+        }
+    }
 
     // Mouse/Touch position
     if (event->type == SDL_MOUSEMOTION || event->type == SDL_FINGERMOTION)
@@ -45,15 +57,25 @@ void EventHandler(int type, SDL_Event *event)
         for (auto entity : view)
         {
             auto &cursor = view.get<Cursor>(entity);
+
+            // Get player position
+            auto &playerPos = registry.get<Position>(_player);
+
+            // Get cursor position in screen coordinates
+            float screenX, screenY;
             if (event->type == SDL_MOUSEMOTION)
             {
-                cursor.position.x = event->motion.x;
-                cursor.position.y = event->motion.y;
+                screenX = event->motion.x;
+                screenY = event->motion.y;
+                cursor.position.x = screenX;
+                cursor.position.y = screenY;
             }
             else
             {
-                cursor.position.x = event->tfinger.x * width;
-                cursor.position.y = event->tfinger.y * height;
+                screenX = event->tfinger.x * width;
+                screenY = event->tfinger.y * height;
+                cursor.position.x = screenX;
+                cursor.position.y = screenY;
             }
 
             if (playerKeys[SDL_BUTTON_LEFT]) {

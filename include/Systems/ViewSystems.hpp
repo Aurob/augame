@@ -17,6 +17,7 @@ extern bool windowResized;
 void updatePositions(entt::registry &registry)
 {
     Position playerPos = registry.get<Position>(_player);
+    Shape playerShape = registry.get<Shape>(_player);
 
     bool playerIsInside = registry.all_of<Inside>(_player);
     entt::entity playerInterior;
@@ -24,22 +25,29 @@ void updatePositions(entt::registry &registry)
         auto playerInside = registry.get<Inside>(_player);
         playerInterior = playerInside.interior;
     }
-    
+
+    // Also update Cursor positions if present
+    auto cursorEntities = registry.view<Cursor>();
+    for (auto entity : cursorEntities)
+    {
+    }
+
+
     auto entities = registry.view<Position, Shape>();
     for (auto entity : entities)
     {
         bool logit;
-  
+
         auto &position = entities.get<Position>(entity);
         auto &shape = entities.get<Shape>(entity);
 
         float posX = (playerPos.x - position.x) * gridSpacingValue + width / 2;
         float posY = (playerPos.y - position.y) * gridSpacingValue + height / 2;
         float posZ = (position.z) * gridSpacingValue + height / 2;
-        
-        position.sx = (2 * posX / width - 1) / defaultGSV - shape.scaled_size.x * 0.999f;
-        position.sy = (2 * posY / height - 1) / defaultGSV - shape.scaled_size.y * 0.999f;
-        position.sz = (2 * posZ / height - 1) / defaultGSV - shape.scaled_size.z * 0.999f;
+
+        position.sx = (2 * posX / width - 1) / defaultGSV - shape.scaled_size.x;
+        position.sy = (2 * posY / height - 1) / defaultGSV - shape.scaled_size.y;
+        position.sz = (2 * posZ / height - 1) / defaultGSV - shape.scaled_size.z;
 
 
         if(entity == _player) {
@@ -163,7 +171,7 @@ void updateShapes(entt::registry &registry)
     for (auto &entity : entities)
     {
         auto &shape = entities.get<Shape>(entity);
-        shape.scaled_size.x = shape.size.x * xScale*1.1;
-        shape.scaled_size.y = shape.size.y * yScale*1.1;
+        shape.scaled_size.x = shape.size.x * xScale;
+        shape.scaled_size.y = shape.size.y * yScale;
     }
 }

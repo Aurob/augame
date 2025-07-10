@@ -100,23 +100,44 @@ void updateInteractions(entt::registry &registry)
         float normalizedCursorX = -((cursor.position.x / width) * 2.0f - 1.0f) - playerShape.scaled_size.x;
         float normalizedCursorY = (1.0f - (cursor.position.y / height) * 2.0f) - playerShape.scaled_size.y;
 
-        // Normalize interactable radius using the average of the scaled sizes
-        float normalizedRadius = interactable.radius * (shape.scaled_size.x + shape.scaled_size.y) / 2.0f;
-        
-        // Calculate cursor position in screen coordinates
-        float cursorScreenX = cursor.position.sx;
-        float cursorScreenY = cursor.position.sy;
-        
-        // Check for boundary collision extended by normalized interactable.radius
-        if (normalizedCursorX >= position.sx - shape.scaled_size.x - normalizedRadius &&
-            normalizedCursorX <= position.sx + shape.scaled_size.x + normalizedRadius &&
-            normalizedCursorY >= position.sy - shape.scaled_size.y - normalizedRadius &&
-            normalizedCursorY <= position.sy + shape.scaled_size.y + normalizedRadius)
+        // Rectangle (AABB) collision: no more radius, just exact bbox
+        if (normalizedCursorX >= position.sx - shape.scaled_size.x &&
+            normalizedCursorX <= position.sx + shape.scaled_size.x &&
+            normalizedCursorY >= position.sy - shape.scaled_size.y &&
+            normalizedCursorY <= position.sy + shape.scaled_size.y)
         {
             mouseCollides = true;
         }
-        
-        if (mouseCollides)
+
+        // Check if the player is already interacting with something
+        bool playerIsInteracting = false;
+        entt::entity interactingEntity = entt::null;
+        auto interactedView = registry.view<Interacted>();
+        for (auto e : interactedView) {
+            auto &interacted = registry.get<Interacted>(e);
+            if (interacted.interactor == _player) {
+                playerIsInteracting = true;
+                interactingEntity = e;
+                break;
+            }
+        }
+
+        // If the player is already interacting and mouse is still down, do not update anything else
+        if (playerIsInteracting && keys[SDL_BUTTON_LEFT] && entity != interactingEntity) {
+            // Only allow the currently interacted entity to process interaction
+            // Remove hover state from others
+            if (registry.all_of<Hovered>(entity)) {
+                registry.remove<Hovered>(entity);
+                auto &hovered = registry.get<Hoverable>(entity);
+                hovered.duration = 0;
+            }
+            if (registry.all_of<Interacted>(entity)) {
+                registry.remove<Interacted>(entity);
+            }
+            // Do not process further for this entity
+            // (skip to next entity)
+        }
+        else if (mouseCollides)
         {
             if (!registry.all_of<Hovered>(entity))
             {
@@ -153,13 +174,6 @@ void updateInteractions(entt::registry &registry)
 
                 keys[SDL_BUTTON_LEFT] = false;
             }
-            else
-            {
-                if (registry.all_of<Interacted>(entity))
-                {
-                    registry.remove<Interacted>(entity);
-                }
-            }
         }
         else
         {
@@ -169,13 +183,10 @@ void updateInteractions(entt::registry &registry)
                 auto &hovered = registry.get<Hoverable>(entity);
                 hovered.duration = 0;
             }
-            if (registry.all_of<Interacted>(entity))
+            // Only remove Interacted if mouse is not down
+            if (registry.all_of<Interacted>(entity) && !keys[SDL_BUTTON_LEFT])
             {
                 registry.remove<Interacted>(entity);
-            }
-
-            if(keys[SDL_BUTTON_LEFT]) {
-                
             }
         }
     }
@@ -184,24 +195,29 @@ void updateInteractions(entt::registry &registry)
     auto interactedView = registry.view<Interacted>();
     for(auto entity : interactedView) {
         auto& interacted = registry.get<Interacted>(entity);
-        printf("%d\n", interacted.interactor);
         // If the interactor has the Player component
         if (registry.valid(interacted.interactor) && registry.all_of<Player>(interacted.interactor)) {
-            // Get the player's rotation
-            if (registry.all_of<Rotation>(interacted.interactor)) {
-                auto& rotation = registry.get<Rotation>(interacted.interactor);
-
-                // Calculate the direction vector from the rotation angle (assuming angle is in degrees)
-                float radians = rotation.angle * (3.14159265f / 180.0f);
-                float forceMagnitude = 100.0f; // You can adjust this value as needed
-                float forceX = std::cos(radians) * forceMagnitude;
-                float forceY = std::sin(radians) * forceMagnitude;
-
-                // Apply the force to the entity's physics body if it has one
-                if (registry.all_of<PhysicsBodyRect>(entity)) {
-                    auto& body = registry.get<PhysicsBodyRect>(entity);
-                    if (body.body) {
-                        body.body->applyForce({forceX, forceY});
+            // Check if the player has a Cursor component
+            if (registry.all_of<Cursor>(interacted.interactor)) {
+                auto& cursor = registry.get<Cursor>(interacted.interactor);
+                // If Cursor.downtime > 2, move the interacted object's position to the cursor position
+                if (cursor.downtime > 2) {
+                    if (registry.all_of<PhysicsBodyRect>(entity)) {
+                        auto& physBody = registry.get<PhysicsBodyRect>(entity);
+                        if (physBody.body) {
+                            // Offset by half the interactor's shape (using scaled_size)
+                            if (registry.all_of<Shape>(interacted.interactor)) {
+                                if (registry.all_of<Shape>(entity)) {
+                                    auto& shape = registry.get<Shape>(entity);
+                                    float final_x = cursor.position.sx;
+                                    float final_y = cursor.position.sy;
+                                    physBody.body->setPosition({
+                                        final_x,
+                                        final_y
+                                    });
+                                }
+                            }
+                        }
                     }
                 }
             }
