@@ -80,7 +80,7 @@ void updatePhysics(entt::registry &registry) {
         auto &rect = view.get<PhysicsBodyRect>(entity);
         auto &pos = view.get<Position>(entity);
         // Handle Collidable and Shape components
-        if(registry.all_of<Collidable, Shape>(entity)) {
+        if(registry.all_of<Movement, Shape>(entity)) {
             auto &shape = registry.get<Shape>(entity);
 
             if(!rect.added) {

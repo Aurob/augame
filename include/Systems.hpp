@@ -13,14 +13,14 @@ extern float deltaTime;
 void updateFrame()
 {
     
-    updateOther(registry);
-    updateActions(registry);
-    updatePhysics(registry);
-    updatePlayer(registry);
-    updateShapes(registry);
-    updatePositions(registry);   
-    updateInteractions(registry);
-    updateAnimations(registry);
+    updatePlayer(registry); // Handle player input
+    updateActions(registry); // Process player/AI actions
+    updateOther(registry); // Update AI/NPCs
+    updatePhysics(registry); // Apply physics, resolve collisions
+    updatePositions(registry); // Update positions based on physics/actions
+    updateShapes(registry); // Update shapes for collision/interactions
+    updateInteractions(registry); // Handle entity interactions
+    updateAnimations(registry); // Update animations
 
 
     // Update JS with the player's position using a view to get Player

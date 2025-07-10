@@ -234,9 +234,9 @@ void updateUniforms(GLuint &shaderProgram,
     glUniform2fv(boundsLocation, 1, toplefttile);
 
     // cursorPos uniform
-    // auto &cursor = registry.get<Cursor>(_player);
-    // GLint cursorPosLocation = glGetUniformLocation(shaderProgram, "cursorPos");
-    // glUniform2f(cursorPosLocation, cursor.position.x, cursor.position.y);
+    auto &cursor = registry.get<Cursor>(_player);
+    GLint cursorPosLocation = glGetUniformLocation(shaderProgram, "cursorPos");
+    glUniform2f(cursorPosLocation, cursor.position.x, cursor.position.y);
 
     // time
     float timeValue = SDL_GetTicks() / 1000000.0f;
@@ -776,128 +776,139 @@ void renderAll() {
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             
-            if (registry.all_of<Texture>(entity)) {
-                const auto& texture = registry.get<Texture>(entity);
+            if(!registry.all_of<Text>(entity)) {
+                if (
+                    registry.all_of<Texture>(entity) ||
+                    registry.all_of<TextureGroupPart>(entity) ||
+                    registry.all_of<Textures>(entity) ||
+                    (registry.all_of<TextureAlts>(entity) && registry.all_of<Player>(entity))
+                ) {
+                    // --- Texture (single) ---
+                    if (registry.all_of<Texture>(entity)) {
+                        const auto& texture = registry.get<Texture>(entity);
 
-                updateUniformsTexture(shaderProgramMap["texture"], 
-                    textureIDMap[texture.name],
-                    position.sx + playerShape.scaled_size.x,
-                    position.sy + playerShape.scaled_size.y, // + shape.scaled_size.z,
-                    shape.scaled_size.x, 
-                    shape.scaled_size.y, // + shape.scaled_size.z,
-                    texture.x, texture.y, texture.w, texture.h
-                );
-                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-            }
-            else if (registry.all_of<TextureGroupPart>(entity)) {
-                const auto& textureGroupPart = registry.get<TextureGroupPart>(entity);
-                auto groupName = textureGroupPart.groupName;
-                auto partName = textureGroupPart.partName;
+                        updateUniformsTexture(shaderProgramMap["texture"], 
+                            textureIDMap[texture.name],
+                            position.sx + playerShape.scaled_size.x,
+                            position.sy + playerShape.scaled_size.y,
+                            shape.scaled_size.x, 
+                            shape.scaled_size.y,
+                            texture.x, texture.y, texture.w, texture.h
+                        );
+                        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                    }
+                    // --- TextureGroupPart ---
+                    else if (registry.all_of<TextureGroupPart>(entity)) {
+                        const auto& textureGroupPart = registry.get<TextureGroupPart>(entity);
+                        auto groupName = textureGroupPart.groupName;
+                        auto partName = textureGroupPart.partName;
 
-                auto rootTexture = textureIDMap[groupName];
-                const auto& texture = textureGroupMap[groupName].at(partName);
+                        auto rootTexture = textureIDMap[groupName];
+                        const auto& texture = textureGroupMap[groupName].at(partName);
 
-                auto IdName = registry.get<Id>(entity).name;
-                if (textureGroupPart.tilex > 0 && textureGroupPart.tiley > 0) {
-                    int divisorX = textureGroupPart.tilex;
-                    int divisorY = textureGroupPart.tiley;
-                    auto ssizex = shape.scaled_size.x / divisorX;
-                    auto ssizey = shape.scaled_size.y / divisorY;
-                    auto posX = position.sx + playerShape.scaled_size.x;
-                    auto posY = position.sy + playerShape.scaled_size.y; // + position.sz + playerShape.scaled_size.z;
+                        auto IdName = registry.get<Id>(entity).name;
+                        if (textureGroupPart.tilex > 0 && textureGroupPart.tiley > 0) {
+                            int divisorX = textureGroupPart.tilex;
+                            int divisorY = textureGroupPart.tiley;
+                            auto ssizex = shape.scaled_size.x / divisorX;
+                            auto ssizey = shape.scaled_size.y / divisorY;
+                            auto posX = position.sx + playerShape.scaled_size.x;
+                            auto posY = position.sy + playerShape.scaled_size.y;
 
-                    // Increase size by 1%
-                    auto increasedSsizex = ssizex;// * 1.01f;
-                    auto increasedSsizey = ssizey;// * 1.01f;
+                            // Increase size by 1%
+                            auto increasedSsizex = ssizex;
+                            auto increasedSsizey = ssizey;
 
-                    for (int i = 0; i < divisorX; ++i) {
-                        for (int j = 0; j < divisorY; ++j) {
+                            for (int i = 0; i < divisorX; ++i) {
+                                for (int j = 0; j < divisorY; ++j) {
+                                    updateUniformsTexture(shaderProgramMap["texture"], 
+                                        rootTexture,
+                                        (posX + i * ssizex*2) - shape.scaled_size.x + ssizex - (increasedSsizex - ssizex) / 2,
+                                        (posY + j * ssizey*2),
+                                        increasedSsizex, increasedSsizey,
+                                        texture.x, texture.y, texture.w, texture.h
+                                    );
+                                    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                                }
+                            }
+                        } 
+                        else {
                             updateUniformsTexture(shaderProgramMap["texture"], 
                                 rootTexture,
-                                (posX + i * ssizex*2) - shape.scaled_size.x + ssizex - (increasedSsizex - ssizex) / 2,
-                                (posY + j * ssizey*2),
-                                increasedSsizex, increasedSsizey,
+                                position.sx + playerShape.scaled_size.x,
+                                position.sy + playerShape.scaled_size.y,
+                                shape.scaled_size.x,
+                                shape.scaled_size.y,
                                 texture.x, texture.y, texture.w, texture.h
                             );
                             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
                         }
                     }
-                } 
-                else {
-                    updateUniformsTexture(shaderProgramMap["texture"], 
-                        rootTexture,
-                        position.sx + playerShape.scaled_size.x,
-                        position.sy + playerShape.scaled_size.y, // + position.sz + playerShape.scaled_size.z,
-                        shape.scaled_size.x,
-                        shape.scaled_size.y,
-                        texture.x, texture.y, texture.w, texture.h
-                    );
+                    // --- Textures (animated or multi-frame) ---
+                    else if (registry.all_of<Textures>(entity)) {
+                        const auto& textures = registry.get<Textures>(entity);
+                        const auto& current_texture = textures.textures[textures.current];
+
+                        float angle = 0.0f;
+                        if(registry.all_of<Rotation>(entity)) {
+                            angle = registry.get<Rotation>(entity).angle;
+                        }
+
+                        updateUniformsTexture(shaderProgramMap["texture"], 
+                            textureIDMap[current_texture.name],
+                            position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
+                            shape.scaled_size.x * current_texture.scalex, shape.scaled_size.y * current_texture.scaley,
+                            current_texture.x, current_texture.y, current_texture.w, current_texture.h, angle);
+                        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                    }
+                    // --- TextureAlts (player) ---
+                    else if (registry.all_of<TextureAlts>(entity) && registry.all_of<Player>(entity)) {
+                        const auto& textureAlts = registry.get<TextureAlts>(entity);
+                        const auto& currentTextures = textureAlts.alts.at(textureAlts.current);
+                        const auto& current_texture = currentTextures.textures[currentTextures.current];
+
+                        updateUniformsTexture(shaderProgramMap["texture"], 
+                            textureIDMap[current_texture.name],
+                            position.sx + playerShape.scaled_size.x,
+                            position.sy + playerShape.scaled_size.y,
+                            shape.scaled_size.x * current_texture.scalex, 
+                            shape.scaled_size.y * current_texture.scaley,
+                            current_texture.x, current_texture.y, 
+                            current_texture.w, current_texture.h);
+                        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                    }
+                }
+                else if(registry.all_of<Color>(entity)) {
+                    auto color = registry.get<Color>(entity);
+
+                    float angle = 0.0f;
+                    if(registry.all_of<Rotation>(entity)) {
+                        angle = registry.get<Rotation>(entity).angle;
+                    }
+
+                    float r = color.r;
+                    float g = color.g; 
+                    float b = color.b;
+
+                    if(registry.all_of<Hovered>(entity)) {
+                        r = 0.0f;
+                        g = 0.0f;
+                        b = 1.0f;
+                    }
+                    if(registry.all_of<Interacted>(entity)) {
+                        r = 0.0f;
+                        g = 1.0f;
+                        b = 0.0f;
+                    }
+
+                    updateUniformsDebug(shaderProgramMap["debug_entity"],
+                        r, g, b, color.a,
+                        position.sx + playerShape.scaled_size.x, 
+                        position.sy + playerShape.scaled_size.y,
+                        shape.scaled_size.x, shape.scaled_size.y, 
+                        angle);
                     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
                 }
-            } 
-            else if (registry.all_of<Textures>(entity)) {
-                const auto& textures = registry.get<Textures>(entity);
-                const auto& current_texture = textures.textures[textures.current];
-
-
-                float angle = 0.0f;
-                if(registry.all_of<Rotation>(entity)) {
-                    angle = registry.get<Rotation>(entity).angle;
-                }
-
-                updateUniformsTexture(shaderProgramMap["texture"], 
-                    textureIDMap[current_texture.name],
-                    position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
-                    shape.scaled_size.x * current_texture.scalex, shape.scaled_size.y * current_texture.scaley,
-                    current_texture.x, current_texture.y, current_texture.w, current_texture.h, angle);
-                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-            } else if (registry.all_of<TextureAlts, Player>(entity)) {
-                const auto& textureAlts = registry.get<TextureAlts>(entity);
-                const auto& currentTextures = textureAlts.alts.at(textureAlts.current);
-                const auto& current_texture = currentTextures.textures[currentTextures.current];
-
-                updateUniformsTexture(shaderProgramMap["texture"], 
-                    textureIDMap[current_texture.name],
-                    position.sx + playerShape.scaled_size.x,
-                    position.sy + playerShape.scaled_size.y, // + position.sz + playerShape.scaled_size.z*2,
-                    shape.scaled_size.x * current_texture.scalex, 
-                    shape.scaled_size.y * current_texture.scaley,
-                    current_texture.x, current_texture.y, 
-                    current_texture.w, current_texture.h);
-                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-            }
-            else if(registry.all_of<Color>(entity) && !registry.all_of<Text>(entity)) {
-                auto color = registry.get<Color>(entity);
-
-                float angle = 0.0f;
-                if(registry.all_of<Rotation>(entity)) {
-                    angle = registry.get<Rotation>(entity).angle;
-                }
-
-                float r = color.r;
-                float g = color.g; 
-                float b = color.b;
-
-                if(registry.all_of<Hovered>(entity)) {
-                    r = 0.0f;
-                    g = 0.0f;
-                    b = 1.0f;
-                }
-                if(registry.all_of<Interacted>(entity)) {
-                    r = 0.0f;
-                    g = 1.0f;
-                    b = 0.0f;
-                }
-
-                updateUniformsDebug(shaderProgramMap["debug_entity"],
-                    r, g, b, color.a,
-                    position.sx + playerShape.scaled_size.x, 
-                    position.sy + playerShape.scaled_size.y,
-                    shape.scaled_size.x, shape.scaled_size.y, 
-                    angle);
-                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
             }
         }
 
@@ -919,7 +930,7 @@ void renderAll() {
             a = text.hide ? 0.0f : a;
 
             std::string textStr = text.text;
-            float xVal = pos.sx + playerShape.scaled_size.x + shape.scaled_size.x*2;
+            float xVal = pos.sx + playerShape.scaled_size.x + shape.scaled_size.x;
             float yVal = pos.sy + playerShape.scaled_size.y;
             float scaleVal = (shape.scaled_size.x+shape.scaled_size.y)/200;
             // printf("renderText params: text=\"%s\", x=%f, y=%f, scale=%f, r=%f, g=%f, b=%f, a=%f\n",

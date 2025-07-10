@@ -29,9 +29,9 @@ void updatePlayer(entt::registry &registry) {
     toplefttile[0] = static_cast<int>(playerPos.x / defaultGSV) - (width / gridSpacingValue / 2);
     toplefttile[1] = static_cast<int>(playerPos.y / defaultGSV) - (height / gridSpacingValue / 2);
 
-    // Determine cursor position using toplefttile and offset, factoring in defaultGSV
-    playerCursorPos.position.sx = playerPos.x + ((playerCursorPos.position.x - width / 2) * defaultGSV / gridSpacingValue);
-    playerCursorPos.position.sy = playerPos.y + ((playerCursorPos.position.y - height / 2) * defaultGSV / gridSpacingValue);
+    // Calculate cursor normalized shader coordinates (sx, sy)
+    playerCursorPos.position.sx = playerPos.x + ((playerCursorPos.position.x - width / 2) * defaultGSV / gridSpacingValue) + playerShape.size.x/2;
+    playerCursorPos.position.sy = playerPos.y + ((playerCursorPos.position.y - height / 2) * defaultGSV / gridSpacingValue) + playerShape.size.x/2;
 
 }
 

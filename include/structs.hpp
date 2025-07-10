@@ -225,6 +225,8 @@ struct Cursor {
     Position position;
     bool firstdown; // Used to check if this is the first time the mouse is down after being up
     bool firstup; // same but reversed
+    int downtime;
+    Vector2f vec2_dist;
 };
 
 struct Test { std::string value; };
