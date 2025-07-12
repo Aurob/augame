@@ -472,7 +472,23 @@ namespace p2d {
 			if (condition) {
 
 				collided = true;
-					
+				
+				// Check if either body should ignore the collision resolution
+				if (o->ignore || p->ignore) {
+					// Create collision info
+					CollisionInfo info(o, p);
+
+					// Store the collision
+					m_collisions.push_back(info);
+
+					// Call the callback if set
+					if (onCollision != nullptr) {
+						onCollision(info);
+					}
+
+					return; // Skip resolution
+				}
+
 				//compare distance between centres with sum of lengths (and widths)
 				float dx = (len_p.x + len_o.x) - abs(pos_p.x - pos_o.x);
 				float dy = (len_p.y + len_o.y) - abs(pos_p.y - pos_o.y);
@@ -617,10 +633,6 @@ namespace p2d {
 				if (o->isStatic()) {		//Static Bodies can be targets (collided with and resolved from), but are not resolved themselves.
 					continue;
 				}
-
-				// if (o->ignore) {
-				// 	continue;
-				// }
 
 				for (Body* p : m_Body) {	//Target Body
 
