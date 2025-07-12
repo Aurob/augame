@@ -142,7 +142,7 @@ void updatePositions(entt::registry &registry)
             registry.emplace_or_replace<InView>(entity);
             if (registry.all_of<PhysicsBodyRect>(entity) && !registry.all_of<InteriorPortal>(entity)) {
                 auto& physBody = registry.get<PhysicsBodyRect>(entity);
-                physBody.body->ignore = false;
+                // physBody.body->ignore = false;
             }
         }
         else if (registry.all_of<InView>(entity)) {

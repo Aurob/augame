@@ -196,7 +196,7 @@ void updateInteractions(entt::registry &registry)
     for(auto entity : interactedView) {
         auto& interacted = registry.get<Interacted>(entity);
         // If the interactor has the Player component
-        if (registry.valid(interacted.interactor) && registry.all_of<Player>(interacted.interactor)) {
+        if (registry.all_of<Player>(interacted.interactor)) {
             // Check if the player has a Cursor component
             if (registry.all_of<Cursor>(interacted.interactor)) {
                 auto& cursor = registry.get<Cursor>(interacted.interactor);

@@ -17,3 +17,8 @@
 - Player texture is currently hardcoded, make it component based
 
 - Remove the Vector2f and Vector3f structs and instead use the physics vec2/vec3
+
+- Need to be able to make interactable/draggable entities ignore collisions while dragging
+ - but also allow collisions while dragging when needed
+
+ - Interiors don't collide with entities that are not inside it
