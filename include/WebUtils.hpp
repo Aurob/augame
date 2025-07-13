@@ -370,10 +370,12 @@ extern "C"
                                     auto portalAId = interiorPortal["A"].get<int>();
                                     auto portalBId = interiorPortal["B"].get<int>();
                                     bool locked = interiorPortal["locked"].get<bool>();
+                                    auto keyId = interiorPortal["key"].get<int>();
 
                                     auto view = registry.view<Id>();
                                     entt::entity portalA = entt::null;
                                     entt::entity portalB = entt::null;
+                                    entt::entity key = entt::null;
 
                                     for (auto entity : view)
                                     {
@@ -383,12 +385,16 @@ extern "C"
                                             portalA = entity;
                                         else if (entity_id == portalBId)
                                             portalB = entity;
+                                        else if (entity_id == keyId)
+                                            key = entity;
 
-                                        if ((portalA != entt::null || portalAId == -1) && (portalB != entt::null || portalBId == -1))
+                                        if ((portalA != entt::null || portalAId == -1) && 
+                                            (portalB != entt::null || portalBId == -1) &&
+                                            (key != entt::null || keyId == -1))
                                             break;
                                     }
 
-                                    registry.emplace<InteriorPortal>(entity, InteriorPortal{portalA, portalB, locked});
+                                    registry.emplace<InteriorPortal>(entity, InteriorPortal{portalA, portalB, locked, key});
                                 }
                             }, "InteriorPortal");
                             safe_emplace(registry, entity, [&]() {
@@ -428,7 +434,8 @@ extern "C"
                                     registry.emplace<Movement>(entity, Movement{
                                         movement["speed"].get<float>(),
                                         movement["mass"].get<float>(),
-                                        movement["restitution"].get<float>()});
+                                        movement["restitution"].get<float>(),
+                                        movement["friction"].get<float>()});
                                 }
                             }, "Movement");
 
@@ -539,7 +546,7 @@ extern "C"
                             }, "World");
                         }
 
-                        if (registry.all_of<Position, Shape>(entity)) {
+                        if (registry.all_of<Position, Shape, Collidable>(entity)) {
                             registry.emplace<PhysicsBodyRect>(entity);
                         }
 

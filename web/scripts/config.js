@@ -58,4 +58,10 @@ const playerTextures = createSpriteSheetTextures(
     ['Down', 'Left', 'Right', 'Up']
 );
 
-CONFIG.textures = CONFIG.textures.concat(playerTextures);
+const textures = [
+    createBasicTexture("hand_open", "hand_thin_small_open.png"),
+    createBasicTexture("hand_closed", "hand_thin_small_closed.png"),
+    createBasicTexture("key", "key.png")
+];
+
+CONFIG.textures = CONFIG.textures.concat(playerTextures, textures);

@@ -24,8 +24,10 @@
 #include <iostream>
 #include <vector>
 #include "entt.hpp"
+#include "../structs.hpp"
 
 extern entt::registry registry;
+
 
 namespace p2d {
 
@@ -159,6 +161,7 @@ namespace p2d {
     public:
 		// Custom EnTT features
 		entt::entity m_entity;
+
 		bool ignore;
 		bool invert;
 
@@ -298,6 +301,13 @@ namespace p2d {
 
 		void add(Body* ob) {
 			m_Body.push_back(ob);
+		}
+
+		void remove(Body* ob) {
+			auto it = std::find(m_Body.begin(), m_Body.end(), ob);
+			if (it != m_Body.end()) {
+				m_Body.erase(it);
+			}
 		}
 
 		[[nodiscard]] bool atRest() {
@@ -488,7 +498,31 @@ namespace p2d {
 
 					return; // Skip resolution
 				}
+				
+				// Check if o or p is an Interior entity
+				bool o_is_interior = registry.all_of<Interior>(o->m_entity);
+				bool p_is_interior = registry.all_of<Interior>(p->m_entity);
 
+				if (o_is_interior) {
+					// Check if p has Inside and its .interior == o->m_entity
+					if (registry.all_of<Inside>(p->m_entity)) {
+						const auto& inside = registry.get<Inside>(p->m_entity);
+						// If inside.interior == o->m_entity, set o->ignore = true
+						if (inside.interior == o->m_entity) {
+							return;
+						}
+					}
+				}
+				if (p_is_interior) {
+					// Check if o has Inside and its .interior == p->m_entity
+					if (registry.all_of<Inside>(o->m_entity)) {
+						const auto& inside = registry.get<Inside>(o->m_entity);
+						if (inside.interior == p->m_entity) {
+							return;
+						}
+					}
+				}
+				
 				//compare distance between centres with sum of lengths (and widths)
 				float dx = (len_p.x + len_o.x) - abs(pos_p.x - pos_o.x);
 				float dy = (len_p.y + len_o.y) - abs(pos_p.y - pos_o.y);
@@ -674,4 +708,10 @@ namespace p2d {
 		}
 	};
 }
+struct PhysicsBodyRect {
+    p2d::RectangleBody *body;
+    // p2d::CircleBody *body;
+    bool added;
+    bool ignore;
+};
 #endif // PHYSICS_H

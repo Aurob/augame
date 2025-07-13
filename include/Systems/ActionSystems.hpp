@@ -48,11 +48,6 @@ void updateActions(entt::registry &registry)
             tickAction.time = SDL_GetTicks() / 1000.0f;
         }
     }
-    
-    auto flagged = registry.view<Flag>();
-    for(auto e : flagged) {
-        auto& flag = registry.get<Flag>(e);
-    }
 }
 
 
@@ -202,22 +197,20 @@ void updateInteractions(entt::registry &registry)
                 auto& cursor = registry.get<Cursor>(interacted.interactor);
                 // If Cursor.downtime > 2, move the interacted object's position to the cursor position
                 if (cursor.downtime > 2) {
+                    float final_x = cursor.position.sx;
+                    float final_y = cursor.position.sy;
+
                     if (registry.all_of<PhysicsBodyRect>(entity)) {
                         auto& physBody = registry.get<PhysicsBodyRect>(entity);
                         if (physBody.body) {
-                            // Offset by half the interactor's shape (using scaled_size)
-                            if (registry.all_of<Shape>(interacted.interactor)) {
-                                if (registry.all_of<Shape>(entity)) {
-                                    auto& shape = registry.get<Shape>(entity);
-                                    float final_x = cursor.position.sx;
-                                    float final_y = cursor.position.sy;
-                                    physBody.body->setPosition({
-                                        final_x,
-                                        final_y
-                                    });
-                                }
-                            }
+                            physBody.body->setPosition({final_x, final_y});
                         }
+                    }
+                    // If entity does not have a PhysicsBodyRect, just set its Position
+                    if (registry.all_of<Position>(entity)) {
+                        auto& pos = registry.get<Position>(entity);
+                        pos.x = final_x;
+                        pos.y = final_y;
                     }
                 }
             }

@@ -6,7 +6,6 @@
 #include <optional>
 #include <unordered_map>
 #include "../include/lib/entt.hpp"
-#include "../include/lib/physics.hpp"
 #include <emscripten.h>
 
 using namespace std;
@@ -146,8 +145,8 @@ struct Movement {
     float mass{1};
     float restitution{0.5};
     
-    Movement(float _speed = 10, float _mass = 1, float _restitution = 0.5) 
-        : speed(_speed), default_speed(_speed), mass(_mass), restitution(_restitution) {}
+    Movement(float _speed = 10, float _mass = 1, float _restitution = 0.5, float _friction = 0.5) 
+        : speed(_speed), default_speed(_speed), mass(_mass), restitution(_restitution), friction(_friction){}
 };
 
 struct Moveable {};
@@ -174,6 +173,7 @@ struct InteriorPortal {
     entt::entity A;
     entt::entity B;
     bool locked;
+    entt::entity key;
 };
 struct OnInteriorPortal {
     entt::entity portal;
@@ -230,13 +230,6 @@ struct Cursor {
 };
 
 struct Test { std::string value; };
-
-struct PhysicsBodyRect {
-    p2d::RectangleBody *body;
-    // p2d::CircleBody *body;
-    bool added;
-    bool ignore;
-};
 
 struct Interactable {
     int interactions;

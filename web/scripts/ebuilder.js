@@ -5,8 +5,8 @@ class EntityBuilder {
         position: 4,
         shape: 4,
         color: 5,
-        movement: 4, //10,
-        interiorPortal: 4,
+        movement: 5, //10,
+        interiorPortal: 5,
         inside: 2,
         associated: 3,
         id: 3,
@@ -46,7 +46,7 @@ class EntityBuilder {
         renderPriority: (parts, i) => ({ RenderPriority: { priority: parseInt(parts[i], 10) } }),
         collidable: () => ({ Collidable: true }),
         interior: () => ({ Interior: { hideInside: true } }),
-        interiorPortal: (parts, i) => ({ InteriorPortal: { A: parseInt(parts[i], 10), B: parseInt(parts[i+1], 10), locked: parts[i+2] === "1" } }),
+        interiorPortal: (parts, i) => ({ InteriorPortal: { A: parseInt(parts[i], 10), B: parseInt(parts[i+1], 10), locked: parts[i+2] === "1", key: parseInt(parts[i+3], 10) } }),
         inside: (parts, i) => ({ Inside: { interiorEntity: parseInt(parts[i], 10), showOutside: parts[i+1] === "true" } }),
         associated: (parts, i) => ({ Associated: { entities: [parseInt(parts[i], 10)] } }),
         texture: (parts, i) => ({
@@ -75,9 +75,9 @@ class EntityBuilder {
                 // maxSpeed: parseFloat(parts[i+1]),
                 // acceleration: { x: parseFloat(parts[i+2]), y: parseFloat(parts[i+3]) },
                 // velocity: { x: parseFloat(parts[i+4]), y: parseFloat(parts[i+5]) },
-                // friction: parseFloat(parts[i+6]),
                 mass: parseFloat(parts[i+1]),
-                restitution: parseFloat(parts[i+2])
+                restitution: parseFloat(parts[i+2]),
+                friction: parseFloat(parts[i+3])
             }
         }),
         hoverable: () => ({ Hoverable: true }),
