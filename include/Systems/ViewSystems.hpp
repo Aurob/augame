@@ -57,15 +57,24 @@ void updatePositions(entt::registry &registry)
         }
 
         bool isWithinBounds = (
-            position.sx + shape.scaled_size.x >= -1 
-            && position.sx - shape.scaled_size.x <= 1 
-            && (position.sy + shape.scaled_size.y + shape.scaled_size.z*2 + shape.scaled_size.y) >= -1
-            && (position.sy - shape.scaled_size.y - shape.scaled_size.z*2 - shape.scaled_size.y) <= 1
+            position.sx + shape.scaled_size.x >= -1.1 
+            && position.sx - shape.scaled_size.x <= 1.1 
+            && (position.sy + shape.scaled_size.y + shape.scaled_size.z*2 + shape.scaled_size.y) >= -1.1
+            && (position.sy - shape.scaled_size.y - shape.scaled_size.z*2 - shape.scaled_size.y) <= 1.1
         );
 
 
         bool isVisible = true;
         bool isInView = true;
+
+        // Skip if entity has Id.name == "player_cursor"
+        if (registry.all_of<Id>(entity)) {
+            auto &id = registry.get<Id>(entity);
+            if (id.name == "player_cursor") {
+                isWithinBounds = false;
+            }
+        }
+
         if (isWithinBounds)
         {
             bool entityIsPortal = registry.all_of<InteriorPortal>(entity);

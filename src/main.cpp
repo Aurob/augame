@@ -57,11 +57,13 @@ void EventHandler(int, SDL_Event *);
 
 int main(int argc, char *argv[])
 {
-    
     // Initialize SDL and SDL_Image
     SDL_Window *mpWindow = loadSDL();
     SDL_GLContext gl_context = loadGl(mpWindow);
-     
+
+    // Hide the cursor in Emscripten (and SDL in general)
+    // SDL_ShowCursor(SDL_DISABLE);
+
     // Trigger JS functions
     _js__fetch_configs();   
     _js__ready();

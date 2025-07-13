@@ -74,47 +74,6 @@ Vector3f calculateMoveDirection(float xOverlapAmount, float yOverlapAmount, floa
     return moveDirection;
 }
 
-Vector3f positionsCollide(const Position &pos1, const Shape &shape1, 
-                          const Position &pos2, const Shape &shape2, bool invert)
-{
-    Vector3f moveDirection{0.f, 0.f, 0.f};
-    float Ax = pos1.x, Ay = pos1.y, Az = pos1.z;
-    float Bx = pos2.x, By = pos2.y, Bz = pos2.z;
-
-    float Aw = shape1.size.x, Ah = shape1.size.y, Ad = shape1.size.z;
-    float Bw = shape2.size.x, Bh = shape2.size.y, Bd = shape2.size.z;
-
-    float AxB = Ax + Aw, AxT = Ax, AyT = Ay, AyB = Ay + Ah, AzT = Az, AzB = Az + Ad;
-    float BxB = Bx + Bw, BxT = Bx, ByT = By, ByB = By + Bh, BzT = Bz, BzB = Bz + Bd;
-
-    if (invert) {
-        // For inverted collisions (inside the interior)
-        if (AxT <= BxT) moveDirection.x = BxT - AxT;
-        else if (AxB >= BxB) moveDirection.x = BxB - AxB;
-
-        if (AyT <= ByT) moveDirection.y = ByT - AyT;
-        else if (AyB >= ByB) moveDirection.y = ByB - AyB;
-
-        if (AzT <= BzT) moveDirection.z = BzT - AzT;
-        else if (AzB >= BzB) moveDirection.z = BzB - AzB;
-    } else {
-        // For regular collisions (outside the interior)
-        bool xOverlap = (AxT < BxB && AxB > BxT);
-        bool yOverlap = (AyT < ByB && AyB > ByT);
-        bool zOverlap = (AzT < BzB && AzB > BzT);
-
-        if (xOverlap && yOverlap && zOverlap) {
-            Vector3f overlap = calculateOverlap(AxT, AxB, BxT, BxB, AyT, AyB, ByT, ByB, AzT, AzB, BzT, BzB);
-            moveDirection = calculateMoveDirection(overlap.x, overlap.y, overlap.z,
-                                                   AxB, BxT, BxB, AxT,
-                                                   AyB, ByT, ByB, AyT,
-                                                   AzB, BzT, BzB, AzT);
-        }
-    }
-
-    return moveDirection;
-}
-
 
 bool basicCollisionCheck(entt::entity e1, entt::entity e2) {
     // Retrieve positions and shapes from the registry

@@ -22,3 +22,13 @@
  - but also allow collisions while dragging when needed
 
  - Interiors don't collide with entities that are not inside it
+
+- currently if an entity is inside another it need to be defined after the Interior entity in the config
+ - this is not ideal, should be able to define them in any order
+
+- Right now only simple rectangle shapes are supported
+ - need to support more circles as well, since the physics lib supports circle collisions
+ - Also wnat to be able to make shapes like polygons
+   - but maybe a simpler thing to do would be to allow grouping of multiple shapes into a single entity
+
+- Text scale doesn't do anything

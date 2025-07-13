@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scene Entity Builder v2</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            background: #222;
+            color: #eee;
+        }
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        .sidebar {
+            width: 340px;
+            background: #23272e;
+            padding: 16px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            border-right: 2px solid #333;
+        }
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #181a1b;
+            position: relative;
+        }
+        #drawCanvas {
+            background: #222;
+            border: 2px solid #444;
+            box-shadow: 0 0 8px #000a;
+            cursor: crosshair;
+        }
+        .mode-group label {
+            margin-right: 12px;
+        }
+        .shape-list {
+            margin: 8px 0 16px 0;
+            max-height: 180px;
+            overflow-y: auto;
+            background: #181a1b;
+            border: 1px solid #333;
+            padding: 4px;
+            font-size: 14px;
+        }
+        .shape-list .shape-item {
+            padding: 2px 4px;
+            margin-bottom: 2px;
+            border-radius: 3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .shape-list .shape-item.selected {
+            background: #3a7bd5;
+            color: #fff;
+        }
+        .edit-panel {
+            background: #181a1b;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            min-width: 340px;
+            max-width: 400px;
+        }
+        .edit-panel-row {
+            margin-bottom: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .edit-panel-row label {
+            margin-right: 12px;
+            font-size: 14px;
+        }
+        .color-preview {
+            display: inline-block;
+            width: 24px;
+            height: 18px;
+            border: 1px solid #555;
+            vertical-align: middle;
+            margin-left: 4px;
+            border-radius: 3px;
+        }
+        textarea {
+            width: 100%;
+            min-height: 80px;
+            background: #111;
+            color: #eee;
+            border: 1px solid #333;
+            margin-top: 8px;
+            font-family: monospace;
+            font-size: 13px;
+            resize: vertical;
+        }
+        button {
+            background: #3a7bd5;
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            padding: 5px 12px;
+            margin-right: 6px;
+            margin-bottom: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:disabled {
+            background: #444;
+            color: #aaa;
+            cursor: not-allowed;
+        }
+        input[type="number"], input[type="text"] {
+            background: #222;
+            color: #eee;
+            border: 1px solid #444;
+            border-radius: 2px;
+            padding: 2px 4px;
+            font-size: 14px;
+        }
+        input[type="checkbox"] {
+            accent-color: #3a7bd5;
+        }
+        .section-title {
+            font-weight: bold;
+            margin-top: 12px;
+            margin-bottom: 4px;
+            font-size: 15px;
+            color: #7ec7ff;
+        }
+        .edit-panel-right {
+            position: absolute;
+            right: 0;
+            top: 0;
+            height: 100%;
+            z-index: 10;
+            background: #23272e;
+            border-left: 2px solid #333;
+            overflow-y: auto;
+            min-width: 360px;
+            max-width: 420px;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .blueprint-list {
+            margin: 8px 0 16px 0;
+            max-height: 120px;
+            overflow-y: auto;
+            background: #181a1b;
+            border: 1px solid #333;
+            padding: 4px;
+            font-size: 14px;
+        }
+        .blueprint-list .blueprint-item {
+            padding: 2px 4px;
+            margin-bottom: 2px;
+            border-radius: 3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .blueprint-list .blueprint-item.selected {
+            background: #3a7bd5;
+            color: #fff;
+        }
+        .scene-list {
+            margin: 8px 0 16px 0;
+            max-height: 120px;
+            overflow-y: auto;
+            background: #181a1b;
+            border: 1px solid #333;
+            padding: 4px;
+            font-size: 14px;
+        }
+        .scene-list .scene-item {
+            padding: 2px 4px;
+            margin-bottom: 2px;
+            border-radius: 3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .scene-list .scene-item.selected {
+            background: #3a7bd5;
+            color: #fff;
+        }
+        .color-input-wrapper {
+            display: flex;
+            align-items: center;
+        }
+        .color-input-wrapper input[type="color"] {
+            margin-left: 8px;
+            width: 32px;
+            height: 24px;
+            border: none;
+            background: none;
+            padding: 0;
+        }
+        .dup-btn {
+            background: #7ec7ff;
+            color: #222;
+            font-weight: bold;
+            padding: 2px 8px;
+            font-size: 13px;
+            margin-left: 8px;
+        }
+        .load-btn {
+            background: #7ec7ff;
+            color: #222;
+            font-weight: bold;
+            padding: 2px 8px;
+            font-size: 13px;
+            margin-left: 8px;
+        }
+        .save-btn {
+            background: #3a7bd5;
+            color: #fff;
+            font-weight: bold;
+            padding: 2px 8px;
+            font-size: 13px;
+            margin-left: 8px;
+        }
+        .delete-btn {
+            background: #e74c3c;
+            color: #fff;
+            font-weight: bold;
+            padding: 2px 8px;
+            font-size: 13px;
+            margin-left: 8px;
+        }
+        .snap-toggle {
+            margin-left: 8px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="section-title">Mode</div>
+            <div class="mode-group">
+                <label><input type="radio" name="mode" value="draw" checked> Draw</label>
+                <label><input type="radio" name="mode" value="move"> Move</label>
+                <label><input type="radio" name="mode" value="edit"> Edit</label>
+            </div>
+            <div class="section-title">New Shape</div>
+            <div>
+                <label>ID Num: <input type="number" id="idNum" value="1" min="0" style="width:60px;"></label>
+                <label>ID Name: <input type="text" id="idName" value="entity1" style="width:90px;"></label>
+            </div>
+            <div style="margin-top:8px;">
+                <button id="deleteBtn" disabled>Delete Selected</button>
+                <button id="clearBtn">Clear All</button>
+                <button id="duplicateBtn" disabled>Duplicate</button>
+            </div>
+            <div class="section-title">Shapes</div>
+            <div class="shape-list" id="shapeList"></div>
+            <div>
+                <button id="exportBtn">Export & Copy</button>
+            </div>
+            <textarea id="exportBox" readonly placeholder="Exported data will appear here"></textarea>
+            <div class="section-title">Scenes</div>
+            <div>
+                <input type="text" id="sceneNameInput" placeholder="Scene name" style="width:120px;">
+                <button id="saveSceneBtn" class="save-btn">Save</button>
+            </div>
+            <div class="scene-list" id="sceneList"></div>
+            <div class="section-title">Blueprints</div>
+            <div>
+                <input type="text" id="blueprintNameInput" placeholder="Blueprint name" style="width:120px;">
+                <button id="saveBlueprintBtn" class="save-btn">Save</button>
+            </div>
+            <div class="blueprint-list" id="blueprintList"></div>
+        </div>
+        <div class="canvas-area">
+            <canvas id="drawCanvas" width="800" height="600"></canvas>
+            <div id="editPanelRight" class="edit-panel-right" style="display:none;">
+                <div id="editPanel" class="edit-panel" style="display:none;">
+                    <div class="section-title" style="margin-top:0;">Edit Selected Shape</div>
+                    <div class="edit-panel-row">
+                        <label>X: <input type="number" id="editX" step="0.01" style="width:60px;"></label>
+                        <label>Y: <input type="number" id="editY" step="0.01" style="width:60px;"></label>
+                        <label>W: <input type="number" id="editW" min="0.01" step="0.01" style="width:60px;"></label>
+                        <label>H: <input type="number" id="editH" min="0.01" step="0.01" style="width:60px;"></label>
+                    </div>
+                    <div class="edit-panel-row">
+                        <label>ID Num: <input type="number" id="editIdNum" min="0" style="width:60px;"></label>
+                        <label>ID Name: <input type="text" id="editIdName" style="width:90px;"></label>
+                    </div>
+                    <div class="edit-panel-row">
+                        <label><input type="checkbox" id="editPlayer"> player</label>
+                        <label><input type="checkbox" id="editCollidable"> collidable</label>
+                        <label><input type="checkbox" id="editInterior"> interior</label>
+                        <label><input type="checkbox" id="editInside"> inside</label>
+                        <label id="editInsideIdLabel" style="display:none;">inside id: <input type="number" id="editInsideId" min="0" style="width:60px;"></label>
+                    </div>
+                    <div class="edit-panel-row color-input-wrapper">
+                        <label>Color:
+                            <input type="color" id="editColorPicker">
+                            <input type="number" id="editColorA" min="0" max="1" step="0.01" style="width:40px;"> A
+                            <span class="color-preview" id="colorPreview"></span>
+                        </label>
+                    </div>
+                    <div class="edit-panel-row">
+                        <label>Text: <input type="text" id="editText" style="width:120px;"></label>
+                        <label>Scale: <input type="number" id="editTextScale" min="0.01" step="0.01" style="width:50px;"></label>
+                        <label><input type="checkbox" id="editTextHidden"> hidden</label>
+                    </div>
+                    <div class="edit-panel-row">
+                        <label>Movement:
+                            speed <input type="number" id="editMoveSpeed" step="0.01" style="width:50px;">
+                            mass <input type="number" id="editMoveMass" step="0.01" style="width:50px;">
+                            restitution <input type="number" id="editMoveRest" step="0.01" style="width:50px;">
+                            friction <input type="number" id="editMoveFriction" step="0.01" style="width:50px;">
+                        </label>
+                    </div>
+                    <div class="edit-panel-row">
+                        <label>InteriorPortal:
+                            A <input type="number" id="editInteriorPortalA" style="width:50px;">
+                            B <input type="number" id="editInteriorPortalB" style="width:50px;">
+                            Key <input type="number" id="editInteriorPortalKey" style="width:50px;">
+                            <label><input type="checkbox" id="editInteriorPortalLocked"> locked</label>
+                        </label>
+                    </div>
+                    <div class="edit-panel-row">
+                        <label>Render Priority: <input type="number" id="editRenderPriority" step="1" style="width:60px;"></label>
+                    </div>
+                    <div class="edit-panel-row">
+                        <label class="snap-toggle"><input type="checkbox" id="snapToggle" checked> Snap to 0.5</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        // --- Data Model ---
+        let shapes = [];
+        let currentIdNum = 1;
+        let currentIdName = "entity1";
+        let selectedShapeIdx = null;
+        let snapEnabled = true;
+
+        // --- LocalStorage Keys ---
+        const SCENE_PREFIX = "sceneBuilderV2_scene_";
+        const BLUEPRINT_PREFIX = "sceneBuilderV2_blueprint_";
+
+        // --- Canvas & Drawing ---
+        const canvas = document.getElementById('drawCanvas');
+        const ctx = canvas.getContext('2d');
+        let mode = "draw"; // or "move" or "edit"
+        let isDrawing = false;
+        let isMoving = false;
+        let drawStart = { x: 0, y: 0 };
+        let moveOffset = { x: 0, y: 0 };
+        let isResizing = false;
+        let resizeDir = null; // "nw", "ne", "sw", "se"
+        let resizeStart = { x: 0, y: 0 };
+        let origRect = null;
+
+        // --- UI Elements ---
+        const idNumInput = document.getElementById('idNum');
+        const idNameInput = document.getElementById('idName');
+        const shapeListDiv = document.getElementById('shapeList');
+        const exportBox = document.getElementById('exportBox');
+        const deleteBtn = document.getElementById('deleteBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const duplicateBtn = document.getElementById('duplicateBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const editPanel = document.getElementById('editPanel');
+        const editPanelRight = document.getElementById('editPanelRight');
+        // Edit panel fields
+        const editX = document.getElementById('editX');
+        const editY = document.getElementById('editY');
+        const editW = document.getElementById('editW');
+        const editH = document.getElementById('editH');
+        const editIdNum = document.getElementById('editIdNum');
+        const editIdName = document.getElementById('editIdName');
+        const editPlayer = document.getElementById('editPlayer');
+        const editCollidable = document.getElementById('editCollidable');
+        const editInterior = document.getElementById('editInterior');
+        const editInside = document.getElementById('editInside');
+        const editInsideId = document.getElementById('editInsideId');
+        const editInsideIdLabel = document.getElementById('editInsideIdLabel');
+        const editColorPicker = document.getElementById('editColorPicker');
+        const editColorA = document.getElementById('editColorA');
+        const colorPreview = document.getElementById('colorPreview');
+        const editText = document.getElementById('editText');
+        const editTextScale = document.getElementById('editTextScale');
+        const editTextHidden = document.getElementById('editTextHidden');
+        const editMoveSpeed = document.getElementById('editMoveSpeed');
+        const editMoveMass = document.getElementById('editMoveMass');
+        const editMoveRest = document.getElementById('editMoveRest');
+        const editMoveFriction = document.getElementById('editMoveFriction');
+        const editInteriorPortalA = document.getElementById('editInteriorPortalA');
+        const editInteriorPortalB = document.getElementById('editInteriorPortalB');
+        const editInteriorPortalLocked = document.getElementById('editInteriorPortalLocked');
+        const editInteriorPortalKey = document.getElementById('editInteriorPortalKey');
+        const editRenderPriority = document.getElementById('editRenderPriority');
+        const snapToggle = document.getElementById('snapToggle');
+        // Scene/blueprint
+        const sceneNameInput = document.getElementById('sceneNameInput');
+        const saveSceneBtn = document.getElementById('saveSceneBtn');
+        const sceneListDiv = document.getElementById('sceneList');
+        const blueprintNameInput = document.getElementById('blueprintNameInput');
+        const saveBlueprintBtn = document.getElementById('saveBlueprintBtn');
+        const blueprintListDiv = document.getElementById('blueprintList');
+
+        // --- Utility ---
+        function getMousePos(evt) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: (evt.clientX - rect.left) * (canvas.width / rect.width),
+                y: (evt.clientY - rect.top) * (canvas.height / rect.height)
+            };
+        }
+        function rectContains(rect, x, y) {
+            return x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h;
+        }
+        function rgbaString(r, g, b, a) {
+            return `rgba(${r},${g},${b},${a})`;
+        }
+        function clamp(val, min, max) {
+            return Math.max(min, Math.min(max, val));
+        }
+        function getResizeHandle(rect, mx, my) {
+            // Returns "nw", "ne", "sw", "se" or null if not near a corner
+            const handles = [
+                { name: "nw", x: rect.x, y: rect.y },
+                { name: "ne", x: rect.x + rect.w, y: rect.y },
+                { name: "sw", x: rect.x, y: rect.y + rect.h },
+                { name: "se", x: rect.x + rect.w, y: rect.y + rect.h }
+            ];
+            for (let h of handles) {
+                if (Math.abs(mx - h.x) < 10 && Math.abs(my - h.y) < 10) return h.name;
+            }
+            return null;
+        }
+        function rgbToHex(r, g, b) {
+            return "#" + [r, g, b].map(x => {
+                let hex = x.toString(16);
+                return hex.length === 1 ? "0" + hex : hex;
+            }).join("");
+        }
+        function hexToRgb(hex) {
+            hex = hex.replace(/^#/, "");
+            if (hex.length === 3) hex = hex.split("").map(x => x + x).join("");
+            let num = parseInt(hex, 16);
+            return {
+                r: (num >> 16) & 255,
+                g: (num >> 8) & 255,
+                b: num & 255
+            };
+        }
+        function snapValue(val) {
+            if (!snapEnabled) return val;
+            return Math.round(val * 2) / 2;
+        }
+        function snapPx(val) {
+            if (!snapEnabled) return val;
+            return Math.round(val / 8) * 8;
+        }
+        function getNextIdName() {
+            // Find the highest entityN in shapes and return entity(N+1)
+            let maxN = 0;
+            for (let s of shapes) {
+                let m = /^entity(\d+)$/.exec(s.idName);
+                if (m) {
+                    let n = parseInt(m[1], 10);
+                    if (n > maxN) maxN = n;
+                }
+            }
+            return "entity" + (maxN + 1);
+        }
+        function getNextIdNum() {
+            let maxNum = 0;
+            for (let s of shapes) {
+                if (typeof s.idNum === "number" && s.idNum > maxNum) maxNum = s.idNum;
+            }
+            return maxNum + 1;
+        }
+
+        // --- Drawing ---
+        function drawAll() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Sort shapes by renderPriority (lowest first), then by idNum
+            let sorted = shapes.slice().sort((a, b) => {
+                let ap = a.renderPriority !== undefined ? a.renderPriority : 0;
+                let bp = b.renderPriority !== undefined ? b.renderPriority : 0;
+                if (ap !== bp) return ap - bp;
+                return (a.idNum || 0) - (b.idNum || 0);
+            });
+            for (let i = 0; i < sorted.length; ++i) {
+                const s = sorted[i];
+                // Draw fill
+                let color = s.color || { r: 136, g: 238, b: 255, a: 1.0 };
+                ctx.fillStyle = rgbaString(color.r, color.g, color.b, color.a);
+                ctx.fillRect(s.x, s.y, s.w, s.h);
+                // Draw border
+                let idx = shapes.indexOf(s);
+                ctx.lineWidth = (idx === selectedShapeIdx) ? 3 : 1.5;
+                ctx.strokeStyle = (idx === selectedShapeIdx) ? "#3a7bd5" : "#444";
+                ctx.strokeRect(s.x, s.y, s.w, s.h);
+                // Draw id label
+                ctx.font = "bold 13px sans-serif";
+                ctx.fillStyle = "#fff";
+                ctx.textBaseline = "top";
+                ctx.fillText(`${s.idNum}:${s.idName}`, s.x + 4, s.y + 2);
+                // Draw renderPriority
+                ctx.font = "10px monospace";
+                ctx.fillStyle = "#7ec7ff";
+                ctx.fillText(`z:${s.renderPriority !== undefined ? s.renderPriority : 0}`, s.x + 4, s.y + 18);
+            }
+            // Draw resize handles if in edit mode and selected
+            if (mode === "edit" && selectedShapeIdx !== null && shapes[selectedShapeIdx]) {
+                const s = shapes[selectedShapeIdx];
+                ctx.fillStyle = "#3a7bd5";
+                for (let [dx, dy] of [[0,0],[s.w,0],[0,s.h],[s.w,s.h]]) {
+                    ctx.beginPath();
+                    ctx.arc(s.x+dx, s.y+dy, 6, 0, 2*Math.PI);
+                    ctx.fill();
+                }
+            }
+        }
+
+        // --- Shape List ---
+        function updateShapeList() {
+            shapeListDiv.innerHTML = "";
+            // Sort by renderPriority for display
+            let sorted = shapes.map((s, i) => ({s, i})).sort((a, b) => {
+                let ap = a.s.renderPriority !== undefined ? a.s.renderPriority : 0;
+                let bp = b.s.renderPriority !== undefined ? b.s.renderPriority : 0;
+                if (ap !== bp) return ap - bp;
+                return (a.s.idNum || 0) - (b.s.idNum || 0);
+            });
+            sorted.forEach(({s, i}) => {
+                const div = document.createElement('div');
+                div.className = "shape-item" + (i === selectedShapeIdx ? " selected" : "");
+                div.innerHTML = `<span>#${s.idNum} ${s.idName} [${(s.x/16).toFixed(2)}, ${(s.y/16).toFixed(2)}] w:${(s.w/16).toFixed(2)} h:${(s.h/16).toFixed(2)} z:${s.renderPriority !== undefined ? s.renderPriority : 0}</span>
+                    <button class="dup-btn" title="Duplicate">⧉</button>`;
+                div.onclick = (e) => {
+                    if (e.target.classList.contains("dup-btn")) {
+                        duplicateShape(i);
+                        e.stopPropagation();
+                        return;
+                    }
+                    selectedShapeIdx = i;
+                    updateShapeList();
+                    drawAll();
+                    updateEditPanel();
+                    deleteBtn.disabled = false;
+                    duplicateBtn.disabled = false;
+                };
+                shapeListDiv.appendChild(div);
+            });
+            if (selectedShapeIdx === null || shapes.length === 0) {
+                deleteBtn.disabled = true;
+                duplicateBtn.disabled = true;
+            }
+            updateEditPanel();
+        }
+
+        function resetSelection() {
+            selectedShapeIdx = null;
+            updateShapeList();
+            drawAll();
+            updateEditPanel();
+        }
+
+        function updateColorPreview() {
+            let hex = editColorPicker.value;
+            let rgb = hexToRgb(hex);
+            let a = parseFloat(editColorA.value);
+            if (isNaN(a)) a = 1;
+            colorPreview.style.background = rgbaString(rgb.r, rgb.g, rgb.b, a);
+        }
+
+        function updateInsideIdVisibility() {
+            if (editInside.checked) {
+                editInsideIdLabel.style.display = "";
+            } else {
+                editInsideIdLabel.style.display = "none";
+            }
+        }
+
+        function updateEditPanel() {
+            if (selectedShapeIdx !== null && shapes[selectedShapeIdx]) {
+                const s = shapes[selectedShapeIdx];
+                editPanel.style.display = "block";
+                editPanelRight.style.display = "flex";
+                // Show in game coords (1/16)
+                editX.value = (s.x / 16).toFixed(2);
+                editY.value = (s.y / 16).toFixed(2);
+                editW.value = (s.w / 16).toFixed(2);
+                editH.value = (s.h / 16).toFixed(2);
+                editIdNum.value = s.idNum;
+                editIdName.value = s.idName;
+                editPlayer.checked = !!s.player;
+                editCollidable.checked = !!s.collidable;
+                editInterior.checked = !!s.interior;
+                editInside.checked = !!s.inside;
+                editInsideId.value = s.insideId !== undefined ? s.insideId : 0;
+                updateInsideIdVisibility();
+                // Color
+                let color = s.color || { r: 136, g: 238, b: 255, a: 1.0 };
+                editColorPicker.value = rgbToHex(color.r, color.g, color.b);
+                editColorA.value = color.a;
+                updateColorPreview();
+                // Text
+                editText.value = s.text || "";
+                editTextScale.value = s.textScale !== undefined ? s.textScale : 1;
+                editTextHidden.checked = !!s.textHidden;
+                // Movement
+                let m = s.movement || {};
+                editMoveSpeed.value = m.speed !== undefined ? m.speed : "";
+                editMoveMass.value = m.mass !== undefined ? m.mass : "";
+                editMoveRest.value = m.restitution !== undefined ? m.restitution : "";
+                editMoveFriction.value = m.friction !== undefined ? m.friction : "";
+                // InteriorPortal
+                let ip = s.interiorPortal || {};
+                editInteriorPortalA.value = ip.A !== undefined ? ip.A : "";
+                editInteriorPortalB.value = ip.B !== undefined ? ip.B : "";
+                editInteriorPortalLocked.checked = !!ip.locked;
+                editInteriorPortalKey.value !== undefined ? ip.key : "";
+                // Render Priority
+                editRenderPriority.value = s.renderPriority !== undefined ? s.renderPriority : 0;
+                // Snap
+                snapToggle.checked = snapEnabled;
+            } else {
+                editPanel.style.display = "none";
+                editPanelRight.style.display = "none";
+            }
+        }
+
+        function applyEditPanel() {
+            if (selectedShapeIdx === null) return;
+            let s = shapes[selectedShapeIdx];
+            // Convert from game coords (1/16)
+            s.x = parseFloat(editX.value) * 16;
+            s.y = parseFloat(editY.value) * 16;
+            s.w = Math.max(8, parseFloat(editW.value) * 16);
+            s.h = Math.max(8, parseFloat(editH.value) * 16);
+            s.idNum = parseInt(editIdNum.value, 10) || s.idNum;
+            s.idName = editIdName.value || s.idName;
+            s.player = editPlayer.checked;
+            s.collidable = editCollidable.checked;
+            s.interior = editInterior.checked;
+            s.inside = editInside.checked;
+            s.insideId = s.inside ? (parseInt(editInsideId.value, 10) || 0) : undefined;
+            // Color
+            let rgb = hexToRgb(editColorPicker.value);
+            s.color = {
+                r: clamp(rgb.r, 0, 255),
+                g: clamp(rgb.g, 0, 255),
+                b: clamp(rgb.b, 0, 255),
+                a: clamp(parseFloat(editColorA.value) || 1, 0, 1)
+            };
+            // Text
+            s.text = editText.value;
+            s.textScale = parseFloat(editTextScale.value) || 1;
+            s.textHidden = editTextHidden.checked;
+            // Movement
+            s.movement = {
+                speed: parseFloat(editMoveSpeed.value) || undefined,
+                mass: parseFloat(editMoveMass.value) || undefined,
+                restitution: parseFloat(editMoveRest.value) || undefined,
+                friction: parseFloat(editMoveFriction.value) || undefined
+            };
+            // Remove movement if all fields empty
+            if (Object.values(s.movement).every(v => v === undefined || v === "")) delete s.movement;
+            // InteriorPortal
+            s.interiorPortal = {
+                A: parseInt(editInteriorPortalA.value, 10) || undefined,
+                B: parseInt(editInteriorPortalB.value, 10) || undefined,
+                locked: editInteriorPortalLocked.checked,
+                key: parseInt(editInteriorPortalKey.value, 10) || undefined
+            };
+            if (isNaN(s.interiorPortal.A) && isNaN(s.interiorPortal.B)) delete s.interiorPortal;
+            // Render Priority
+            s.renderPriority = parseInt(editRenderPriority.value, 10) || 0;
+            drawAll();
+            updateShapeList();
+        }
+
+        // --- Drawing/Moving/Editing Mode ---
+        canvas.addEventListener('mousedown', function (evt) {
+            const mouse = getMousePos(evt);
+            if (mode === "draw") {
+                isDrawing = true;
+                drawStart = mouse;
+            } else if (mode === "move") {
+                // Select topmost shape under mouse
+                let found = false;
+                for (let i = shapes.length - 1; i >= 0; --i) {
+                    if (rectContains(shapes[i], mouse.x, mouse.y)) {
+                        selectedShapeIdx = i;
+                        moveOffset.x = mouse.x - shapes[i].x;
+                        moveOffset.y = mouse.y - shapes[i].y;
+                        isMoving = true;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    resetSelection();
+                } else {
+                    updateShapeList();
+                    drawAll();
+                }
+            } else if (mode === "edit") {
+                // Select shape and check for resize handle
+                let found = false;
+                for (let i = shapes.length - 1; i >= 0; --i) {
+                    if (rectContains(shapes[i], mouse.x, mouse.y)) {
+                        selectedShapeIdx = i;
+                        let handle = getResizeHandle(shapes[i], mouse.x, mouse.y);
+                        if (handle) {
+                            isResizing = true;
+                            resizeDir = handle;
+                            resizeStart = mouse;
+                            origRect = { ...shapes[i] };
+                        } else {
+                            isMoving = true;
+                            moveOffset.x = mouse.x - shapes[i].x;
+                            moveOffset.y = mouse.y - shapes[i].y;
+                        }
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    resetSelection();
+                } else {
+                    updateShapeList();
+                    drawAll();
+                }
+            }
+        });
+
+        canvas.addEventListener('mousemove', function (evt) {
+            const mouse = getMousePos(evt);
+            if (mode === "draw" && isDrawing) {
+                drawAll();
+                ctx.save();
+                ctx.setLineDash([6, 4]);
+                ctx.strokeStyle = "#7ec7ff";
+                ctx.lineWidth = 2;
+                let x = Math.min(drawStart.x, mouse.x);
+                let y = Math.min(drawStart.y, mouse.y);
+                let w = Math.abs(drawStart.x - mouse.x);
+                let h = Math.abs(drawStart.y - mouse.y);
+                ctx.strokeRect(x, y, w, h);
+                ctx.restore();
+            } else if (mode === "move" && isMoving && selectedShapeIdx !== null) {
+                let s = shapes[selectedShapeIdx];
+                let newX = clamp(mouse.x - moveOffset.x, 0, canvas.width - s.w);
+                let newY = clamp(mouse.y - moveOffset.y, 0, canvas.height - s.h);
+                s.x = snapPx(newX);
+                s.y = snapPx(newY);
+                drawAll();
+                updateShapeList();
+            } else if (mode === "edit" && selectedShapeIdx !== null) {
+                let s = shapes[selectedShapeIdx];
+                if (isResizing) {
+                    let dx = mouse.x - resizeStart.x;
+                    let dy = mouse.y - resizeStart.y;
+                    let x = origRect.x, y = origRect.y, w = origRect.w, h = origRect.h;
+                    if (resizeDir === "nw") {
+                        x += dx; y += dy; w -= dx; h -= dy;
+                    } else if (resizeDir === "ne") {
+                        y += dy; w += dx; h -= dy;
+                    } else if (resizeDir === "sw") {
+                        x += dx; w -= dx; h += dy;
+                    } else if (resizeDir === "se") {
+                        w += dx; h += dy;
+                    }
+                    w = Math.max(8, w); h = Math.max(8, h);
+                    s.x = clamp(snapPx(x), 0, canvas.width - w);
+                    s.y = clamp(snapPx(y), 0, canvas.height - h);
+                    s.w = snapPx(w);
+                    s.h = snapPx(h);
+                    drawAll();
+                    updateShapeList();
+                } else if (isMoving) {
+                    let newX = clamp(mouse.x - moveOffset.x, 0, canvas.width - s.w);
+                    let newY = clamp(mouse.y - moveOffset.y, 0, canvas.height - s.h);
+                    s.x = snapPx(newX);
+                    s.y = snapPx(newY);
+                    drawAll();
+                    updateShapeList();
+                } else {
+                    // Show resize cursor if near handle
+                    let handle = getResizeHandle(s, mouse.x, mouse.y);
+                    if (handle) {
+                        canvas.style.cursor = "nwse-resize";
+                    } else if (rectContains(s, mouse.x, mouse.y)) {
+                        canvas.style.cursor = "move";
+                    } else {
+                        canvas.style.cursor = "default";
+                    }
+                }
+            }
+        });
+
+        canvas.addEventListener('mouseup', function (evt) {
+            const mouse = getMousePos(evt);
+            if (mode === "draw" && isDrawing) {
+                isDrawing = false;
+                let x = Math.min(drawStart.x, mouse.x);
+                let y = Math.min(drawStart.y, mouse.y);
+                let w = Math.abs(drawStart.x - mouse.x);
+                let h = Math.abs(drawStart.y - mouse.y);
+                if (w > 8 && h > 8) {
+                    // Default color: light blue
+                    let color = { r: 136, g: 238, b: 255, a: 1.0 };
+                    let idNum = parseInt(idNumInput.value, 10) || getNextIdNum();
+                    let idName = idNameInput.value || getNextIdName();
+                    // Snap to grid
+                    x = snapPx(x);
+                    y = snapPx(y);
+                    w = snapPx(w);
+                    h = snapPx(h);
+                    let renderPriority = 0;
+                    shapes.push({
+                        idNum: idNum,
+                        idName: idName,
+                        x: x, y: y, w: w, h: h,
+                        color: { ...color },
+                        renderPriority: renderPriority
+                    });
+                    // Auto-increment idNum and idName for next shape
+                    let nextNum = idNum + 1;
+                    idNumInput.value = nextNum;
+                    currentIdNum = nextNum;
+                    let nextName = "entity" + nextNum;
+                    idNameInput.value = nextName;
+                    currentIdName = nextName;
+                    updateShapeList();
+                    drawAll();
+                }
+            } else if ((mode === "move" || mode === "edit") && (isMoving || isResizing)) {
+                isMoving = false;
+                isResizing = false;
+                drawAll();
+                updateShapeList();
+            }
+        });
+
+        // --- Mode Switching ---
+        document.querySelectorAll('input[name="mode"]').forEach(radio => {
+            radio.addEventListener('change', function () {
+                mode = this.value;
+                if (mode !== "edit") {
+                    editPanel.style.display = "none";
+                    editPanelRight.style.display = "none";
+                } else {
+                    updateEditPanel();
+                }
+                drawAll();
+            });
+        });
+
+        // --- Edit Panel Logic ---
+        // All edit fields auto-apply on change
+        [
+            editX, editY, editW, editH, editIdNum, editIdName, editPlayer, editCollidable, editInterior, editInside,
+            editInsideId, editColorPicker, editColorA, editText, editTextScale, editTextHidden,
+            editMoveSpeed, editMoveMass, editMoveRest, editMoveFriction,
+            editInteriorPortalA, editInteriorPortalB, editInteriorPortalLocked, editInteriorPortalKey, editRenderPriority
+        ].forEach(inp => {
+            inp.addEventListener('input', applyEditPanel);
+            inp.addEventListener('change', applyEditPanel);
+        });
+
+        // Color preview
+        [editColorPicker, editColorA].forEach(inp => {
+            inp.addEventListener('input', updateColorPreview);
+        });
+
+        // Inside id visibility
+        editInside.addEventListener('change', updateInsideIdVisibility);
+
+        // Snap toggle
+        snapToggle.addEventListener('change', function() {
+            snapEnabled = snapToggle.checked;
+        });
+
+        // --- Shape List Controls ---
+        deleteBtn.addEventListener('click', function () {
+            if (selectedShapeIdx !== null) {
+                shapes.splice(selectedShapeIdx, 1);
+                resetSelection();
+                drawAll();
+            }
+        });
+        clearBtn.addEventListener('click', function () {
+            shapes = [];
+            resetSelection();
+            drawAll();
+        });
+        duplicateBtn.addEventListener('click', function () {
+            if (selectedShapeIdx !== null) {
+                duplicateShape(selectedShapeIdx);
+            }
+        });
+        function duplicateShape(idx) {
+            if (idx == null || !shapes[idx]) return;
+            let orig = shapes[idx];
+            let copy = JSON.parse(JSON.stringify(orig));
+            copy.idNum = getNextIdNum();
+            copy.idName = getNextIdName();
+            copy.x += 16; // offset so it's visible
+            copy.y += 16;
+            shapes.push(copy);
+            selectedShapeIdx = shapes.length - 1;
+            updateShapeList();
+            drawAll();
+        }
+
+        // Keyboard shortcut for delete/duplicate
+        document.addEventListener('keydown', function (evt) {
+            if (evt.key === "Delete" && selectedShapeIdx !== null) {
+                shapes.splice(selectedShapeIdx, 1);
+                resetSelection();
+                drawAll();
+            }
+            if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === "d" && selectedShapeIdx !== null) {
+                duplicateShape(selectedShapeIdx);
+            }
+        });
+
+        // --- Export ---
+        function exportShapes() {
+            let lines = [];
+            // Sort by renderPriority for export
+            let sorted = shapes.slice().sort((a, b) => {
+                let ap = a.renderPriority !== undefined ? a.renderPriority : 0;
+                let bp = b.renderPriority !== undefined ? b.renderPriority : 0;
+                if (ap !== bp) return ap - bp;
+                return (a.idNum || 0) - (b.idNum || 0);
+            });
+            for (let s of sorted) {
+                let comps = [];
+                // id
+                comps.push(`id ${s.idNum} ${s.idName}`);
+                // position (convert to game coords)
+                comps.push(`position ${(s.x/16).toFixed(4)} ${(s.y/16).toFixed(4)} 0`);
+                // shape (convert to game coords)
+                comps.push(`shape ${(s.w/16).toFixed(4)} ${(s.h/16).toFixed(4)} 0`);
+                // color
+                if (s.color) {
+                    let c = s.color;
+                    comps.push(`color ${(c.r/255).toFixed(2)} ${(c.g/255).toFixed(2)} ${(c.b/255).toFixed(2)} ${c.a}`);
+                }
+                // player
+                if (s.player) comps.push("player");
+                // collidable
+                if (s.collidable) comps.push("collidable");
+                // interior
+                if (s.interior) comps.push("interior");
+                // inside
+                if (s.inside && s.insideId !== undefined) comps.push(`inside ${s.insideId}`);
+                // text
+                if (s.text && s.text.trim().length > 0) {
+                    let hide = s.textHidden ? 1 : 0;
+                    comps.push(`text "${s.text.replace(/"/g, '\\"')}" ${s.textScale || 1} ${hide}`);
+                }
+                // movement
+                if (s.movement && Object.values(s.movement).some(v => v !== undefined && v !== "")) {
+                    let m = s.movement;
+                    comps.push(`movement ${m.speed||0} ${m.mass||0} ${m.restitution||0} ${m.friction||0}`);
+                }
+                // interiorPortal
+                if (s.interiorPortal && (s.interiorPortal.A !== undefined || s.interiorPortal.B !== undefined)) {
+                    let ip = s.interiorPortal;
+                    comps.push(`interiorPortal ${ip.A||0} ${ip.B||0} ${ip.locked?1:0} ${ip.key||-1}`);
+                }
+                // renderPriority
+                comps.push(`renderPriority ${s.renderPriority !== undefined ? s.renderPriority : 0}`);
+                lines.push(comps.join(" "));
+            }
+            exportBox.value = lines.join("\n");
+            // Copy to clipboard
+            navigator.clipboard.writeText(exportBox.value).then(() => {
+                exportBtn.textContent = "Copied!";
+                setTimeout(() => exportBtn.textContent = "Export & Copy", 1000);
+            });
+        }
+        exportBtn.addEventListener('click', exportShapes);
+
+        // --- New Shape Controls ---
+        idNumInput.addEventListener('input', function () {
+            currentIdNum = parseInt(this.value, 10) || getNextIdNum();
+        });
+        idNameInput.addEventListener('input', function () {
+            currentIdName = this.value || getNextIdName();
+        });
+
+        // --- Scene Save/Load ---
+        function saveScene(name) {
+            if (!name) return;
+            localStorage.setItem(SCENE_PREFIX + name, JSON.stringify(shapes));
+            updateSceneList();
+        }
+        function loadScene(name) {
+            let data = localStorage.getItem(SCENE_PREFIX + name);
+            if (!data) return;
+            shapes = JSON.parse(data);
+            resetSelection();
+            drawAll();
+        }
+        function deleteScene(name) {
+            localStorage.removeItem(SCENE_PREFIX + name);
+            updateSceneList();
+        }
+        function updateSceneList() {
+            sceneListDiv.innerHTML = "";
+            let scenes = [];
+            for (let k in localStorage) {
+                if (k.startsWith(SCENE_PREFIX)) {
+                    scenes.push(k.substring(SCENE_PREFIX.length));
+                }
+            }
+            scenes.sort();
+            scenes.forEach(name => {
+                let div = document.createElement('div');
+                div.className = "scene-item";
+                div.innerHTML = `<span>${name}</span>
+                    <button class="load-btn" title="Load">Load</button>
+                    <button class="delete-btn" title="Delete">✕</button>`;
+                div.querySelector('.load-btn').onclick = (e) => { loadScene(name); e.stopPropagation(); };
+                div.querySelector('.delete-btn').onclick = (e) => { deleteScene(name); e.stopPropagation(); };
+                sceneListDiv.appendChild(div);
+            });
+        }
+        saveSceneBtn.addEventListener('click', function() {
+            let name = sceneNameInput.value.trim();
+            if (!name) return;
+            saveScene(name);
+        });
+
+        // --- Blueprint Save/Load ---
+        function saveBlueprint(name) {
+            if (!name || selectedShapeIdx === null) return;
+            let s = shapes[selectedShapeIdx];
+            localStorage.setItem(BLUEPRINT_PREFIX + name, JSON.stringify(s));
+            updateBlueprintList();
+        }
+        function loadBlueprint(name) {
+            let data = localStorage.getItem(BLUEPRINT_PREFIX + name);
+            if (!data) return;
+            let s = JSON.parse(data);
+            // Assign new idNum/idName
+            s.idNum = getNextIdNum();
+            s.idName = getNextIdName();
+            s.x += 16; s.y += 16;
+            shapes.push(s);
+            selectedShapeIdx = shapes.length - 1;
+            updateShapeList();
+            drawAll();
+        }
+        function deleteBlueprint(name) {
+            localStorage.removeItem(BLUEPRINT_PREFIX + name);
+            updateBlueprintList();
+        }
+        function updateBlueprintList() {
+            blueprintListDiv.innerHTML = "";
+            let blueprints = [];
+            for (let k in localStorage) {
+                if (k.startsWith(BLUEPRINT_PREFIX)) {
+                    blueprints.push(k.substring(BLUEPRINT_PREFIX.length));
+                }
+            }
+            blueprints.sort();
+            blueprints.forEach(name => {
+                let div = document.createElement('div');
+                div.className = "blueprint-item";
+                div.innerHTML = `<span>${name}</span>
+                    <button class="load-btn" title="Load">Load</button>
+                    <button class="delete-btn" title="Delete">✕</button>`;
+                div.querySelector('.load-btn').onclick = (e) => { loadBlueprint(name); e.stopPropagation(); };
+                div.querySelector('.delete-btn').onclick = (e) => { deleteBlueprint(name); e.stopPropagation(); };
+                blueprintListDiv.appendChild(div);
+            });
+        }
+        saveBlueprintBtn.addEventListener('click', function() {
+            let name = blueprintNameInput.value.trim();
+            if (!name) return;
+            saveBlueprint(name);
+        });
+
+        // --- Init ---
+        updateShapeList();
+        drawAll();
+        updateEditPanel();
+        updateColorPreview();
+        updateInsideIdVisibility();
+        updateSceneList();
+        updateBlueprintList();
+    </script>
+</body>
+</html>
