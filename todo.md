@@ -32,3 +32,39 @@
    - but maybe a simpler thing to do would be to allow grouping of multiple shapes into a single entity
 
 - Text scale doesn't do anything
+
+- Scenebuilder upgrades:
+  - add start menu and pause menu editor
+  - add Interactable and Hoverable
+  - add select group for moving and blueprinting
+  - add zoom
+  - add option to hide labels on canvas
+    - or just specific labels, like id
+  - force unique ids, duplicate id.names are allowed
+  - add show/hide buttons for all UI
+  - make grid snap global and not on edit panel
+
+*- Add a "winning" finish state
+ - like a pause menu where clicking takes you back to the main menu
+ - track stats for each run and display on the start menu
+- add winning state, ie. anything greater than 1, since 1 is default playstate
+  - doesn't have to be 2, there can be multiple increments of state
+
+- add client side network connection
+ - add an npc with access to an llm api
+
+- "equip" items
+
+- story idea
+  - inspired by later levels in Halo 1
+    - gameplay familiarity is contrasted by the "flood"
+      - "flood" is hypersensitive
+    - leave behind debris to simulate prior events
+    - scary waves of danger
+      - but ample ammo to pick up
+    - minimap showing entity location
+    - entities that "die", but can also "reanimate"
+    - elevators
+    - omnipresent entity that can control player 
+
+- make locked doors "red" and unlocked "green"

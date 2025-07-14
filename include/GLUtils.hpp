@@ -718,7 +718,7 @@ void renderAll() {
         }
 
         float rgb[3] = {0.2f, 0.5f, 0.2f}; // lightish dark green
-        if (!playerIsInside) {
+        if (!playerIsInside || static_cast<int>(playerInside.interior) == -1) {
             // Render terrain
             updateUniforms(
                 shaderProgramMap["terrain"],
@@ -889,6 +889,35 @@ void renderAll() {
                     float r = color.r;
                     float g = color.g; 
                     float b = color.b;
+
+                    // InteriorPortal color override
+                    if (registry.all_of<InteriorPortal>(entity)) {
+                        const auto& portal = registry.get<InteriorPortal>(entity);
+                        // Offset the original color toward green or red, preserving darkness/brightness
+                        float maxComponent = std::max({r, g, b, 0.0001f});
+                        float scale = (maxComponent > 0.0f) ? (1.0f / maxComponent) : 1.0f;
+                        // Normalize to [0,1] range for offsetting
+                        float orig_r = r * scale;
+                        float orig_g = g * scale;
+                        float orig_b = b * scale;
+
+                        if (!portal.locked) {
+                            // Green: keep original color, but set green to max, red and blue to original
+                            r = orig_r * 0.3f; // darken red
+                            g = std::max(0.7f, orig_g); // boost green
+                            b = orig_b * 0.3f; // darken blue
+                        } else {
+                            // Red: keep original color, but set red to max, green and blue to original
+                            r = std::max(0.7f, orig_r); // boost red
+                            g = orig_g * 0.3f; // darken green
+                            b = orig_b * 0.3f; // darken blue
+                        }
+                        // Rescale to original intensity
+                        float intensity = std::max({color.r, color.g, color.b, 0.0001f});
+                        r *= intensity;
+                        g *= intensity;
+                        b *= intensity;
+                    }
 
                     if(registry.all_of<Hovered>(entity)) {
                         r = 0.0f;
