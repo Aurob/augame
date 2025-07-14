@@ -216,7 +216,6 @@ void processEvents() {
             keys[SDLK_ESCAPE] = false; // Prevent repeated toggling while holding ESC
         }
 
-        // If GAMESTATE is 0 and 1 key is pressed, change state to -2
         if (GAMESTATE == 0 && keys[SDLK_1]) {
             GAMESTATE = -1;
             keys[SDLK_1] = false;

@@ -60,9 +60,21 @@ void processCollisionInfo(p2d::CollisionInfo& info)
                         inside.interior = doorIP.B;
                     else
                         inside.interior = doorIP.A;
+
+                    // If the new interior is -1, remove Inside from the entity
+                    if (static_cast<int>(inside.interior) == -1) {
+                        registry.remove<Inside>(nonPortalEntity);
+                    }
                 } else {
                     // If not inside, they are outside, use any value < 0
-                    registry.emplace_or_replace<Inside>(nonPortalEntity, Inside { doorIP.A });
+                    if (static_cast<int>(doorIP.A) == -1) {
+                        // Do not add Inside if the destination is -1
+                        if (registry.all_of<Inside>(nonPortalEntity)) {
+                            registry.remove<Inside>(nonPortalEntity);
+                        }
+                    } else {
+                        registry.emplace_or_replace<Inside>(nonPortalEntity, Inside { doorIP.A });
+                    }
                 }
 
                 registry.emplace<OnInteriorPortal>(nonPortalEntity, OnInteriorPortal { door });
