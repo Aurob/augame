@@ -46,7 +46,20 @@ SDL_Window* loadSDL() {
 
     return mpWindow;
 }
-bool _log_uniform = true;
+
+SDL_GLContext loadGl(SDL_Window *mpWindow)
+{
+    // Create OpenGLES 2 context on SDL window
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+    SDL_GL_SetSwapInterval(1);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+    SDL_GLContext glc = SDL_GL_CreateContext(mpWindow);
+
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    return glc;
+}
 
 inline float fract(float x) {
     return x - std::floor(x);
@@ -255,10 +268,6 @@ void updateUniforms(GLuint &shaderProgram,
     if (rgb != nullptr) {
         GLint rgbLocation = glGetUniformLocation(shaderProgram, "rgb");
         glUniform3fv(rgbLocation, 1, rgb);
-    }
-    
-    if (_log_uniform) {
-        logUniformValues(_width, _height, gridSpacingValue, offsetValue, toplefttile, generationSize);
     }
 }
 
@@ -1011,19 +1020,8 @@ void renderAll() {
             }
         }
     }
+
+    // Swap buffers
+    SDL_GL_SwapWindow(ctx->window);
     
-}
-
-SDL_GLContext loadGl(SDL_Window *mpWindow)
-{
-    // Create OpenGLES 2 context on SDL window
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-    SDL_GL_SetSwapInterval(1);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-    SDL_GLContext glc = SDL_GL_CreateContext(mpWindow);
-
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    return glc;
 }

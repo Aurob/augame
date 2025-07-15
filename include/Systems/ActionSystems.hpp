@@ -67,23 +67,29 @@ void updateInteractions(entt::registry &registry)
 
     auto keys = registry.get<Keys>(_player).keys;
 
-    auto debug_entities = registry.view<Visible, Interactable, Hoverable, Position, Shape>();
+    auto debug_entities = registry.view<Interactable, Hoverable, Position, Shape>();
     for (auto entity : debug_entities)
     {
-        // Skip entities that are not in the same interior as the player
+        // Skip entities that are not in the same interior as the player,
+        // unless interactable.allowDiffInterior is true
+        bool allowDiffInterior = debug_entities.get<Interactable>(entity).allowDiffInterior;
+
         if (playerInside)
         {
-
             if (!registry.all_of<Inside>(entity) || registry.get<Inside>(entity).interior != playerInterior)
             {
-
-                continue;
+                if (!allowDiffInterior) {
+                    registry.remove<Interacted>(entity);
+                    continue;
+                }
             }
         }
         else if (registry.all_of<Inside>(entity))
         {
-
-            continue;
+            if (!allowDiffInterior) {
+                registry.remove<Interacted>(entity);
+                continue;
+            }
         }
 
         auto &position = debug_entities.get<Position>(entity);
@@ -149,6 +155,17 @@ void updateInteractions(entt::registry &registry)
                 if (!registry.all_of<Interacted>(entity))
                 {
                     registry.emplace<Interacted>(entity, _player);
+
+                    // If the entity has PhysicsBodyRect and Collidable, and Collidable.ignoreOnInteract == true, set body->ignore = true
+                    if (registry.all_of<PhysicsBodyRect, Collidable>(entity)) {
+                        auto& collidable = registry.get<Collidable>(entity);
+                        if (collidable.ignoreOnInteract) {
+                            auto& physBody = registry.get<PhysicsBodyRect>(entity);
+                            if (physBody.body) {
+                                physBody.body->ignore = true;
+                            }
+                        }
+                    }
                 }
                 else
                 {
@@ -178,9 +195,20 @@ void updateInteractions(entt::registry &registry)
                 auto &hovered = registry.get<Hoverable>(entity);
                 hovered.duration = 0;
             }
+
             // Only remove Interacted if mouse is not down
             if (registry.all_of<Interacted>(entity) && !keys[SDL_BUTTON_LEFT])
             {
+                // If the entity has PhysicsBodyRect and Collidable, and Collidable.ignoreOnInteract == true, set body->ignore = false
+                if (registry.all_of<PhysicsBodyRect, Collidable>(entity)) {
+                    auto& collidable = registry.get<Collidable>(entity);
+                    if (collidable.ignoreOnInteract) {
+                        auto& physBody = registry.get<PhysicsBodyRect>(entity);
+                        if (physBody.body) {
+                            physBody.body->ignore = false;
+                        }
+                    }
+                }
                 registry.remove<Interacted>(entity);
             }
         }
@@ -208,9 +236,10 @@ void updateInteractions(entt::registry &registry)
                     }
                     // If entity does not have a PhysicsBodyRect, just set its Position
                     if (registry.all_of<Position>(entity)) {
+                        auto& shape = registry.get<Shape>(entity);
                         auto& pos = registry.get<Position>(entity);
-                        pos.x = final_x;
-                        pos.y = final_y;
+                        pos.x = final_x - shape.size.x/2;
+                        pos.y = final_y - shape.size.y/2;
                     }
                 }
             }

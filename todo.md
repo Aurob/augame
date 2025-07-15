@@ -67,4 +67,18 @@
     - elevators
     - omnipresent entity that can control player 
 
-- make locked doors "red" and unlocked "green"
+~~- make locked doors "red" and unlocked "green"~~
+- ~~don't allow interactions in rooms the player isn't in~~
+  - ~~dragging an entity through a door maintains that interaction~~
+  - issue now is that dragged entities still trigger collision checks in other rooms
+    - i.e locked doors with keys, the keys can be dragged over the position of the door unlocking it, even if in a different room
+
+
+- Add scene browser
+- Add Scene component and use like Inside
+  - specify that entities are in certain Scenes and should utilize a specific registry
+  - swap the registry when changing scenes
+    - but would have to get rid of basically all globals not pertaining to the world size/spacing
+- Add a way to change the scene at runtime
+  - if this works then add the scenebuilder on the same page as the game
+    - try and get realtime map editing to work

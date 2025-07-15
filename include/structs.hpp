@@ -17,6 +17,12 @@ struct context
     SDL_Window *window;
 };
 
+struct Scene 
+{
+ entt::registry registry;
+ entt::entity player;
+};
+
 struct Vector2f {
     float x, y;
 
@@ -134,6 +140,7 @@ struct Collidable {
     std::vector<entt::entity> colliding_with;
     bool ignorePlayer;
     bool ignoreCollideAll;
+    bool ignoreOnInteract{true};
 };
 struct Movement {
     float speed{10};
@@ -235,6 +242,7 @@ struct Interactable {
     int interactions;
     float radius;
     bool toggleState;
+    bool allowDiffInterior;
     bool toggle() {
         toggleState = !toggleState;
         return toggleState;
