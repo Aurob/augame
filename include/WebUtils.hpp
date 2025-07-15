@@ -546,7 +546,7 @@ extern "C"
                             }, "World");
                         }
 
-                        if (registry.all_of<Position, Shape, Collidable>(entity)) {
+                        if (registry.all_of<Position, Shape>(entity)) {
                             registry.emplace<PhysicsBodyRect>(entity);
                         }
 

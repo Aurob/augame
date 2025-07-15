@@ -128,7 +128,4 @@ void mainloop(void *arg)
 
     // Render
     renderAll();
-
-    // Swap buffers
-    SDL_GL_SwapWindow(ctx->window);
 }

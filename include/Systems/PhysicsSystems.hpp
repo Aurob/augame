@@ -51,6 +51,14 @@ void processCollisionInfo(p2d::CollisionInfo& info)
 
         // Log if the non-portal entity has Player component
         if (nonPortalEntity != entt::null) {
+            // First, check if the non-door entity is inside, but not inside either A or B; if so, ignore
+            if (registry.all_of<Inside>(nonPortalEntity)) {
+                auto& inside = registry.get<Inside>(nonPortalEntity);
+                if (inside.interior != doorIP.A && inside.interior != doorIP.B) {
+                    return;
+                }
+            }
+
             if (!registry.all_of<OnInteriorPortal>(nonPortalEntity)) {
 
                 // Add or update the Inside component for the non-interiorportal entity
@@ -94,7 +102,7 @@ void updatePhysics(entt::registry& registry)
         auto& rect = view.get<PhysicsBodyRect>(entity);
         auto& pos = view.get<Position>(entity);
         // Handle Collidable and Shape components
-        if (registry.all_of<Collidable, Shape>(entity)) {
+        if (registry.all_of<Shape>(entity)) {
             auto& shape = registry.get<Shape>(entity);
 
             if (!rect.added) {
@@ -110,8 +118,8 @@ void updatePhysics(entt::registry& registry)
                     isstatic = false;
                 }
                 rect.body = new p2d::RectangleBody(shape.size.x, shape.size.y, pos.x + shape.size.x / 2, pos.y + shape.size.y / 2, mass, restitution, isstatic, entity);
-                if (registry.any_of<InteriorPortal>(entity)) {
-                    // rect.body->ignore = true;
+                if (!registry.any_of<Collidable>(entity)) {
+                    rect.body->ignore = true;
                 }
 
                 physics.add(rect.body);
