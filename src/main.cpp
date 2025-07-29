@@ -14,35 +14,25 @@ using namespace std;
 extern entt::registry registry;
 extern entt::registry registry2;
 extern entt::registry registry_temp;
-extern int width, height;
 extern float deltaTime;
 extern bool windowResized;
-extern GLfloat gridSpacingValue;
 extern bool ready;
-extern float defaultGSV;
-extern GLfloat toplefttile[2];
 extern entt::entity _player;
 extern float seed;
 extern p2d::Physics physics;
-extern int GAMESTATE;
+extern GameState gameState;
 
 // General variables
 
 p2d::Physics physics;
-int width = 1024;
-int height = 1024;
 float deltaTime = 0;
-GLfloat offsetValue[2] = {0.0f, 0.0f};
-GLfloat toplefttile[2] = {0.0f, 0.0f};
 bool windowResized = false;
 bool ready = false;
 int lastTime = 0;
-float defaultGSV = 16.0f;
-GLfloat generationSize[2] = {defaultGSV*2, defaultGSV*2};
-GLfloat gridSpacingValue = 1024.0f;
+GLfloat generationSize[2] = {16.0f*2, 16.0f*2};
 bool first_start = false;
 float seed = 0.0f;
-int GAMESTATE = -2;
+GameState gameState;
 
 entt::entity _player = entt::null;
 entt::registry registry;
@@ -99,7 +89,7 @@ bool js_loaded() {
         makePlayer(registry);
         runFactories(registry);
 
-        GAMESTATE = -1;
+        gameState.gameState = -1;
     }
     return true; 
 }
@@ -118,8 +108,8 @@ void mainloop(void *arg)
     // Check if the window size has been updated
     if (windowResized)
     {
-        glViewport(0, 0, width, height);
-        SDL_SetWindowSize(ctx->window, width, height);
+        glViewport(0, 0, gameState.width, gameState.height);
+        SDL_SetWindowSize(ctx->window, gameState.width, gameState.height);
         windowResized = false;
     }
     
@@ -128,4 +118,6 @@ void mainloop(void *arg)
 
     // Render
     renderAll();
+    // Swap buffers
+    SDL_GL_SwapWindow(ctx->window);
 }

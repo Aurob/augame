@@ -8,11 +8,7 @@
 
 extern p2d::Physics physics;
 extern float deltaTime;
-extern int width, height;
-extern GLfloat toplefttile[2];
-extern GLfloat offsetValue[2];
-extern float gridSpacingValue;
-extern float defaultGSV;
+extern GameState gameState;
 extern entt::entity _player;
 extern bool windowResized;
 

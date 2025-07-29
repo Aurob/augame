@@ -16,6 +16,7 @@ void updateFrame()
     updateActions(registry);
     updatePhysics(registry);
     updatePlayer(registry);
+    updateCamera(registry);
     updateShapes(registry);
     updatePositions(registry);   
     updateInteractions(registry);

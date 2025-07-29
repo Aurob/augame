@@ -8,9 +8,8 @@
 
 using namespace std;
 
-extern int width, height;
 extern bool windowResized;
-extern float gridSpacingValue;
+extern GameState gameState;
 extern bool ready;
 extern bool first_start;
 extern entt::entity _player;
@@ -122,13 +121,18 @@ extern "C"
             if (js_json["world"].contains("zoom") && js_json["world"]["zoom"].is_number())
             {
                 float zoom = js_json["world"]["zoom"];
-                if (zoom == -1)
-                {
-                    gridSpacingValue /= 1.08f;
-                }
-                else if (zoom == 1)
-                {
-                    gridSpacingValue *= 1.08f;
+                // Find camera for zoom adjustments
+                auto cameraView = registry.view<Camera>();
+                if(cameraView.begin() != cameraView.end()) {
+                    auto& camera = registry.get<Camera>(cameraView.front());
+                    if (zoom == -1)
+                    {
+                        camera.gridSpacing /= 1.08f;
+                    }
+                    else if (zoom == 1)
+                    {
+                        camera.gridSpacing *= 1.08f;
+                    }
                 }
             }
         }

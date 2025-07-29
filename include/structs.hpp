@@ -256,6 +256,23 @@ struct Flag {
 
 struct Static {};
 
+struct Camera {
+    float gridSpacing = 1024.0f;
+    float defaultGSV = 16.0f;
+    Vector2f offset = {0.0f, 0.0f};
+    Vector2f topLeftTile = {0.0f, 0.0f};
+};
+
+struct GameState {
+    int width = 1024;
+    int height = 1024;
+    float deltaTime = 0.0f;
+    bool windowResized = false;
+    bool ready = false;
+    float seed = 0.0f;
+    int gameState = -2;
+};
+
 struct world {
     bool start_menu;
 };
