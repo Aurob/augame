@@ -6,24 +6,26 @@
 #include <SDL2/SDL.h>
 
 extern float deltaTime;
-extern int width, height;
-extern GLfloat toplefttile[2];
-extern GLfloat offsetValue[2];
-extern float gridSpacingValue;
-extern float defaultGSV;
+extern GameState gameState;
 extern entt::entity _player;
 extern bool windowResized;
 
 void updatePositions(entt::registry &registry)
 {
-    Position playerPos = registry.get<Position>(_player);
-    Shape playerShape = registry.get<Shape>(_player);
+    // Find the entity with Camera component
+    auto cameraView = registry.view<Camera, Position, Shape>();
+    if(cameraView.begin() == cameraView.end()) return;
+    
+    auto cameraEntity = cameraView.front();
+    auto& camera = registry.get<Camera>(cameraEntity);
+    Position cameraPos = registry.get<Position>(cameraEntity);
+    Shape cameraShape = registry.get<Shape>(cameraEntity);
 
-    bool playerIsInside = registry.all_of<Inside>(_player);
-    entt::entity playerInterior;
-    if(playerIsInside) {
-        auto playerInside = registry.get<Inside>(_player);
-        playerInterior = playerInside.interior;
+    bool cameraIsInside = registry.all_of<Inside>(cameraEntity);
+    entt::entity cameraInterior;
+    if(cameraIsInside) {
+        auto cameraInside = registry.get<Inside>(cameraEntity);
+        cameraInterior = cameraInside.interior;
     }
 
     // Also update Cursor positions if present
@@ -41,13 +43,13 @@ void updatePositions(entt::registry &registry)
         auto &position = entities.get<Position>(entity);
         auto &shape = entities.get<Shape>(entity);
 
-        float posX = (playerPos.x - position.x) * gridSpacingValue + width / 2;
-        float posY = (playerPos.y - position.y) * gridSpacingValue + height / 2;
-        float posZ = (position.z) * gridSpacingValue + height / 2;
+        float posX = (cameraPos.x - position.x) * camera.gridSpacing + gameState.width / 2;
+        float posY = (cameraPos.y - position.y) * camera.gridSpacing + gameState.height / 2;
+        float posZ = (position.z) * camera.gridSpacing + gameState.height / 2;
 
-        position.sx = (2 * posX / width - 1) / defaultGSV - shape.scaled_size.x;
-        position.sy = (2 * posY / height - 1) / defaultGSV - shape.scaled_size.y;
-        position.sz = (2 * posZ / height - 1) / defaultGSV - shape.scaled_size.z;
+        position.sx = (2 * posX / gameState.width - 1) / camera.defaultGSV - shape.scaled_size.x;
+        position.sy = (2 * posY / gameState.height - 1) / camera.defaultGSV - shape.scaled_size.y;
+        position.sz = (2 * posZ / gameState.height - 1) / camera.defaultGSV - shape.scaled_size.z;
 
 
         if(entity == _player) {
@@ -86,7 +88,7 @@ void updatePositions(entt::registry &registry)
                 //             isInView = false;
                 // }
                 if(!entityIsPortal) {
-                    if(!playerIsInside) {
+                    if(!cameraIsInside) {
                         bool hideInside = registry.get<Interior>(_interior).hideInside;
                         if(hideInside) {
                             isVisible = false;
@@ -94,14 +96,14 @@ void updatePositions(entt::registry &registry)
                         }
                     }
                     else if(entityIsPortal) {
-                        if(_interior != playerInterior) {
+                        if(_interior != cameraInterior) {
                             isVisible = false;
                             isInView = false;
                         }
                     }
                     else {
 
-                        if(entity != playerInterior && _interior != playerInterior) {
+                        if(entity != cameraInterior && _interior != cameraInterior) {
                             isVisible = false;
                             isInView = false;
                         }
@@ -109,10 +111,10 @@ void updatePositions(entt::registry &registry)
                 }
                 else {
                     auto portal = registry.get<InteriorPortal>(entity);
-                    if(playerIsInside) {
-                        auto playerInside = registry.get<Inside>(_player);
+                    if(cameraIsInside) {
+                        auto cameraInside = registry.get<Inside>(cameraEntity);
 
-                        if(playerInside.interior != portal.A && playerInside.interior != portal.B) {
+                        if(cameraInside.interior != portal.A && cameraInside.interior != portal.B) {
                             isVisible = false;
                             isInView = false;
                         }
@@ -125,10 +127,10 @@ void updatePositions(entt::registry &registry)
                     }
                 }
             }
-            else if(playerIsInside) {
-                auto playerInside = registry.get<Inside>(_player);
+            else if(cameraIsInside) {
+                auto cameraInside = registry.get<Inside>(cameraEntity);
                 if(registry.all_of<Interior>(entity)) {
-                    if(entity != playerInside.interior) {
+                    if(entity != cameraInside.interior) {
                         isVisible = false;
                         isInView = false;
                     }
@@ -173,9 +175,15 @@ void updateShapes(entt::registry &registry)
     // update shapes
     auto entities = registry.view<Shape>();
     
+    // Find the entity with Camera component
+    auto cameraView = registry.view<Camera>();
+    if(cameraView.begin() == cameraView.end()) return;
+    
+    auto& camera = registry.get<Camera>(cameraView.front());
+    
     // Pre-calculate common scaling factors
-    float xScale = gridSpacingValue / (defaultGSV * width);
-    float yScale = gridSpacingValue / (defaultGSV * height);
+    float xScale = camera.gridSpacing / (camera.defaultGSV * gameState.width);
+    float yScale = camera.gridSpacing / (camera.defaultGSV * gameState.height);
     
     for (auto &entity : entities)
     {

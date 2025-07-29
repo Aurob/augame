@@ -11,7 +11,7 @@
 
 extern p2d::Physics physics;
 extern float deltaTime;
-
+extern GameState gameState;
 extern entt::entity _player;
 bool triggered;
 
@@ -98,8 +98,8 @@ void updateInteractions(entt::registry &registry)
         bool mouseCollides = false;
 
         // Calculate cursor position in shader coordinates
-        float normalizedCursorX = -((cursor.position.x / width) * 2.0f - 1.0f) - playerShape.scaled_size.x;
-        float normalizedCursorY = (1.0f - (cursor.position.y / height) * 2.0f) - playerShape.scaled_size.y;
+        float normalizedCursorX = -((cursor.position.x / gameState.width) * 2.0f - 1.0f) - playerShape.scaled_size.x;
+        float normalizedCursorY = (1.0f - (cursor.position.y / gameState.height) * 2.0f) - playerShape.scaled_size.y;
 
         // Rectangle (AABB) collision: no more radius, just exact bbox
         if (normalizedCursorX >= position.sx - shape.scaled_size.x &&

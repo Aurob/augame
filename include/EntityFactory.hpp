@@ -7,7 +7,10 @@
 
 
 extern entt::entity _player;
-extern float gridSpacingValue;
+extern GameState gameState;
+
+void makePlayer(entt::registry &registry);
+void ensureCameraExists(entt::registry &registry);
 
 void makePlayer(entt::registry &registry)
 {
@@ -83,6 +86,50 @@ void makePlayer(entt::registry &registry)
     }
 
     _player = player;
+    
+    // Ensure camera component is assigned to player
+    ensureCameraExists(registry);
+}
+
+void ensureCameraExists(entt::registry &registry) {
+    // --- DEBUG STEP: Check for entity with Id name "1234" and assign camera if found ---
+    entt::entity debugEntity = entt::null;
+    auto idView = registry.view<Id>();
+    for (auto entity : idView) {
+        const auto& id = registry.get<Id>(entity);
+        if (id.name == "1234") {
+            printf("abc\n");
+            debugEntity = entity;
+            break;
+        }
+    }
+    if (debugEntity != entt::null) {
+        // Remove Camera component from all entities that have it
+        auto cameraView = registry.view<Camera>();
+        for (auto entity : cameraView) {
+            registry.remove<Camera>(entity);
+        }
+        // Add Camera component to the debug entity
+        registry.emplace_or_replace<Camera>(debugEntity);
+        return;
+    }
+    // --- END DEBUG STEP ---
+
+    auto cameraView = registry.view<Camera>();
+    
+    // If no camera exists, create one
+    if(cameraView.empty()) {
+        if(_player != entt::null) {
+            // Assign camera to player
+            registry.emplace<Camera>(_player);
+        } else {
+            // Create a default camera entity for stable defaults
+            auto cameraEntity = registry.create();
+            registry.emplace<Camera>(cameraEntity);
+            registry.emplace<Position>(cameraEntity, Position{13.05f, 12.45f, 5.0f});
+            registry.emplace<Shape>(cameraEntity, Shape{{1.0f, 1.0f, 1.0f}});
+        }
+    }
 }
 
 void makeEffectEntity(entt::registry &registry, float _x, float _y, float _z, std::string name, entt::entity inside) {
@@ -136,6 +183,9 @@ void makeEffectEntity(entt::registry &registry, float _x, float _y, float _z, st
  */
 void runFactories(entt::registry &registry)
 {
+    // Ensure camera exists for stable defaults
+    ensureCameraExists(registry);
+    
     // entt::entity test = registry.create();
     // registry.emplace<Text>(test, Text{"Hello World"});
     // registry.emplace<Id>(test, Id{.name="menu_entity"});

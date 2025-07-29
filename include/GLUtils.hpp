@@ -8,13 +8,9 @@
 #include "JSUtils.hpp"
 
 extern float seed;
-extern float gridSpacingValue;
-extern float defaultGSV;
-extern float offsetValue[2];
-extern float toplefttile[2];
 extern float generationSize[2];
 extern entt::registry registry;
-extern int GAMESTATE;
+extern GameState gameState;
 
 GLuint textShaderProgram;
 
@@ -34,7 +30,7 @@ SDL_Window* loadSDL() {
     SDL_Window *mpWindow = SDL_CreateWindow(
         "Untitled",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        width, height,
+        gameState.width, gameState.height,
         SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN
     );
 
@@ -440,7 +436,7 @@ void createShader(GLuint &shaderProgram, std::string program_name) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     // Allocate texture storage (but don't upload data yet)
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, gameState.width, gameState.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
     // Attach texture to framebuffer
     GLuint fbo;
@@ -453,13 +449,13 @@ void createShader(GLuint &shaderProgram, std::string program_name) {
         printf("Framebuffer not complete!\n");
 
     // Render to texture (rtt)
-    glViewport(0, 0, width, height); // Match texture size
+    glViewport(0, 0, gameState.width, gameState.height); // Match texture size
     // Add your render code here: this will render to texture instead of screen
     // Remember to clear the framebuffer using glClear if necessary
 
     // Bind the default framebuffer to render to screen again
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, width, height); // Match window size
+    glViewport(0, 0, gameState.width, gameState.height); // Match window size
 
     // In your render loop, use the generated texture
     glBindTexture(GL_TEXTURE_2D, textureID);
@@ -624,7 +620,7 @@ void renderText(const std::string& text, float x, float y, float scale, float r,
 
     // // Render text to surface
     // We'll use a temporary width for wrapping, as before
-    int wrapWidth = width / 1.3;
+    int wrapWidth = gameState.width / 1.3;
     SDL_Surface* surface = TTF_RenderUTF8_Blended_Wrapped(font, text.c_str(), color, wrapWidth);
     if (!surface) {
         printf("Failed to render text: %s\n", TTF_GetError());
@@ -718,7 +714,12 @@ void renderAll() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    if(GAMESTATE > 0) {
+    if(gameState.gameState > 0) {
+        // Get camera data
+        auto cameraView = registry.view<Camera>();
+        if(cameraView.begin() == cameraView.end()) return; // No camera, can't render
+        
+        auto& camera = registry.get<Camera>(cameraView.front());
         bool playerIsInside = false;
         Inside playerInside{};
         if (hasPlayer) {
@@ -729,12 +730,14 @@ void renderAll() {
         float rgb[3] = {0.2f, 0.5f, 0.2f}; // lightish dark green
         if (!playerIsInside || static_cast<int>(playerInside.interior) == -1) {
             // Render terrain
+            float offsetArray[2] = {camera.offset.x, camera.offset.y};
+            float topleftArray[2] = {camera.topLeftTile.x, camera.topLeftTile.y};
             updateUniforms(
                 shaderProgramMap["terrain"],
-                gridSpacingValue, 
-                offsetValue, 
-                width, height, 
-                toplefttile,
+                camera.gridSpacing, 
+                offsetArray, 
+                gameState.width, gameState.height, 
+                topleftArray,
                 generationSize,
                 rgb
             );
@@ -978,13 +981,17 @@ void renderAll() {
         }
     }
 
-    // Only render menu entity's Text if GAMESTATE == 0
-    if (GAMESTATE <= 0) {
+    // Only render menu entity's Text if gameState == 0
+    if (gameState.gameState <= 0) {
+        // Get camera for UI scaling
+        auto cameraView = registry.view<Camera>();
+        if(cameraView.begin() != cameraView.end()) {
+            auto& camera = registry.get<Camera>(cameraView.front());
         // Find the entity with Id.name == "menu_entity" and a Text component
         auto view = registry.view<Id, Text>();
         for (auto e : view) {
             const auto& id = view.get<Id>(e);
-            if ((GAMESTATE == 0 && id.name == "pause_entity") || (GAMESTATE == -1 && id.name == "start_entity")) {
+            if ((gameState.gameState == 0 && id.name == "pause_entity") || (gameState.gameState == -1 && id.name == "start_entity")) {
                 const auto& textComp = view.get<Text>(e);
                 float r = 0.0f, g = 0.0f, b = 0.0f, a = 1.0f;
                 // Use color from entity if it has a Color component
@@ -999,8 +1006,10 @@ void renderAll() {
 
                 // Center of the screen (use same values as before)
                 // Pre-calculate common scaling factors
-                float xScale = gridSpacingValue / (defaultGSV * width);
-                float yScale = gridSpacingValue / (defaultGSV * height);
+                float xScale = camera.gridSpacing / (camera.defaultGSV * gameState.width);
+                float yScale = camera.gridSpacing / (camera.defaultGSV * gameState.height);
+                float offsetArray[2] = {camera.offset.x, camera.offset.y};
+                float topleftArray[2] = {camera.topLeftTile.x, camera.topLeftTile.y};
                 float x = xScale;
                 float y = yScale;
                 float scale = 0.003698f;
@@ -1008,10 +1017,10 @@ void renderAll() {
                 float rgb[3] = {0.0f, 0.0f, 0.0f};
                 updateUniforms(
                     shaderProgramMap["terrain"],
-                    gridSpacingValue, 
-                    offsetValue, 
-                    width, height, 
-                    toplefttile,
+                    camera.gridSpacing, 
+                    offsetArray, 
+                    gameState.width, gameState.height, 
+                    topleftArray,
                     generationSize,
                     rgb
                 );
@@ -1019,9 +1028,8 @@ void renderAll() {
                 break; // Only render the first found menu_entity
             }
         }
+        } // Close camera view check
     }
 
-    // Swap buffers
-    SDL_GL_SwapWindow(ctx->window);
     
 }

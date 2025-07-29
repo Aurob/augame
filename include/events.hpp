@@ -5,12 +5,10 @@
 #include "structs.hpp"
 #include "../include/lib/physics.hpp"
 
-extern int width, height;
-extern float gridSpacingValue;
 extern entt::entity _player;
 extern entt::registry registry;
 extern p2d::Physics physics;
-extern int GAMESTATE;
+extern GameState gameState;
 
 void EventHandler(int type, SDL_Event *event)
 {
@@ -72,8 +70,8 @@ void EventHandler(int type, SDL_Event *event)
             }
             else
             {
-                screenX = event->tfinger.x * width;
-                screenY = event->tfinger.y * height;
+                screenX = event->tfinger.x * gameState.width;
+                screenY = event->tfinger.y * gameState.height;
                 cursor.position.x = screenX;
                 cursor.position.y = screenY;
             }
@@ -94,17 +92,22 @@ void EventHandler(int type, SDL_Event *event)
         }
     }
 
-    if(GAMESTATE > 0) {
+    if(gameState.gameState > 0) {
+        // Find camera for zoom adjustments
+        auto cameraView = registry.view<Camera>();
+        if(cameraView.begin() != cameraView.end()) {
+            auto& camera = registry.get<Camera>(cameraView.front());
+        
         // Zoom in and out (Mouse wheel and pinch)
         if (event->type == SDL_MOUSEWHEEL)
         {
             if (event->wheel.y > 0)
             {
-                gridSpacingValue *= 1.08f;
+                camera.gridSpacing *= 1.08f;
             }
             else if (event->wheel.y < 0)
             {
-                gridSpacingValue /= 1.08f;
+                camera.gridSpacing /= 1.08f;
             }
         }
         else if (event->type == SDL_MULTIGESTURE)
@@ -113,14 +116,15 @@ void EventHandler(int type, SDL_Event *event)
             {
                 if (event->mgesture.dDist > 0)
                 {
-                    gridSpacingValue *= (1.0f + event->mgesture.dDist);
+                    camera.gridSpacing *= (1.0f + event->mgesture.dDist);
                 }
                 else if (event->mgesture.dDist < 0)
                 {
-                    gridSpacingValue /= (1.0f - event->mgesture.dDist);
+                    camera.gridSpacing /= (1.0f - event->mgesture.dDist);
                 }
             }
         }
+        } // Close camera view check
     }
 }
 
@@ -135,7 +139,7 @@ void processEvents() {
     for (auto e: key_entities) {
         auto &keys = key_entities.get<Keys>(e).keys;
 
-        if(GAMESTATE > 0) {
+        if(gameState.gameState > 0) {
             // If B increase player z
             if(keys[SDLK_b]) {
                 auto& playerPos = registry.get<Position>(_player);
@@ -206,24 +210,24 @@ void processEvents() {
             }
         }
 
-        // Check for ESC key press to toggle GAMESTATE between 1 and 0
-        if ((GAMESTATE == 0 || GAMESTATE == 1)  && keys[SDLK_ESCAPE]) {
-            if (GAMESTATE == 1) {
-                GAMESTATE = 0;
+        // Check for ESC key press to toggle gameState between 1 and 0
+        if ((gameState.gameState == 0 || gameState.gameState == 1)  && keys[SDLK_ESCAPE]) {
+            if (gameState.gameState == 1) {
+                gameState.gameState = 0;
             } else {
-                GAMESTATE = 1;
+                gameState.gameState = 1;
             }
             keys[SDLK_ESCAPE] = false; // Prevent repeated toggling while holding ESC
         }
 
-        if (GAMESTATE == 0 && keys[SDLK_1]) {
-            GAMESTATE = -1;
+        if (gameState.gameState == 0 && keys[SDLK_1]) {
+            gameState.gameState = -1;
             keys[SDLK_1] = false;
         }
 
-        if (GAMESTATE == -1) {
+        if (gameState.gameState == -1) {
             if (keys[SDL_BUTTON_LEFT]) {
-                GAMESTATE = 1;
+                gameState.gameState = 1;
             }
         }
     }
