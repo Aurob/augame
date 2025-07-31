@@ -8,20 +8,21 @@
 extern float deltaTime;
 extern GameState gameState;
 extern entt::entity _player;
-extern bool windowResized;
+
+// Forward declaration from ViewSystems.hpp
+entt::entity selectMainCamera(entt::registry &registry);
 
 void updateCamera(entt::registry &registry);
 void updatePlayer(entt::registry &registry);
 
 void updateCamera(entt::registry &registry) {
-    // Find the entity with Camera component
-    auto cameraView = registry.view<Camera, Position, Shape>();
-    if(cameraView.begin() == cameraView.end()) return;
+    // Select the main camera using our helper function
+    entt::entity mainCameraEntity = selectMainCamera(registry);
+    if(mainCameraEntity == entt::null) return;
     
-    auto cameraEntity = cameraView.front();
-    auto& camera = registry.get<Camera>(cameraEntity);
-    Position &cameraPos = registry.get<Position>(cameraEntity);
-    Shape &cameraShape = registry.get<Shape>(cameraEntity);
+    auto& camera = registry.get<Camera>(mainCameraEntity);
+    Position &cameraPos = registry.get<Position>(mainCameraEntity);
+    Shape &cameraShape = registry.get<Shape>(mainCameraEntity);
     
     // Set view offset
     camera.offset.x = ((fmod(cameraPos.x, camera.defaultGSV) * camera.gridSpacing) / camera.defaultGSV) - (cameraShape.size.x / 2);
@@ -40,10 +41,10 @@ void updatePlayer(entt::registry &registry) {
     Cursor &playerCursorPos = registry.get<Cursor>(_player);
     Keys &playerKeys = registry.get<Keys>(_player);
     
-    // Find camera for cursor calculations
-    auto cameraView = registry.view<Camera, Position>();
-    if(cameraView.begin() != cameraView.end()) {
-        auto& camera = registry.get<Camera>(cameraView.front());
+    // Find camera for cursor calculations using our helper function
+    entt::entity mainCameraEntity = selectMainCamera(registry);
+    if(mainCameraEntity != entt::null) {
+        auto& camera = registry.get<Camera>(mainCameraEntity);
         
         // Calculate cursor normalized shader coordinates (sx, sy)
         playerCursorPos.position.sx = playerPos.x + ((playerCursorPos.position.x - gameState.width / 2) * camera.defaultGSV / camera.gridSpacing) + playerShape.size.x/2;

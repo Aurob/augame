@@ -26,7 +26,8 @@ class EntityBuilder {
         text: 4,
         player: 1,
         world: 1,
-        terrain: 1
+        terrain: 1,
+        camera: 6
     };
     
     static componentParsers = {
@@ -92,6 +93,15 @@ class EntityBuilder {
         teleportable: () => ({ Teleportable: true }),
         draggable: (parts, i) => ({ Draggable: { radius: parseFloat(parts[i]) } }),
         ui: (parts, i) => ({ UIElement: { content: parts[i], visible: parseInt(parts[i+1], 10) === 1 || parts[i+1] === "true", offset: { x: parseFloat(parts[i+2]), y: parseFloat(parts[i+3]) } } }),
+        camera: (parts, i) => ({
+            Camera: {
+                gridSpacing: parseFloat(parts[i]) || 1024.0,
+                defaultGSV: parseFloat(parts[i+1]) || 16.0,
+                priority: parseInt(parts[i+2], 10) || 0,
+                radius: parseFloat(parts[i+3]) || 0.0,
+                important: parts[i+4] === "1" || parts[i+4] === "true" || false
+            }
+        }),
     };
 
     constructor() {

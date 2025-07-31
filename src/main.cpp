@@ -12,10 +12,7 @@
 using namespace std;
 // External variables
 extern entt::registry registry;
-extern entt::registry registry2;
-extern entt::registry registry_temp;
 extern float deltaTime;
-extern bool windowResized;
 extern bool ready;
 extern entt::entity _player;
 extern float seed;
@@ -26,18 +23,15 @@ extern GameState gameState;
 
 p2d::Physics physics;
 float deltaTime = 0;
-bool windowResized = false;
 bool ready = false;
 int lastTime = 0;
-GLfloat generationSize[2] = {16.0f*2, 16.0f*2};
+GLfloat generationSize[2] = {1.0f*2, 1.0f*2};
 bool first_start = false;
 float seed = 0.0f;
 GameState gameState;
 
 entt::entity _player = entt::null;
 entt::registry registry;
-entt::registry registry2;
-entt::registry registry_temp;
 
 context ctx;
 // 
@@ -67,6 +61,8 @@ int main(int argc, char *argv[])
 
     // Set the main loop
     ctx.window = mpWindow;
+    SDL_SetWindowSize(mpWindow, gameState.width, gameState.height);
+
     emscripten_set_main_loop_arg(mainloop, &ctx, 0, 1);
     emscripten_set_main_loop_timing(EM_TIMING_RAF, 1);
 
@@ -80,6 +76,7 @@ int main(int argc, char *argv[])
 
 bool js_loaded() {
     if(!ready) return false;
+    printf("%d\n", ready);
     if(!first_start) {
         first_start = true;
         
@@ -89,7 +86,8 @@ bool js_loaded() {
         makePlayer(registry);
         runFactories(registry);
 
-        gameState.gameState = -1;
+        gameState.gameState = -1;        
+        
     }
     return true; 
 }
@@ -101,18 +99,10 @@ void mainloop(void *arg)
     lastTime = SDL_GetTicks();
         
     context *ctx = (context *)arg;
-
+    
     // Handle events
     processEvents();
 
-    // Check if the window size has been updated
-    if (windowResized)
-    {
-        glViewport(0, 0, gameState.width, gameState.height);
-        SDL_SetWindowSize(ctx->window, gameState.width, gameState.height);
-        windowResized = false;
-    }
-    
     // Update frame
     updateFrame();
 

@@ -92,30 +92,27 @@ void makePlayer(entt::registry &registry)
 }
 
 void ensureCameraExists(entt::registry &registry) {
-    // --- DEBUG STEP: Check for entity with Id name "1234" and assign camera if found ---
     entt::entity debugEntity = entt::null;
-    auto idView = registry.view<Id>();
-    for (auto entity : idView) {
-        const auto& id = registry.get<Id>(entity);
-        if (id.name == "1234") {
-            printf("abc\n");
-            debugEntity = entity;
-            break;
-        }
-    }
-    if (debugEntity != entt::null) {
-        // Remove Camera component from all entities that have it
-        auto cameraView = registry.view<Camera>();
-        for (auto entity : cameraView) {
-            registry.remove<Camera>(entity);
-        }
-        // Add Camera component to the debug entity
-        registry.emplace_or_replace<Camera>(debugEntity);
-        return;
-    }
-    // --- END DEBUG STEP ---
-
+    // Check if any entity has a Camera component; if multiple, use the one with the highest Camera::priority value
+    int maxPriority = std::numeric_limits<int>::min();
     auto cameraView = registry.view<Camera>();
+    for (auto entity : cameraView) {
+        const auto& camera = registry.get<Camera>(entity);
+        if (camera.priority > maxPriority) {
+            maxPriority = camera.priority;
+            debugEntity = entity;
+        }
+    }
+    // if (debugEntity != entt::null) {
+    //     // Remove Camera component from all entities that have it
+    //     auto cameraView = registry.view<Camera>();
+    //     for (auto entity : cameraView) {
+    //         registry.remove<Camera>(entity);
+    //     }
+    //     // Add Camera component to the debug entity
+    //     registry.emplace_or_replace<Camera>(debugEntity);
+    //     return;
+    // }
     
     // If no camera exists, create one
     if(cameraView.empty()) {
