@@ -4,6 +4,7 @@
 #include "lib/entt.hpp"
 #include "structs.hpp"
 #include "../include/lib/physics.hpp"
+#include "../include/Systems/ViewSystems.hpp"
 
 extern entt::entity _player;
 extern entt::registry registry;
@@ -93,10 +94,10 @@ void EventHandler(int type, SDL_Event *event)
     }
 
     if(gameState.gameState > 0) {
-        // Find camera for zoom adjustments
-        auto cameraView = registry.view<Camera>();
-        if(cameraView.begin() != cameraView.end()) {
-            auto& camera = registry.get<Camera>(cameraView.front());
+        // Find camera for zoom adjustments using priority-based selection
+        entt::entity cameraEntity = selectMainCamera(registry);
+        if(cameraEntity != entt::null) {
+            auto& camera = registry.get<Camera>(cameraEntity);
         
         // Zoom in and out (Mouse wheel and pinch)
         if (event->type == SDL_MOUSEWHEEL)
@@ -218,6 +219,12 @@ void processEvents() {
                 gameState.gameState = 1;
             }
             keys[SDLK_ESCAPE] = false; // Prevent repeated toggling while holding ESC
+        }
+        
+        // Check for C key press to toggle camera mode when player exists
+        if (gameState.gameState > 0 && _player != entt::null && keys[SDLK_c]) {
+            gameState.playerCameraMode = !gameState.playerCameraMode;
+            keys[SDLK_c] = false; // Prevent repeated toggling while holding C
         }
 
         if (gameState.gameState == 0 && keys[SDLK_1]) {

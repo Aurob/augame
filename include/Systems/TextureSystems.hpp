@@ -9,7 +9,6 @@
 extern float deltaTime;
 extern GameState gameState;
 extern entt::entity _player;
-extern bool windowResized;
 
 void updateAnimations(entt::registry &registry) {
     

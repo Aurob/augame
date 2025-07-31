@@ -4,19 +4,155 @@
 #include "../lib/entt.hpp"
 #include "../structs.hpp"
 #include <SDL2/SDL.h>
+#include <climits>
+#include <cmath>
 
 extern float deltaTime;
 extern GameState gameState;
 extern entt::entity _player;
-extern bool windowResized;
+
+#include <cstdio> // For printf
+
+// Helper function to select the main camera based on priority, position, and player interior logic
+entt::entity selectMainCamera(entt::registry &registry) {
+    auto cameraView = registry.view<Camera, Position, Shape>();
+    if(cameraView.begin() == cameraView.end()) return entt::null;
+
+    // Log the current camera mode for debugging
+    static bool lastCameraMode = false;
+    if (gameState.playerCameraMode != lastCameraMode) {
+        printf("[DEBUG] Camera mode toggled. playerCameraMode = %d\n", (int)gameState.playerCameraMode);
+        lastCameraMode = gameState.playerCameraMode;
+    }
+
+    // Gather player info
+    bool playerExists = (_player != entt::null);
+    bool playerIsInside = (playerExists && registry.all_of<Inside>(_player));
+    entt::entity playerInterior = entt::null;
+    Position playerPos = {0, 0, 0, 0, 0, 0};
+
+    if(playerExists) {
+        if(registry.all_of<Position>(_player)) {
+            playerPos = registry.get<Position>(_player);
+        }
+        if(playerIsInside) {
+            auto playerInside = registry.get<Inside>(_player);
+            playerInterior = playerInside.interior;
+        }
+    }
+
+    // Determine if we are in player camera mode (player context)
+    bool usePlayerContext = (playerExists && gameState.playerCameraMode);
+
+    if (usePlayerContext && playerExists) {
+        // Player context: Use the player's own camera, or add one if not present
+        entt::entity playerCamera = entt::null;
+        if (registry.all_of<Camera>(_player)) {
+            playerCamera = _player;
+        } else {
+            // Add a Camera to the player if not present
+            Camera defaultCamera;
+            registry.emplace<Camera>(_player, defaultCamera);
+            playerCamera = _player;
+        }
+        return playerCamera;
+    } else {
+        // Global camera mode
+        entt::entity playerCamera = entt::null;
+        if (playerExists && registry.all_of<Camera>(_player)) {
+            playerCamera = _player;
+        }
+
+        // Find the closest camera in the same "Inside" as the player (or both outside)
+        entt::entity closestCamera = entt::null;
+        float closestDist = std::numeric_limits<float>::max();
+
+        // Determine the player's "inside" context (entt::null means outside)
+        entt::entity playerInsideContext = entt::null;
+        if (playerExists && registry.all_of<Inside>(_player)) {
+            playerInsideContext = registry.get<Inside>(_player).interior;
+        }
+
+        for (auto candidateCamera : cameraView) {
+            // In global mode, do NOT allow the camera entity to also have Player
+            if (!gameState.playerCameraMode && registry.all_of<Player>(candidateCamera)) {
+                continue;
+            }
+
+            // Camera's "inside" context (entt::null means outside)
+            entt::entity cameraInsideContext = entt::null;
+            if (registry.all_of<Inside>(candidateCamera)) {
+                cameraInsideContext = registry.get<Inside>(candidateCamera).interior;
+            }
+
+            // Only consider cameras in the same "inside" context as the player (null means outside)
+            if (cameraInsideContext != playerInsideContext)
+                continue;
+
+            // Find distance to player (if player exists)
+            float dist = 0.0f;
+            if (playerExists && registry.all_of<Position>(_player)) {
+                auto& camPos = registry.get<Position>(candidateCamera);
+                float dx = playerPos.x - camPos.x;
+                float dy = playerPos.y - camPos.y;
+                dist = std::sqrt(dx * dx + dy * dy);
+            }
+
+            if (dist < closestDist) {
+                closestDist = dist;
+                closestCamera = candidateCamera;
+            }
+        }
+
+        // If a camera in the same Inside as the player was found, use it
+        if (closestCamera != entt::null) {
+            return closestCamera;
+        }
+
+        // If no camera in the same Inside as the player, but the player has a camera, use the player's camera (or add one)
+        if (playerCamera != entt::null) {
+            return playerCamera;
+        } else if (playerExists) {
+            // Add a Camera to the player if not present
+            Camera defaultCamera;
+            registry.emplace<Camera>(_player, defaultCamera);
+            return _player;
+        }
+
+        // Fallback: if no suitable camera found, use the first available camera
+        closestCamera = entt::null;
+        if (!gameState.playerCameraMode) {
+            for (auto candidateCamera : cameraView) {
+                if (!registry.all_of<Player>(candidateCamera)) {
+                    closestCamera = candidateCamera;
+                    break;
+                }
+            }
+            // If all cameras are Player, fallback to first anyway
+            if (closestCamera == entt::null) {
+                closestCamera = cameraView.front();
+            }
+        } else {
+            closestCamera = cameraView.front();
+        }
+
+        return closestCamera;
+    }
+}
 
 void updatePositions(entt::registry &registry)
 {
-    // Find the entity with Camera component
-    auto cameraView = registry.view<Camera, Position, Shape>();
-    if(cameraView.begin() == cameraView.end()) return;
+    // Log C key press for debugging
+    static bool lastPlayerCameraMode = false;
+    if (gameState.playerCameraMode != lastPlayerCameraMode) {
+        printf("[DEBUG] updatePositions: playerCameraMode toggled to %d\n", (int)gameState.playerCameraMode);
+        lastPlayerCameraMode = gameState.playerCameraMode;
+    }
+
+    // Select the main camera using our helper function
+    entt::entity cameraEntity = selectMainCamera(registry);
+    if(cameraEntity == entt::null) return;
     
-    auto cameraEntity = cameraView.front();
     auto& camera = registry.get<Camera>(cameraEntity);
     Position cameraPos = registry.get<Position>(cameraEntity);
     Shape cameraShape = registry.get<Shape>(cameraEntity);
@@ -175,11 +311,11 @@ void updateShapes(entt::registry &registry)
     // update shapes
     auto entities = registry.view<Shape>();
     
-    // Find the entity with Camera component
-    auto cameraView = registry.view<Camera>();
-    if(cameraView.begin() == cameraView.end()) return;
+    // Select the main camera using our helper function
+    entt::entity mainCameraEntity = selectMainCamera(registry);
+    if(mainCameraEntity == entt::null) return;
     
-    auto& camera = registry.get<Camera>(cameraView.front());
+    auto& camera = registry.get<Camera>(mainCameraEntity);
     
     // Pre-calculate common scaling factors
     float xScale = camera.gridSpacing / (camera.defaultGSV * gameState.width);

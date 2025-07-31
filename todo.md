@@ -82,3 +82,5 @@
 - Add a way to change the scene at runtime
   - if this works then add the scenebuilder on the same page as the game
     - try and get realtime map editing to work
+
+- Add a way to apply the terrain texture to any entity texture, for scalable terrain.

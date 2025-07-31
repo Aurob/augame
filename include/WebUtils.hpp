@@ -2,13 +2,13 @@
 #include "shaders.hpp"
 #include "lib/entt.hpp"
 #include "../include/structs.hpp"
+#include "../include/Systems/ViewSystems.hpp"
 #include <vector>
 #include <unordered_map>
 #include "lib/json.hpp"
 
 using namespace std;
 
-extern bool windowResized;
 extern GameState gameState;
 extern bool ready;
 extern bool first_start;
@@ -106,25 +106,14 @@ extern "C"
         }
         if (js_json.contains("world"))
         {
-            if (js_json["world"].contains("width") && js_json["world"]["width"].is_number())
-            {
-                // width = js_json["world"]["width"];
-                windowResized = true;
-            }
-            if (js_json["world"].contains("height") && js_json["world"]["height"].is_number())
-            {
-                // height = js_json["world"]["height"];
-                windowResized = true;
-            }
-
             // zoom
             if (js_json["world"].contains("zoom") && js_json["world"]["zoom"].is_number())
             {
                 float zoom = js_json["world"]["zoom"];
-                // Find camera for zoom adjustments
-                auto cameraView = registry.view<Camera>();
-                if(cameraView.begin() != cameraView.end()) {
-                    auto& camera = registry.get<Camera>(cameraView.front());
+                // Find camera for zoom adjustments using priority-based selection
+                entt::entity cameraEntity = selectMainCamera(registry);
+                if(cameraEntity != entt::null) {
+                    auto& camera = registry.get<Camera>(cameraEntity);
                     if (zoom == -1)
                     {
                         camera.gridSpacing /= 1.08f;
@@ -548,6 +537,30 @@ extern "C"
                                     printf("World\n");
                                 }
                             }, "World");
+
+                            // Camera
+                            safe_emplace(registry, entity, [&]() {
+                                if(components.contains("Camera") && components["Camera"].is_object()) {
+                                    auto &camera = components["Camera"];
+                                    Camera cameraComponent;
+                                    if (camera.contains("gridSpacing") && camera["gridSpacing"].is_number()) {
+                                        cameraComponent.gridSpacing = camera["gridSpacing"];
+                                    }
+                                    if (camera.contains("defaultGSV") && camera["defaultGSV"].is_number()) {
+                                        cameraComponent.defaultGSV = camera["defaultGSV"];
+                                    }
+                                    if (camera.contains("priority") && camera["priority"].is_number()) {
+                                        cameraComponent.priority = camera["priority"];
+                                    }
+                                    if (camera.contains("radius") && camera["radius"].is_number()) {
+                                        cameraComponent.radius = camera["radius"];
+                                    }
+                                    if (camera.contains("important") && camera["important"].is_boolean()) {
+                                        cameraComponent.important = camera["important"];
+                                    }
+                                    registry.emplace<Camera>(entity, cameraComponent);
+                                }
+                            }, "Camera");
                         }
 
                         if (registry.all_of<Position, Shape>(entity)) {

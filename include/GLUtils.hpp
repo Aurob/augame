@@ -715,11 +715,11 @@ void renderAll() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     if(gameState.gameState > 0) {
-        // Get camera data
-        auto cameraView = registry.view<Camera>();
-        if(cameraView.begin() == cameraView.end()) return; // No camera, can't render
+        // Get camera data using priority-based selection
+        entt::entity cameraEntity = selectMainCamera(registry);
+        if(cameraEntity == entt::null) return; // No camera, can't render
         
-        auto& camera = registry.get<Camera>(cameraView.front());
+        auto& camera = registry.get<Camera>(cameraEntity);
         bool playerIsInside = false;
         Inside playerInside{};
         if (hasPlayer) {
@@ -983,10 +983,10 @@ void renderAll() {
 
     // Only render menu entity's Text if gameState == 0
     if (gameState.gameState <= 0) {
-        // Get camera for UI scaling
-        auto cameraView = registry.view<Camera>();
-        if(cameraView.begin() != cameraView.end()) {
-            auto& camera = registry.get<Camera>(cameraView.front());
+        // Get camera for UI scaling using priority-based selection
+        entt::entity cameraEntity = selectMainCamera(registry);
+        if(cameraEntity != entt::null) {
+            auto& camera = registry.get<Camera>(cameraEntity);
         // Find the entity with Id.name == "menu_entity" and a Text component
         auto view = registry.view<Id, Text>();
         for (auto e : view) {
