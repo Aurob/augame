@@ -45,10 +45,11 @@ void updatePlayer(entt::registry &registry) {
     entt::entity mainCameraEntity = selectMainCamera(registry);
     if(mainCameraEntity != entt::null) {
         auto& camera = registry.get<Camera>(mainCameraEntity);
+        Position cameraPos = registry.get<Position>(mainCameraEntity);
         
-        // Calculate cursor normalized shader coordinates (sx, sy)
-        playerCursorPos.position.sx = playerPos.x + ((playerCursorPos.position.x - gameState.width / 2) * camera.defaultGSV / camera.gridSpacing) + playerShape.size.x/2;
-        playerCursorPos.position.sy = playerPos.y + ((playerCursorPos.position.y - gameState.height / 2) * camera.defaultGSV / camera.gridSpacing) + playerShape.size.x/2;
+        // Calculate cursor world coordinates relative to camera position (not player position)
+        playerCursorPos.position.sx = cameraPos.x + ((playerCursorPos.position.x - gameState.width / 2) * camera.defaultGSV / camera.gridSpacing);
+        playerCursorPos.position.sy = cameraPos.y + ((playerCursorPos.position.y - gameState.height / 2) * camera.defaultGSV / camera.gridSpacing);
     }
 
     // Find the entity with Id.name == "player_cursor"

@@ -179,33 +179,34 @@
                 <label><input type="radio" name="mode" value="move"> Move</label>
                 <label><input type="radio" name="mode" value="edit"> Edit</label>
             </div>
-            <div class="section-title">New Entity</div>
+            <div class="section-title">Entity</div>
             <div>
                 <label>ID: <input type="number" id="entityId" value="1" min="0" style="width:60px;"></label>
                 <label>Name: <input type="text" id="entityName" value="entity1" style="width:90px;"></label>
+                <button id="updateEntityBtn" disabled style="margin-left:4px;">Update</button>
             </div>
             <div style="margin-top:8px;">
                 <button id="deleteBtn" disabled>Delete Selected</button>
                 <button id="clearBtn">Clear All</button>
                 <button id="duplicateBtn" disabled>Duplicate</button>
+                <button id="newBpBtn" disabled>New BP</button>
+                <button id="updateBpBtn" disabled>Update BP</button>
             </div>
             <div class="section-title">Entities</div>
             <div class="entity-list" id="entityList"></div>
             <div>
                 <button id="exportBtn">Export & Copy</button>
+                <span id="autosaveStatus" style="margin-left:8px; font-size:12px; color:#7ec7ff;"></span>
             </div>
             <textarea id="exportBox" readonly placeholder="Exported data will appear here"></textarea>
             <div class="section-title">Scenes</div>
             <div>
-                <input type="text" id="sceneNameInput" placeholder="Scene name" style="width:120px;">
+                <button id="newSceneBtn" class="save-btn">New Scene</button>
+                <input type="text" id="sceneNameInput" placeholder="Scene name" style="width:80px;">
                 <button id="saveSceneBtn" class="save-btn">Save</button>
             </div>
             <div class="entity-list" id="sceneList"></div>
             <div class="section-title">Blueprints</div>
-            <div>
-                <input type="text" id="blueprintNameInput" placeholder="Blueprint name" style="width:120px;">
-                <button id="saveBlueprintBtn" class="save-btn">Save</button>
-            </div>
             <div class="entity-list" id="blueprintList"></div>
         </div>
         <div class="canvas-area">
@@ -246,10 +247,8 @@
             {
                 type: "Color",
                 params: [
-                    { name: "r", type: "number", min: 0, max: 255, step: 1, label: "R", default: 136 },
-                    { name: "g", type: "number", min: 0, max: 255, step: 1, label: "G", default: 238 },
-                    { name: "b", type: "number", min: 0, max: 255, step: 1, label: "B", default: 255 },
-                    { name: "a", type: "number", min: 0, max: 1, step: 0.01, label: "A", default: 1 }
+                    { name: "color", type: "color", label: "Color", default: "#88eeff" },
+                    { name: "a", type: "number", min: 0, max: 1, step: 0.01, label: "Alpha", default: 1 }
                 ]
             },
             {
@@ -319,6 +318,7 @@
         let selectedEntityIdx = null;
         let snapEnabled = true;
         let mode = "draw"; // or "move" or "edit"
+        let lastSaveTime = null;
 
         // --- UI Elements ---
         const canvas = document.getElementById('drawCanvas');
@@ -327,6 +327,7 @@
         const entityNameInput = document.getElementById('entityName');
         const entityListDiv = document.getElementById('entityList');
         const exportBox = document.getElementById('exportBox');
+        const updateEntityBtn = document.getElementById('updateEntityBtn');
         const deleteBtn = document.getElementById('deleteBtn');
         const clearBtn = document.getElementById('clearBtn');
         const duplicateBtn = document.getElementById('duplicateBtn');
@@ -335,16 +336,19 @@
         const componentFields = document.getElementById('componentFields');
         const snapToggle = document.getElementById('snapToggle');
         // Scene/blueprint
+        const newSceneBtn = document.getElementById('newSceneBtn');
         const sceneNameInput = document.getElementById('sceneNameInput');
         const saveSceneBtn = document.getElementById('saveSceneBtn');
         const sceneListDiv = document.getElementById('sceneList');
-        const blueprintNameInput = document.getElementById('blueprintNameInput');
-        const saveBlueprintBtn = document.getElementById('saveBlueprintBtn');
+        const newBpBtn = document.getElementById('newBpBtn');
+        const updateBpBtn = document.getElementById('updateBpBtn');
         const blueprintListDiv = document.getElementById('blueprintList');
+        const autosaveStatus = document.getElementById('autosaveStatus');
 
         // --- LocalStorage Keys ---
         const SCENE_PREFIX = "sceneBuilderV3_scene_";
         const BLUEPRINT_PREFIX = "sceneBuilderV3_blueprint_";
+        const AUTOSAVE_KEY = "sceneBuilderV3_autosave_current";
 
         // --- Utility ---
         function getComponent(entity, type) {
@@ -358,6 +362,13 @@
                 if (schema) {
                     for (let p of schema.params) {
                         c[p.name] = p.default;
+                    }
+                    // Special handling for Color component
+                    if (type === "Color") {
+                        let rgb = hexToRgb(c.color || "#88eeff");
+                        c.r = rgb.r;
+                        c.g = rgb.g;
+                        c.b = rgb.b;
                     }
                 }
                 entity.components.push(c);
@@ -417,6 +428,56 @@
                 let hex = x.toString(16);
                 return hex.length === 1 ? "0" + hex : hex;
             }).join("");
+        }
+
+        // --- Auto-save functionality ---
+        function saveCurrentState() {
+            const state = {
+                entities: entities,
+                selectedEntityIdx: selectedEntityIdx,
+                snapEnabled: snapEnabled,
+                mode: mode,
+                timestamp: Date.now()
+            };
+            localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(state));
+            lastSaveTime = Date.now();
+            updateAutosaveStatus();
+        }
+        
+        
+        function updateAutosaveStatus() {
+            if (lastSaveTime) {
+                const now = Date.now();
+                const secondsAgo = Math.floor((now - lastSaveTime) / 1000);
+                if (secondsAgo < 60) {
+                    autosaveStatus.textContent = `Saved ${secondsAgo}s ago`;
+                } else {
+                    const minutesAgo = Math.floor(secondsAgo / 60);
+                    autosaveStatus.textContent = `Saved ${minutesAgo}m ago`;
+                }
+            }
+        }
+
+        function loadCurrentState() {
+            try {
+                const saved = localStorage.getItem(AUTOSAVE_KEY);
+                if (!saved) return false;
+                
+                const state = JSON.parse(saved);
+                entities = state.entities || [];
+                selectedEntityIdx = state.selectedEntityIdx;
+                snapEnabled = state.snapEnabled !== undefined ? state.snapEnabled : true;
+                mode = state.mode || "draw";
+                
+                // Update UI elements
+                document.querySelector(`input[name="mode"][value="${mode}"]`).checked = true;
+                snapToggle.checked = snapEnabled;
+                
+                return true;
+            } catch (e) {
+                console.warn("Failed to load autosave state:", e);
+                return false;
+            }
         }
 
         // --- Drawing ---
@@ -493,6 +554,21 @@
             if (selectedEntityIdx === null || entities.length === 0) {
                 deleteBtn.disabled = true;
                 duplicateBtn.disabled = true;
+                newBpBtn.disabled = true;
+                updateBpBtn.disabled = true;
+                updateEntityBtn.disabled = true;
+                entityIdInput.value = getNextEntityId();
+                entityNameInput.value = getNextEntityName();
+            } else {
+                deleteBtn.disabled = false;
+                duplicateBtn.disabled = false;
+                newBpBtn.disabled = false;
+                updateBpBtn.disabled = false;
+                updateEntityBtn.disabled = false;
+                // Load current entity values
+                let entity = entities[selectedEntityIdx];
+                entityIdInput.value = entity.id || 0;
+                entityNameInput.value = entity.name || "";
             }
             updateComponentPanel();
         }
@@ -533,6 +609,7 @@
                         updateComponentPanel();
                         drawAll();
                         updateEntityList();
+                        saveCurrentState();
                     };
                     row.appendChild(cb);
                 } else if (comp) {
@@ -549,16 +626,46 @@
                                 comp[param.name] = inp.checked;
                                 drawAll();
                                 updateEntityList();
+                                saveCurrentState();
                             };
                         } else if (param.type === "text") {
                             inp = document.createElement("input");
                             inp.type = "text";
                             inp.value = comp[param.name] ?? param.default;
-                            inp.oninput = () => {
+                            const updateTextValue = () => {
                                 comp[param.name] = inp.value;
                                 drawAll();
                                 updateEntityList();
+                                saveCurrentState();
                             };
+                            inp.onblur = updateTextValue;
+                            inp.onkeydown = (e) => {
+                                if (e.key === 'Enter') {
+                                    inp.blur();
+                                }
+                            };
+                        } else if (param.type === "color") {
+                            inp = document.createElement("input");
+                            inp.type = "color";
+                            // Convert current RGB to hex if available, otherwise use default
+                            if (comp.r !== undefined && comp.g !== undefined && comp.b !== undefined) {
+                                inp.value = rgbToHex(comp.r, comp.g, comp.b);
+                                comp[param.name] = inp.value; // Update the color property
+                            } else {
+                                inp.value = comp[param.name] ?? param.default;
+                            }
+                            const updateColorValue = () => {
+                                comp[param.name] = inp.value;
+                                // Convert hex to RGB values for backwards compatibility
+                                let rgb = hexToRgb(inp.value);
+                                comp.r = rgb.r;
+                                comp.g = rgb.g;
+                                comp.b = rgb.b;
+                                drawAll();
+                                updateEntityList();
+                                saveCurrentState();
+                            };
+                            inp.onchange = updateColorValue;
                         } else {
                             inp = document.createElement("input");
                             inp.type = "number";
@@ -566,10 +673,20 @@
                             if (param.max !== undefined) inp.max = param.max;
                             if (param.step !== undefined) inp.step = param.step;
                             inp.value = comp[param.name] ?? param.default;
-                            inp.oninput = () => {
-                                comp[param.name] = parseFloat(inp.value);
-                                drawAll();
-                                updateEntityList();
+                            const updateNumberValue = () => {
+                                const newValue = parseFloat(inp.value);
+                                if (!isNaN(newValue)) {
+                                    comp[param.name] = newValue;
+                                    drawAll();
+                                    updateEntityList();
+                                    saveCurrentState();
+                                }
+                            };
+                            inp.onblur = updateNumberValue;
+                            inp.onkeydown = (e) => {
+                                if (e.key === 'Enter') {
+                                    inp.blur();
+                                }
                             };
                         }
                         plabel.appendChild(inp);
@@ -584,6 +701,7 @@
                         updateComponentPanel();
                         drawAll();
                         updateEntityList();
+                        saveCurrentState();
                         e.preventDefault();
                         e.stopPropagation();
                     };
@@ -598,6 +716,7 @@
                         updateComponentPanel();
                         drawAll();
                         updateEntityList();
+                        saveCurrentState();
                         e.preventDefault();
                         e.stopPropagation();
                     };
@@ -726,6 +845,7 @@
                 pos.y = snapValue(newY);
                 drawAll();
                 updateEntityList();
+                saveCurrentState();
             } else if (mode === "edit" && selectedEntityIdx !== null) {
                 let e = entities[selectedEntityIdx];
                 let pos = getComponent(e, "Position");
@@ -750,6 +870,7 @@
                     shape.h = snapValue(h);
                     drawAll();
                     updateEntityList();
+                    saveCurrentState();
                 } else if (isMoving) {
                     let newX = clamp((mouse.x - moveOffset.x) / 16, 0, (canvas.width - shape.w * 16) / 16);
                     let newY = clamp((mouse.y - moveOffset.y) / 16, 0, (canvas.height - shape.h * 16) / 16);
@@ -757,6 +878,7 @@
                     pos.y = snapValue(newY);
                     drawAll();
                     updateEntityList();
+                    saveCurrentState();
                 } else {
                     let handle = getResizeHandle(pos, shape, mouse.x, mouse.y);
                     if (handle) {
@@ -792,7 +914,7 @@
                         components: [
                             { type: "Position", x: x / 16, y: y / 16 },
                             { type: "Shape", w: w / 16, h: h / 16 },
-                            { type: "Color", r: 136, g: 238, b: 255, a: 1.0 },
+                            { type: "Color", color: "#88eeff", r: 136, g: 238, b: 255, a: 1.0 },
                             { type: "RenderPriority", z: 0 }
                         ]
                     };
@@ -804,12 +926,14 @@
                     entityNameInput.value = nextName;
                     updateEntityList();
                     drawAll();
+                    saveCurrentState();
                 }
             } else if ((mode === "move" || mode === "edit") && (isMoving || isResizing)) {
                 isMoving = false;
                 isResizing = false;
                 drawAll();
                 updateEntityList();
+                saveCurrentState();
             }
         });
 
@@ -837,12 +961,14 @@
                 entities.splice(selectedEntityIdx, 1);
                 resetSelection();
                 drawAll();
+                saveCurrentState();
             }
         });
         clearBtn.addEventListener('click', function () {
             entities = [];
             resetSelection();
             drawAll();
+            saveCurrentState();
         });
         duplicateBtn.addEventListener('click', function () {
             if (selectedEntityIdx !== null) {
@@ -862,6 +988,7 @@
             selectedEntityIdx = entities.length - 1;
             updateEntityList();
             drawAll();
+            saveCurrentState();
         }
 
         // Keyboard shortcut for delete/duplicate
@@ -870,6 +997,7 @@
                 entities.splice(selectedEntityIdx, 1);
                 resetSelection();
                 drawAll();
+                saveCurrentState();
             }
             if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === "d" && selectedEntityIdx !== null) {
                 duplicateEntity(selectedEntityIdx);
@@ -928,12 +1056,23 @@
         }
         exportBtn.addEventListener('click', exportEntities);
 
-        // --- New Entity Controls ---
-        entityIdInput.addEventListener('input', function () {
-            // No-op, used for next entity
-        });
-        entityNameInput.addEventListener('input', function () {
-            // No-op, used for next entity
+        // --- Entity Update Controls ---
+        updateEntityBtn.addEventListener('click', function() {
+            if (selectedEntityIdx === null) return;
+            let entity = entities[selectedEntityIdx];
+            let newId = parseInt(entityIdInput.value, 10);
+            let newName = entityNameInput.value.trim();
+            
+            if (!isNaN(newId) && newId >= 0) {
+                entity.id = newId;
+            }
+            if (newName) {
+                entity.name = newName;
+            }
+            
+            updateEntityList();
+            drawAll();
+            saveCurrentState();
         });
 
         // --- Scene Save/Load ---
@@ -948,6 +1087,7 @@
             entities = JSON.parse(data);
             resetSelection();
             drawAll();
+            saveCurrentState();
         }
         function deleteScene(name) {
             localStorage.removeItem(SCENE_PREFIX + name);
@@ -973,6 +1113,17 @@
                 sceneListDiv.appendChild(div);
             });
         }
+        newSceneBtn.addEventListener('click', function() {
+            if (entities.length > 0 && !confirm("Clear current scene and start new? (Current scene will be lost if not saved)")) {
+                return;
+            }
+            entities = [];
+            resetSelection();
+            drawAll();
+            sceneNameInput.value = "";
+            saveCurrentState();
+        });
+        
         saveSceneBtn.addEventListener('click', function() {
             let name = sceneNameInput.value.trim();
             if (!name) return;
@@ -980,10 +1131,9 @@
         });
 
         // --- Blueprint Save/Load ---
-        function saveBlueprint(name) {
-            if (!name || selectedEntityIdx === null) return;
-            let e = entities[selectedEntityIdx];
-            localStorage.setItem(BLUEPRINT_PREFIX + name, JSON.stringify(e));
+        function saveBlueprint(name, entity) {
+            if (!name || !entity) return;
+            localStorage.setItem(BLUEPRINT_PREFIX + name, JSON.stringify(entity));
             updateBlueprintList();
         }
         function loadBlueprint(name) {
@@ -998,6 +1148,7 @@
             selectedEntityIdx = entities.length - 1;
             updateEntityList();
             drawAll();
+            saveCurrentState();
         }
         function deleteBlueprint(name) {
             localStorage.removeItem(BLUEPRINT_PREFIX + name);
@@ -1023,18 +1174,71 @@
                 blueprintListDiv.appendChild(div);
             });
         }
-        saveBlueprintBtn.addEventListener('click', function() {
-            let name = blueprintNameInput.value.trim();
-            if (!name) return;
-            saveBlueprint(name);
+        // New Blueprint button - saves current entity with prompt for name
+        newBpBtn.addEventListener('click', function() {
+            if (selectedEntityIdx === null) return;
+            let name = prompt("Enter blueprint name:");
+            if (!name || !name.trim()) return;
+            let entity = entities[selectedEntityIdx];
+            saveBlueprint(name.trim(), entity);
+        });
+
+        // Update Blueprint button - updates existing blueprint with same name as entity
+        updateBpBtn.addEventListener('click', function() {
+            if (selectedEntityIdx === null) return;
+            let entity = entities[selectedEntityIdx];
+            let name = entity.name || `entity${entity.id}`;
+            
+            // Check if blueprint exists
+            let existingData = localStorage.getItem(BLUEPRINT_PREFIX + name);
+            if (!existingData) {
+                // No existing blueprint, treat as new
+                saveBlueprint(name, entity);
+                alert(`Created new blueprint: ${name}`);
+            } else {
+                // Update existing blueprint
+                if (confirm(`Update existing blueprint "${name}"?`)) {
+                    saveBlueprint(name, entity);
+                    alert(`Updated blueprint: ${name}`);
+                }
+            }
         });
 
         // --- Init ---
+        // Try to load autosaved state first
+        const loadedFromAutosave = loadCurrentState();
+        
         updateEntityList();
         drawAll();
         updateComponentPanel();
         updateSceneList();
         updateBlueprintList();
+        
+        // Show notification if loaded from autosave
+        if (loadedFromAutosave) {
+            console.log("Restored from autosave");
+            autosaveStatus.textContent = "Restored from autosave";
+            autosaveStatus.style.color = "#90EE90";
+            setTimeout(() => {
+                autosaveStatus.style.color = "#7ec7ff";
+                updateAutosaveStatus();
+            }, 3000);
+        }
+        
+        // Set up periodic auto-save every 10 seconds
+        setInterval(() => {
+            if (entities.length > 0) {
+                saveCurrentState();
+            }
+        }, 10000);
+        
+        // Update autosave status display every 5 seconds
+        setInterval(updateAutosaveStatus, 5000);
+        
+        // Save on page unload/refresh
+        window.addEventListener('beforeunload', () => {
+            saveCurrentState();
+        });
     </script>
 </body>
 </html>

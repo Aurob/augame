@@ -162,12 +162,32 @@ var Module = {
 
           return true;
         });
-        // Create entities from config strings
-        const entities = configstr.map(input => {
+        // Create entities from config strings and collect meta data
+        const entities = [];
+        const metaData = {};
+        
+        configstr.forEach(input => {
           const builder = new EntityBuilder().parseInput(input);
           const entity = builder.build();
-          return entity;
+          
+          if (entity.meta) {
+            // Collect meta data
+            Object.assign(metaData, entity.meta);
+          } else {
+            // Regular entity
+            entities.push(entity);
+          }
         });
+        
+        // Process meta data to update HTML
+        if (Object.keys(metaData).length > 0) {
+          this.processMeta(metaData);
+        }
+        
+        // Send meta data to C++ as well
+        if (Object.keys(metaData).length > 0) {
+          this.js_to_c({ meta: metaData });
+        }
 
         // Collect all fetch promises for text components
         const fetchPromises = [];
@@ -219,7 +239,7 @@ var Module = {
 
       // Check URL parameters for config file
       const urlParams = new URLSearchParams(window.location.search);
-      const configParam = urlParams.get('c') || urlParams.get('config');
+      const configParam = urlParams.get('world');
       const configFile = configParam ? `web/econfigs/${configParam}.txt` : 'web/econfigs/default.txt';
 
       fetch(`${configFile}?` + Math.random())
@@ -257,6 +277,38 @@ id ${id + 6} ${name}wall_right position ${x + width} ${y + .5} 1 shape .1 ${heig
     //Append the room template to the existing config data
     return roomTemplate;
   },
+  
+  processMeta(metaData) {
+    // Update document title
+    if (metaData.title) {
+      document.title = metaData.title;
+    }
+    
+    // Update or create meta description tag
+    if (metaData.description) {
+      let metaDesc = document.querySelector('meta[name="description"]');
+      if (!metaDesc) {
+        metaDesc = document.createElement('meta');
+        metaDesc.name = 'description';
+        document.head.appendChild(metaDesc);
+      }
+      metaDesc.content = metaData.description;
+    }
+    
+    // Update or create meta author tag  
+    if (metaData.author) {
+      let metaAuthor = document.querySelector('meta[name="author"]');
+      if (!metaAuthor) {
+        metaAuthor = document.createElement('meta');
+        metaAuthor.name = 'author';
+        document.head.appendChild(metaAuthor);
+      }
+      metaAuthor.content = metaData.author;
+    }
+
+    console.log('Meta data processed:', metaData);
+  },
+  
   start() {
     console.log("Starting...");
     this._isready();

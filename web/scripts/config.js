@@ -24,6 +24,26 @@ var CONFIG = {
             "name": "font",
             "vertex": "font_v.glsl",
             "fragment": "font_f.glsl"
+        },
+        {
+            "name": "grid",
+            "vertex": "grid_v.glsl",
+            "fragment": "grid_f.glsl"
+        },
+        {
+            "name": "colorquads",
+            "vertex": "colorquads_v.glsl",
+            "fragment": "colorquads_f.glsl"
+        },
+        {
+            "name": "terrainmap",
+            "vertex": "terrain_v.glsl",
+            "fragment": "terrain_f.glsl"
+        },
+        {
+            "name": "water1",
+            "vertex": "water1_v.glsl",
+            "fragment": "water1_f.glsl"
         }
     ],
     "textures": [],
@@ -61,7 +81,8 @@ const playerTextures = createSpriteSheetTextures(
 const textures = [
     createBasicTexture("hand_open", "hand_thin_small_open.png"),
     createBasicTexture("hand_closed", "hand_thin_small_closed.png"),
-    createBasicTexture("key", "key.png")
+    createBasicTexture("key", "key.png"),
+    createBasicTexture("tilewall1", "tilewall1.png")
 ];
 
 CONFIG.textures = CONFIG.textures.concat(playerTextures, textures);

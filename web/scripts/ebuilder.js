@@ -27,7 +27,9 @@ class EntityBuilder {
         player: 1,
         world: 1,
         terrain: 1,
-        camera: 6
+        camera: 6,
+        cshader: 5,
+        meta: 3
     };
     
     static componentParsers = {
@@ -102,10 +104,42 @@ class EntityBuilder {
                 important: parts[i+4] === "1" || parts[i+4] === "true" || false
             }
         }),
+        cshader: (parts, i) => {
+            let seed = 0.0;
+            if (parts[i+3] !== undefined) {
+                if (parts[i+3] === '~') {
+                    seed = Math.random() * 1000.0;
+                } else {
+                    seed = parseFloat(parts[i+3]) || 0.0;
+                }
+            }
+            
+            return {
+                CustomShader: {
+                    shaderName: parts[i],
+                    uniformCount: 3,
+                    uniforms: [
+                        parseFloat(parts[i+1]) || 0.0,  // centerX
+                        parseFloat(parts[i+2]) || 0.0,  // centerY
+                        seed                             // seed
+                    ]
+                }
+            };
+        },
+        meta: (parts, i) => {
+            // Meta doesn't create components, it returns special metadata
+            return {
+                _meta: {
+                    type: parts[i],
+                    value: parts[i+1]
+                }
+            };
+        },
     };
 
     constructor() {
         this.components = {};
+        this.metaData = {};
     }
     
     parseInput(input) {
@@ -143,7 +177,12 @@ class EntityBuilder {
             const parser = EntityBuilder.componentParsers[componentName];
             if (parser) {
                 const result = parser(parts, i + 1);
-                Object.assign(this.components, result);
+                if (result._meta) {
+                    // Handle meta data specially
+                    this.metaData[result._meta.type] = result._meta.value;
+                } else {
+                    Object.assign(this.components, result);
+                }
                 i += this.getComponentParameterCount(componentName, result);
             } else {
                 console.warn(`Unknown component or parser not implemented: ${componentName}`);
@@ -162,6 +201,13 @@ class EntityBuilder {
     }
 
     build() {
+        // If this is a meta-only entity, return meta data instead
+        if (Object.keys(this.components).length === 0 && Object.keys(this.metaData).length > 0) {
+            return {
+                meta: this.metaData
+            };
+        }
+        
         return {
             New: true,
             Components: this.components

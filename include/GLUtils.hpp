@@ -7,10 +7,10 @@
 #include "events.hpp"
 #include "JSUtils.hpp"
 
-extern float seed;
 extern float generationSize[2];
 extern entt::registry registry;
 extern GameState gameState;
+extern MetaData metaData;
 
 GLuint textShaderProgram;
 
@@ -69,9 +69,9 @@ float* hashPoint(float p[3]) {
     float dot2 = p[0] * 269.5f + p[1] * 183.3f + p[2] * 246.1f;
     float dot3 = p[0] * 113.5f + p[1] * 271.9f + p[2] * 101.5f;
     
-    result[0] = -1.0f + 2.0f * fract(sin(dot1 + seed) * 43758.5453f);
-    result[1] = -1.0f + 2.0f * fract(sin(dot2 + seed) * 43758.5453f);
-    result[2] = -1.0f + 2.0f * fract(sin(dot3 + seed) * 43758.5453f);
+    result[0] = -1.0f + 2.0f * fract(sin(dot1 + gameState.seed) * 43758.5453f);
+    result[1] = -1.0f + 2.0f * fract(sin(dot2 + gameState.seed) * 43758.5453f);
+    result[2] = -1.0f + 2.0f * fract(sin(dot3 + gameState.seed) * 43758.5453f);
     
     return result;
 }
@@ -85,8 +85,8 @@ float smoothNoise(float x, float y) {
     const float yFreq2 = 0.07f; // Secondary frequency for y component
     
     // Add phase shifts based on seed for more variation
-    float phaseX = sin(seed * 0.1f) * 3.14f;
-    float phaseY = cos(seed * 0.1f) * 3.14f;
+    float phaseX = sin(gameState.seed * 0.1f) * 3.14f;
+    float phaseY = cos(gameState.seed * 0.1f) * 3.14f;
     
     // Combine multiple sine and cosine waves with different frequencies and phases
     float noise1 = 0.5f * sin(x * xFreq1 + phaseX) + 0.5f * cos(y * yFreq1 + phaseY);
@@ -134,8 +134,8 @@ float calculate_n(float x, float y) {
         
         // Apply domain warping for higher octaves
         if (i > 3) {
-            float warp_x = sin(rotatedCoord_y * 0.5f + seed * 0.1f) * 0.15f;
-            float warp_y = cos(rotatedCoord_x * 0.5f + seed * 0.2f) * 0.15f;
+            float warp_x = sin(rotatedCoord_y * 0.5f + gameState.seed * 0.1f) * 0.15f;
+            float warp_y = cos(rotatedCoord_x * 0.5f + gameState.seed * 0.2f) * 0.15f;
             noiseVal = smoothNoise(rotatedCoord_x + warp_x, rotatedCoord_y + warp_y);
         }
         
@@ -258,7 +258,7 @@ void updateUniforms(GLuint &shaderProgram,
 
     // seed
     GLint seedLocation = glGetUniformLocation(shaderProgram, "seed");
-    glUniform1f(seedLocation, seed);
+    glUniform1f(seedLocation, gameState.seed);
 
     // rgb uniform (optional)
     if (rgb != nullptr) {
@@ -581,6 +581,10 @@ void loadTextures() {
     createShader(shaderProgramMap["ui_layer"], "ui_layer");
     createShader(shaderProgramMap["texture"], "texture");
     createShader(shaderProgramMap["debug_entity"], "debug_entity");
+    createShader(shaderProgramMap["grid"], "grid");
+    createShader(shaderProgramMap["colorquads"], "colorquads");
+    createShader(shaderProgramMap["terrainmap"], "terrainmap");
+    createShader(shaderProgramMap["water1"], "water1");
 
     // Load textures from textureMap
     for(auto& [name, src] : textureMap) {
@@ -604,73 +608,90 @@ void loadTextures() {
     }
 }
 
+bool isValidFont(const std::string& fontPath) {
+    TTF_Font* testFont = TTF_OpenFont(fontPath.c_str(), 12);
+    if (testFont) {
+        TTF_CloseFont(testFont);
+        return true;
+    }
+    return false;
+}
+
 void renderText(const std::string& text, float x, float y, float scale, float r, float g, float b, float a) {
-    // Use the font shader program
     glUseProgram(shaderProgramMap["font"]);
 
-    // // Render the entire text as one texture instead of individual glyphs
     SDL_Color color = {static_cast<Uint8>(r * 255), static_cast<Uint8>(g * 255), static_cast<Uint8>(b * 255), static_cast<Uint8>(a * 255)};
 
-    // Load font for rendering
-    TTF_Font* font = TTF_OpenFont("resources/fonts/DejaVuSansMono-Bold.ttf", 12);
+    // Build the full font path and validate
+    std::string fontPath = "resources/fonts/" + metaData.font;
+    
+    // Validate the font exists, otherwise use default
+    if (!isValidFont(fontPath)) {
+        printf("Font validation failed for %s, using default unifont-16.0.04.otf\n", fontPath.c_str());
+        fontPath = "resources/fonts/unifont-16.0.04.otf";
+        
+        // If even the default doesn't exist, try one more fallback
+        if (!isValidFont(fontPath)) {
+            printf("Default font not found, using DejaVuSansMono-Bold.ttf as fallback\n");
+            fontPath = "resources/fonts/DejaVuSansMono-Bold.ttf";
+        }
+    }
+
+    TTF_Font* font = TTF_OpenFont(fontPath.c_str(), 64);
     if (!font) {
-        printf("TTF_OpenFont: %s\n", TTF_GetError());
+        printf("TTF_OpenFont failed for %s: %s\n", fontPath.c_str(), TTF_GetError());
         return;
     }
 
-    // // Render text to surface
-    // We'll use a temporary width for wrapping, as before
-    int wrapWidth = gameState.width / 1.3;
+    // Reduce wrap width to avoid double spacing
+    int wrapWidth = gameState.width/1.5;
     SDL_Surface* surface = TTF_RenderUTF8_Blended_Wrapped(font, text.c_str(), color, wrapWidth);
     if (!surface) {
         printf("Failed to render text: %s\n", TTF_GetError());
         TTF_CloseFont(font);
         return;
     }
-    
-    // Create texture from surface
+
+    // Fix: Remove extra line spacing by setting font style to TTF_STYLE_NORMAL and adjusting line skip
+    TTF_SetFontStyle(font, TTF_STYLE_NORMAL);
+    TTF_SetFontHinting(font, TTF_HINTING_MONO);
+
+    // Try to set the line skip to the font height (removes extra spacing)
+    int fontHeight = TTF_FontHeight(font);
+    surface->h = fontHeight * ((surface->h + fontHeight - 1) / fontHeight);
+
     GLuint texture;
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
-    
-    // Prepare the surface for OpenGL
+
     SDL_Surface* rgba_surface = SDL_CreateRGBSurface(
         0, surface->w, surface->h, 32,
         0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000
     );
-    
     SDL_BlitSurface(surface, NULL, rgba_surface, NULL);
-    
-    // Upload to texture
+
     glTexImage2D(
-        GL_TEXTURE_2D, 
-        0, 
-        GL_RGBA, 
-        rgba_surface->w, 
-        rgba_surface->h, 
-        0, 
-        GL_RGBA, 
-        GL_UNSIGNED_BYTE, 
+        GL_TEXTURE_2D,
+        0,
+        GL_RGBA,
+        rgba_surface->w,
+        rgba_surface->h,
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
         rgba_surface->pixels
     );
-    
-    // Set texture parameters
+
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    
-    // Calculate dimensions for rendering
+
     float width = rgba_surface->w * scale;
     float height = rgba_surface->h * scale;
 
-    // Offset the text x position by width/1.3
-    float x_offset = x - width/1.48;
+    updateUniformFont(shaderProgramMap["font"], r, g, b, a, x, y, width, height);
 
-    // Update uniforms for rendering
-    updateUniformFont(shaderProgramMap["font"], r, g, b, a, x_offset, y, width, height);
-    
-    // Bind texture and draw
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
     GLint texLoc = glGetUniformLocation(shaderProgramMap["font"], "uTexture");
@@ -681,7 +702,6 @@ void renderText(const std::string& text, float x, float y, float scale, float r,
     SDL_FreeSurface(rgba_surface);
     SDL_FreeSurface(surface);
     TTF_CloseFont(font);
-
 }
 
 void loadFont() {
@@ -701,6 +721,7 @@ void renderAll() {
     auto playerView = registry.view<Player>();
     Position playerPos = {0, 0, 0}; // Default to zeroed Position
     Shape playerShape = {0, 0};  // Default to zeroed Shape
+    float playerScreenX = 0.0f, playerScreenY = 0.0f; // Player's actual screen position
 
     bool hasPlayer = !playerView.empty();
     entt::entity _player;
@@ -708,6 +729,9 @@ void renderAll() {
         _player = playerView.front();
         playerPos = registry.get<Position>(_player);
         playerShape = registry.get<Shape>(_player);
+        // Calculate player's actual screen position for interactions
+        playerScreenX = playerPos.sx;
+        playerScreenY = playerPos.sy;
     }
 
     glClear(GL_COLOR_BUFFER_BIT);
@@ -776,8 +800,56 @@ void renderAll() {
             return lhsYZS < rhsYZS;
         });
 
-        // Render visible entities
+        // Collect Interior entities for wall rendering
+        std::vector<entt::entity> interiorEntities;
         auto visible_entities = registry.view<Visible, InView>();
+        for(auto& entity : visible_entities) {
+            if(registry.all_of<Interior>(entity)) {
+                interiorEntities.push_back(entity);
+            }
+        }
+
+        // Wall rendering constants
+        float wallR = 0.3f, wallG = 0.25f, wallB = 0.2f, wallA = 1.0f;
+        
+        // Calculate scaled wall height using same logic as ViewSystems.hpp
+        float yScale = camera.gridSpacing / (camera.defaultGSV * gameState.height);
+        float standardWallHeight = 2 * yScale; // Base height of 5 units, scaled consistently
+        
+        // PASS 1: Render first wall layer (depends on player context)
+        if (playerIsInside) {
+            // When inside: render back walls first (behind everything) - opaque
+            for(auto& entity : interiorEntities) {
+                auto position = registry.get<Position>(entity);
+                auto shape = registry.get<Shape>(entity);
+                
+                // Back wall (top of interior shape) - rendered first when inside
+                updateUniformsDebug(shaderProgramMap["debug_entity"],
+                    wallR, wallG, wallB, wallA, // Opaque when inside
+                    position.sx,
+                    position.sy + shape.scaled_size.y + standardWallHeight/2,
+                    shape.scaled_size.x, standardWallHeight + standardWallHeight*1.5,
+                    0.0f);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            }
+        } else {
+            // When outside: render front walls first (so player can walk behind them) - opaque
+            for(auto& entity : interiorEntities) {
+                auto position = registry.get<Position>(entity);
+                auto shape = registry.get<Shape>(entity);
+                
+                // Front wall (bottom of interior shape) - rendered first when outside, opaque
+                updateUniformsDebug(shaderProgramMap["debug_entity"],
+                    wallR, wallG, wallB, wallA, // Opaque when outside
+                    position.sx,
+                    position.sy - shape.scaled_size.y + standardWallHeight,
+                    shape.scaled_size.x, standardWallHeight + standardWallHeight/2,
+                    0.0f);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            }
+        }
+
+        // PASS 2: Render all main entities (including Interiors)
         for(auto& entity : visible_entities) {
             auto position = registry.get<Position>(entity);
             auto shape = registry.get<Shape>(entity);
@@ -799,10 +871,11 @@ void renderAll() {
                     if (registry.all_of<Texture>(entity)) {
                         const auto& texture = registry.get<Texture>(entity);
 
+                        // Use entity's own position, not offset by player
                         updateUniformsTexture(shaderProgramMap["texture"], 
                             textureIDMap[texture.name],
-                            position.sx + playerShape.scaled_size.x,
-                            position.sy + playerShape.scaled_size.y,
+                            position.sx,
+                            position.sy,
                             shape.scaled_size.x, 
                             shape.scaled_size.y,
                             texture.x, texture.y, texture.w, texture.h
@@ -824,8 +897,8 @@ void renderAll() {
                             int divisorY = textureGroupPart.tiley;
                             auto ssizex = shape.scaled_size.x / divisorX;
                             auto ssizey = shape.scaled_size.y / divisorY;
-                            auto posX = position.sx + playerShape.scaled_size.x;
-                            auto posY = position.sy + playerShape.scaled_size.y;
+                            auto posX = position.sx;
+                            auto posY = position.sy;
 
                             // Increase size by 1%
                             auto increasedSsizex = ssizex;
@@ -847,8 +920,8 @@ void renderAll() {
                         else {
                             updateUniformsTexture(shaderProgramMap["texture"], 
                                 rootTexture,
-                                position.sx + playerShape.scaled_size.x,
-                                position.sy + playerShape.scaled_size.y,
+                                position.sx,
+                                position.sy,
                                 shape.scaled_size.x,
                                 shape.scaled_size.y,
                                 texture.x, texture.y, texture.w, texture.h
@@ -868,7 +941,7 @@ void renderAll() {
 
                         updateUniformsTexture(shaderProgramMap["texture"], 
                             textureIDMap[current_texture.name],
-                            position.sx + playerShape.scaled_size.x, position.sy + playerShape.scaled_size.y,
+                            position.sx, position.sy,
                             shape.scaled_size.x * current_texture.scalex, shape.scaled_size.y * current_texture.scaley,
                             current_texture.x, current_texture.y, current_texture.w, current_texture.h, angle);
                         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -881,14 +954,46 @@ void renderAll() {
 
                         updateUniformsTexture(shaderProgramMap["texture"], 
                             textureIDMap[current_texture.name],
-                            position.sx + playerShape.scaled_size.x,
-                            position.sy + playerShape.scaled_size.y,
+                            position.sx,
+                            position.sy,
                             shape.scaled_size.x * current_texture.scalex, 
                             shape.scaled_size.y * current_texture.scaley,
                             current_texture.x, current_texture.y, 
                             current_texture.w, current_texture.h);
                         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
                     }
+                }
+                else if(registry.all_of<CustomShader>(entity)) {
+                    const auto& customShader = registry.get<CustomShader>(entity);
+                    
+                    float angle = 0.0f;
+                    if(registry.all_of<Rotation>(entity)) {
+                        angle = registry.get<Rotation>(entity).angle;
+                    }
+                    
+                    // Use the same update pattern as debug/color entities
+                    updateUniformsDebug(shaderProgramMap[customShader.shaderName],
+                        1.0f, 1.0f, 1.0f, 1.0f, // Default white color
+                        position.sx, 
+                        position.sy,
+                        shape.scaled_size.x, shape.scaled_size.y, 
+                        angle);
+                    
+                    // Add custom uniforms for all cshaders
+                    if (customShader.uniforms.size() >= 3) {
+                        // All cshaders now support seed
+                        GLint seedLocation = glGetUniformLocation(shaderProgramMap[customShader.shaderName], "uSeed");
+                        glUniform1f(seedLocation, customShader.uniforms[2]);
+                        
+                        // Terrain shader also needs center position
+                        if (customShader.shaderName == "terrainmap") {
+                            GLint centerPosLocation = glGetUniformLocation(shaderProgramMap[customShader.shaderName], "uCenterPos");
+                            glUniform2f(centerPosLocation, customShader.uniforms[0], customShader.uniforms[1]);
+                        }
+                        
+                    }
+                    
+                    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
                 }
                 else if(registry.all_of<Color>(entity)) {
                     auto color = registry.get<Color>(entity);
@@ -944,41 +1049,70 @@ void renderAll() {
 
                     updateUniformsDebug(shaderProgramMap["debug_entity"],
                         r, g, b, color.a,
-                        position.sx + playerShape.scaled_size.x, 
-                        position.sy + playerShape.scaled_size.y,
+                        position.sx, 
+                        position.sy,
                         shape.scaled_size.x, shape.scaled_size.y, 
                         angle);
                     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
                 }
             }
-        }
+            
+            // Render text entities within the main rendering order
+            if(registry.all_of<Text>(entity)) {
+                Text text = registry.get<Text>(entity);
+                
+                float r = 1.0f, g = 1.0f, b = 1.0f, a = 1.0f;
+                if (registry.all_of<Color>(entity)) {
+                    auto color = registry.get<Color>(entity);
+                    r = color.r;
+                    g = color.g;
+                    b = color.b;
+                    a = color.a;
+                }
+                a = text.hide ? 0.0f : a;
 
-        auto textView = registry.view<Text, Position, Shape, Visible>();
-        for (auto e : textView) {
-            Text text = textView.get<Text>(e);
-            Position pos = textView.get<Position>(e);
-            Shape shape = textView.get<Shape>(e);
-            // Determine text visibility based on hide flag
+                std::string textStr = text.text;
+                float xVal = position.sx;
+                float yVal = position.sy;
+                float scaleVal = (shape.scaled_size.x+shape.scaled_size.y)/200;
 
-            float r = 1.0f, g = 1.0f, b = 1.0f, a = 1.0f;
-            if (registry.all_of<Color>(e)) {
-                auto color = registry.get<Color>(e);
-                r = color.r;
-                g = color.g;
-                b = color.b;
-                a = color.a;
+                renderText(textStr, xVal, yVal, scaleVal, r, g, b, a);
             }
-            a = text.hide ? 0.0f : a;
-
-            std::string textStr = text.text;
-            float xVal = pos.sx + playerShape.scaled_size.x + shape.scaled_size.x;
-            float yVal = pos.sy + playerShape.scaled_size.y;
-            float scaleVal = (shape.scaled_size.x+shape.scaled_size.y)/200;
-            // printf("renderText params: text=\"%s\", x=%f, y=%f, scale=%f, r=%f, g=%f, b=%f, a=%f\n",
-            //     textStr.c_str(), xVal, yVal, scaleVal, r, g, b, a);
-
-            renderText(textStr, xVal, yVal, scaleVal, r, g, b, a);
         }
+
+        // PASS 3: Render second wall layer (depends on player context)
+        if (playerIsInside) {
+            // When inside: render front walls last (in front of everything) - semi-transparent
+            for(auto& entity : interiorEntities) {
+                auto position = registry.get<Position>(entity);
+                auto shape = registry.get<Shape>(entity);
+                
+                // Front wall (bottom of interior shape) - rendered last when inside, semi-transparent
+                updateUniformsDebug(shaderProgramMap["debug_entity"],
+                    wallR, wallG, wallB, 0.75f, // Semi-transparent when inside
+                    position.sx,
+                    position.sy - shape.scaled_size.y + standardWallHeight,
+                    shape.scaled_size.x, standardWallHeight + standardWallHeight/2,
+                    0.0f);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            }
+        } else {
+            // When outside: render back walls last (so player walks under them) - translucent for visibility
+            for(auto& entity : interiorEntities) {
+                auto position = registry.get<Position>(entity);
+                auto shape = registry.get<Shape>(entity);
+                
+                // Back wall (top of interior shape) - rendered last when outside, translucent
+                updateUniformsDebug(shaderProgramMap["debug_entity"],
+                    wallR, wallG, wallB, 0.4f, // More translucent when outside for player visibility
+                    position.sx,
+                    position.sy + shape.scaled_size.y + standardWallHeight/2,
+                    shape.scaled_size.x, standardWallHeight + standardWallHeight*1.5,
+                    0.0f);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            }
+        }
+
     }
 
     // Only render menu entity's Text if gameState == 0
@@ -1012,7 +1146,7 @@ void renderAll() {
                 float topleftArray[2] = {camera.topLeftTile.x, camera.topLeftTile.y};
                 float x = xScale;
                 float y = yScale;
-                float scale = 0.003698f;
+                float scale = 0.001f;
                 
                 float rgb[3] = {0.0f, 0.0f, 0.0f};
                 updateUniforms(
