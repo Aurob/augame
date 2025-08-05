@@ -168,7 +168,7 @@ void processEvents() {
             if (registry.all_of<Movement>(e)) {
                 auto &movement = registry.get<Movement>(e);
                 if (keys[SDLK_LSHIFT]) {
-                    movement.speed = movement.default_speed * 10;
+                    movement.speed = movement.default_speed * 2;
                 }
                 else if(movement.speed != movement.default_speed) {
                     movement.speed = movement.default_speed;

@@ -97,9 +97,10 @@ void updateInteractions(entt::registry &registry)
         auto &interactable = debug_entities.get<Interactable>(entity);
         bool mouseCollides = false;
 
-        // Calculate cursor position in shader coordinates
-        float normalizedCursorX = -((cursor.position.x / gameState.width) * 2.0f - 1.0f) - playerShape.scaled_size.x;
-        float normalizedCursorY = (1.0f - (cursor.position.y / gameState.height) * 2.0f) - playerShape.scaled_size.y;
+        // Calculate cursor position using the same camera-aware coordinate system as entities
+        // Convert screen coordinates to normalized device coordinates
+        float normalizedCursorX = -((cursor.position.x / gameState.width) * 2.0f - 1.0f);
+        float normalizedCursorY = (1.0f - (cursor.position.y / gameState.height) * 2.0f);
 
         // Rectangle (AABB) collision: no more radius, just exact bbox
         if (normalizedCursorX >= position.sx - shape.scaled_size.x &&

@@ -15,7 +15,6 @@ extern entt::registry registry;
 extern float deltaTime;
 extern bool ready;
 extern entt::entity _player;
-extern float seed;
 extern p2d::Physics physics;
 extern GameState gameState;
 
@@ -27,8 +26,8 @@ bool ready = false;
 int lastTime = 0;
 GLfloat generationSize[2] = {1.0f*2, 1.0f*2};
 bool first_start = false;
-float seed = 0.0f;
 GameState gameState;
+MetaData metaData;
 
 entt::entity _player = entt::null;
 entt::registry registry;
@@ -51,10 +50,7 @@ int main(int argc, char *argv[])
     // Trigger JS functions
     _js__fetch_configs();   
     _js__ready();
-    srand(time(NULL));
-    // seed = rand() % 100000;
-    seed = 85582;
-    printf("Seed: %f\n", seed);
+
 
     physics.setGravity(p2d::Vec2f{0, 0}); // No gravity for top-down game
     physics.setDrag({4.9f, 4.9f}); // Adjust drag for realistic movement
@@ -80,6 +76,9 @@ bool js_loaded() {
     if(!first_start) {
         first_start = true;
         
+        gameState.seed = metaData.seed;
+        srand(gameState.seed);
+
         loadTextures();
         loadFont();
 

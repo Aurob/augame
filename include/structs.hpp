@@ -266,6 +266,26 @@ struct Camera {
     bool important = false;
 };
 
+struct MetaData {
+    std::string world = "";
+    std::string title = "";
+    std::string description = "";
+    std::string author = "";
+    std::string font = "unifont-16.0.04.otf";
+    std::string str_seed = ""; // original seed as string (can be words, sentences, etc.)
+    int seed = 0;              // numeric seed, converted from str_seed
+
+    // Setter for str_seed that also updates the numeric seed
+    void set_seed(const std::string& s) {
+        str_seed = s;
+        unsigned int hash = 0;
+        for (char c : str_seed) {
+            hash = hash * 31 + static_cast<unsigned char>(c);
+        }
+        seed = static_cast<int>(hash);
+    }
+};
+
 struct GameState {
     int width = 1024;
     int height = 1024;
@@ -277,5 +297,15 @@ struct GameState {
 };
 
 struct world {
-    bool start_menu;
+};
+
+struct CustomShader {
+    std::string shaderName;
+    std::vector<float> uniforms;
+    int uniformCount;
+    
+    CustomShader(const std::string& name = "", int count = 0) 
+        : shaderName(name), uniformCount(count) {
+        uniforms.resize(count, 0.0f);
+    }
 };

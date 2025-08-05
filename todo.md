@@ -84,3 +84,6 @@
     - try and get realtime map editing to work
 
 - Add a way to apply the terrain texture to any entity texture, for scalable terrain.
+
+- Remember to add attributions for any assets
+ - HomeVideo-Regular.ttf: https://ggbot.itch.io/home-video-font

@@ -10,6 +10,7 @@
 using namespace std;
 
 extern GameState gameState;
+extern MetaData metaData;
 extern bool ready;
 extern bool first_start;
 extern entt::entity _player;
@@ -201,6 +202,31 @@ extern "C"
                     }
                     textureGroupMap[groupName] = textureParts;
                 }
+            }
+        }
+
+        // Handle meta data
+        if (js_json.contains("meta") && js_json["meta"].is_object())
+        {
+            auto meta = js_json["meta"];
+            if (meta.contains("world") && meta["world"].is_string()) {
+                metaData.world = meta["world"];
+                printf("Meta: World set to %s\n", metaData.world.c_str());
+            }
+            if (meta.contains("title") && meta["title"].is_string()) {
+                metaData.title = meta["title"];
+            }
+            if (meta.contains("description") && meta["description"].is_string()) {
+                metaData.description = meta["description"];
+            }
+            if (meta.contains("author") && meta["author"].is_string()) {
+                metaData.author = meta["author"];
+            }
+            if (meta.contains("font") && meta["font"].is_string()) {
+                metaData.font = meta["font"];
+            }
+            if (meta.contains("seed") && meta["seed"].is_string()) {
+                metaData.str_seed = meta["seed"];
             }
         }
 
@@ -561,6 +587,32 @@ extern "C"
                                     registry.emplace<Camera>(entity, cameraComponent);
                                 }
                             }, "Camera");
+
+                            // CustomShader
+                            safe_emplace(registry, entity, [&]() {
+                                if(components.contains("CustomShader") && components["CustomShader"].is_object()) {
+                                    auto &customShader = components["CustomShader"];
+                                    if (customShader.contains("shaderName") && customShader["shaderName"].is_string() &&
+                                        customShader.contains("uniformCount") && customShader["uniformCount"].is_number()) {
+                                        
+                                        std::string shaderName = customShader["shaderName"];
+                                        int uniformCount = customShader["uniformCount"];
+                                        
+                                        CustomShader shaderComponent(shaderName, uniformCount);
+                                        
+                                        if (customShader.contains("uniforms") && customShader["uniforms"].is_array()) {
+                                            auto &uniformsArray = customShader["uniforms"];
+                                            for (int i = 0; i < uniformCount && i < uniformsArray.size(); i++) {
+                                                if (uniformsArray[i].is_number()) {
+                                                    shaderComponent.uniforms[i] = uniformsArray[i].get<float>();
+                                                }
+                                            }
+                                        }
+                                        
+                                        registry.emplace<CustomShader>(entity, shaderComponent);
+                                    }
+                                }
+                            }, "CustomShader");
                         }
 
                         if (registry.all_of<Position, Shape>(entity)) {
