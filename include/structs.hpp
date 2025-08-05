@@ -271,7 +271,7 @@ struct MetaData {
     std::string title = "";
     std::string description = "";
     std::string author = "";
-    std::string font = "unifont-16.0.04.otf";
+    std::string font = "HomeVideo-Regular.ttf";
     std::string str_seed = ""; // original seed as string (can be words, sentences, etc.)
     int seed = 0;              // numeric seed, converted from str_seed
 

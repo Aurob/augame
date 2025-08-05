@@ -627,14 +627,7 @@ void renderText(const std::string& text, float x, float y, float scale, float r,
     
     // Validate the font exists, otherwise use default
     if (!isValidFont(fontPath)) {
-        printf("Font validation failed for %s, using default unifont-16.0.04.otf\n", fontPath.c_str());
-        fontPath = "resources/fonts/unifont-16.0.04.otf";
-        
-        // If even the default doesn't exist, try one more fallback
-        if (!isValidFont(fontPath)) {
-            printf("Default font not found, using DejaVuSansMono-Bold.ttf as fallback\n");
-            fontPath = "resources/fonts/DejaVuSansMono-Bold.ttf";
-        }
+        fontPath = "resources/fonts/HomeVideo-Regular.ttf";
     }
 
     TTF_Font* font = TTF_OpenFont(fontPath.c_str(), 64);
