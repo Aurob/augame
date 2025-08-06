@@ -61,50 +61,6 @@ extern "C"
     void load_json(char *str)
     {
         nlohmann::json js_json = str_to_json(str);
-        if (js_json.contains("log")) {
-            if (js_json["log"].is_string()) {
-                emlog(js_json["log"].get<std::string>().c_str());
-            } else if (js_json["log"].is_object()) {
-                std::string message;
-                LogLevel level = LogLevel::CONSOLE;
-                
-                // Merge all key-value pairs into a message
-                for (auto& [key, value] : js_json["log"].items()) {
-                    if (key == "level") {
-                        if (value.is_string()) {
-                            std::string levelStr = value.get<std::string>();
-                            if (levelStr == "WARN") level = LogLevel::WARN;
-                            else if (levelStr == "ERROR") level = LogLevel::ERROR;
-                            else if (levelStr == "DEBUG") level = LogLevel::DEBUG;
-                            else if (levelStr == "INFO") level = LogLevel::INFO;
-                        } else if (value.is_number()) {
-                            level = static_cast<LogLevel>(value.get<int>());
-                        }
-                    } else {
-                        if (!message.empty()) message += ", ";
-                        if (!key.empty()) {
-                            // Get the string value without quotes
-                            std::string valueStr;
-                            if (value.is_string()) {
-                                valueStr = value.get<std::string>();
-                            } else {
-                                valueStr = value.dump();
-                            }
-                            message += key + ": " + valueStr;
-                        } else {
-                            // Get the string value without quotes
-                            if (value.is_string()) {
-                                message += value.get<std::string>();
-                            } else {
-                                message += value.dump();
-                            }
-                        }
-                    }
-                }
-                
-                emlog(message.c_str(), level);
-            }
-        }
         if (js_json.contains("world"))
         {
             // zoom
@@ -150,7 +106,9 @@ extern "C"
                             vertexSource,
                             fragmentSource};
 
-                        printf("Created shader map %s\n", shader["name"].get<std::string>().c_str());
+                        // Compile the dynamic shader immediately
+                        createShader(shaderProgramMap[shader["name"]], shader["name"]);
+                        printf("Created and compiled dynamic shader %s\n", shader["name"].get<std::string>().c_str());
                     }
                 }
             }
@@ -225,8 +183,43 @@ extern "C"
             if (meta.contains("font") && meta["font"].is_string()) {
                 metaData.font = meta["font"];
             }
+            if (meta.contains("terrain")) {
+                if (meta["terrain"].is_string()) {
+                    metaData.terrain = meta["terrain"];
+                } else if (meta["terrain"].is_array() && meta["terrain"].size() >= 3) {
+                    // Color array [r, g, b] from JavaScript
+                    metaData.terrain_color[0] = meta["terrain"][0];
+                    metaData.terrain_color[1] = meta["terrain"][1];
+                    metaData.terrain_color[2] = meta["terrain"][2];
+                    metaData.terrain = "color"; // Mark as color instead of shader
+                }
+            }
+            if (meta.contains("void")) {
+                if (meta["void"].is_string()) {
+                    metaData.void_bg = meta["void"];
+                } else if (meta["void"].is_array() && meta["void"].size() >= 3) {
+                    // Color array [r, g, b] from JavaScript  
+                    metaData.void_color[0] = meta["void"][0];
+                    metaData.void_color[1] = meta["void"][1];
+                    metaData.void_color[2] = meta["void"][2];
+                    metaData.void_bg = "color"; // Mark as color
+                }
+            }
+            if (meta.contains("start_menu") && meta["start_menu"].is_string()) {
+                metaData.start_menu = meta["start_menu"];
+            }
+            if (meta.contains("pause_menu") && meta["pause_menu"].is_string()) {
+                metaData.pause_menu = meta["pause_menu"];
+            }
+
+            // Converts the string seed into an int before storing
             if (meta.contains("seed") && meta["seed"].is_string()) {
-                metaData.str_seed = meta["seed"];
+                std::string str_seed = meta["seed"];
+                unsigned int hash = 0;
+                for (char c : str_seed) {
+                    hash = hash * 31 + static_cast<unsigned char>(c);
+                }
+                metaData.seed = static_cast<int>(hash);
             }
         }
 
@@ -560,7 +553,6 @@ extern "C"
                             // World
                             safe_emplace(registry, entity, [&]() {
                                 if(components.contains("World") && components["World"].is_boolean()) {
-                                    printf("World\n");
                                 }
                             }, "World");
 

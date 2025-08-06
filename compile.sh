@@ -1,17 +1,21 @@
 #!/bin/bash
 echo "compile commenced at:" $(date)
 start_time=$(date +%s)
-  em++ -std=c++17 src/$1.cpp \
+  em++ -std=c++17 src/main.cpp \
   -s WASM=1 -s USE_SDL=2 -s USE_WEBGL2=1\
   -s USE_SDL_IMAGE=2\
   -s STB_IMAGE=1\
   -s USE_SDL_TTF=2\
-  --embed-file resources\
+  --embed-file resources/audio\
+  --embed-file resources/fonts\
+  --embed-file resources/shaders\
+  --embed-file resources/text\
+  --embed-file resources/textures\
   -sNO_DISABLE_EXCEPTION_CATCHING\
   -lSDL\
   -s SDL2_IMAGE_FORMATS='["png", "jpg"]'\
   -s EXPORTED_FUNCTIONS="['_main', '_load_json', '_isready','_reload', _malloc, _free, UTF8ToString, stringToUTF8]"\
-  -o build/$1.js\
+  -o build/main.js\
   -O0
   
 

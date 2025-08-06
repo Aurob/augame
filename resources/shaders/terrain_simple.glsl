@@ -81,12 +81,8 @@ float smoothNoise(vec2 p) {
     const float xFreq2 = 0.05; // Secondary frequency for x component
     const float yFreq2 = 0.07; // Secondary frequency for y component
     
-    // Add phase shifts based on seed for more variation
-    float phaseX = sin(seed * 0.1) * 3.14;
-    float phaseY = cos(seed * 0.1) * 3.14;
-    
-    // Combine multiple sine and cosine waves with different frequencies and phases
-    float noise1 = 0.5 * sin(p.x * xFreq1 + phaseX) + 0.5 * cos(p.y * yFreq1 + phaseY);
+    // Combine multiple sine and cosine waves with different frequencies (no phase shifts)
+    float noise1 = 0.5 * sin(p.x * xFreq1) + 0.5 * cos(p.y * yFreq1);
     float noise2 = 0.3 * sin(p.x * xFreq2 + p.y * 0.08) + 0.3 * cos(p.y * yFreq2 - p.x * 0.06);
     float noise3 = 0.2 * sin((p.x + p.y) * 0.12) * cos((p.x - p.y) * 0.09);
     
@@ -127,12 +123,11 @@ float calculate_n(vec2 _coord) {
         // Apply domain warping for higher octaves
         if (i > 3) {
             vec2 warp = vec2(
-                sin(rotatedCoord.y * 0.5 + seed * 0.1),
-                cos(rotatedCoord.x * 0.5 + seed * 0.2)
+                sin(rotatedCoord.y * 0.5 + float(i) * 0.1),
+                cos(rotatedCoord.x * 0.5 + float(i) * 0.2)
             ) * 0.15;
             noiseVal = smoothNoise(rotatedCoord + warp);
         }
-        
         n += layerAmplitude * noiseVal;
         
         // Adjust frequency and amplitude for next layer

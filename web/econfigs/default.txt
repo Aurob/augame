@@ -1,11 +1,14 @@
 meta world "world1"
 meta title "Default World"
 meta description "This is the default world configuration file for the game."
+meta seed "Hello World"
 meta author "rau"
 meta font "HomeVideo-Regular.ttf"
+meta terrain "terrain"
+meta void "#000000"
+meta start_menu "@resources/text/start.txt"
+meta pause_menu "@resources/text/pause.txt"
 
-id -1 pause_entity text "@resources/text/pause.txt" 1 0
-id -1 start_entity text "@resources/text/start.txt" 1 0
 
 id 4 entity4 position 3.0000 3.0000 0 shape 10.0000 10.0000 0 color 0.87 0.87 0.87 1 renderPriority 0 collidable interior
 id 5 entity5 position 13.0000 3.0000 0 shape 12.0000 3.0000 0 color 0.87 0.87 0.87 1 renderPriority 0 collidable interior
