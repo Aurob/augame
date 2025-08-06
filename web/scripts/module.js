@@ -165,7 +165,8 @@ var Module = {
         // Create entities from config strings and collect meta data
         const entities = [];
         const metaData = {};
-        
+        this.metadata = [];
+
         configstr.forEach(input => {
           const builder = new EntityBuilder().parseInput(input);
           const entity = builder.build();
@@ -173,7 +174,9 @@ var Module = {
           if (entity.meta) {
             // Collect meta data
             Object.assign(metaData, entity.meta);
-          } else {
+            this.metadata.push(entity.meta);
+          } 
+          else {
             // Regular entity
             entities.push(entity);
           }
@@ -183,14 +186,28 @@ var Module = {
         if (Object.keys(metaData).length > 0) {
           this.processMeta(metaData);
         }
-        
-        // Send meta data to C++ as well
-        if (Object.keys(metaData).length > 0) {
-          this.js_to_c({ meta: metaData });
-        }
 
-        // Collect all fetch promises for text components
+        // Collect all fetch promises for text components and meta tags
         const fetchPromises = [];
+
+        // Process meta tags for file references
+        Object.keys(metaData).forEach(key => {
+          const value = metaData[key];
+          if (typeof value === 'string' && value.startsWith('@')) {
+            const filePath = value.substring(1).trim();
+            const fetchPromise = fetch(filePath+'?'+Math.random())
+              .then(response => response.text())
+              .then(fileContent => {
+                // Update the meta data with the file content
+                metaData[key] = fileContent;
+              })
+              .catch(error => {
+                console.error(`Failed to fetch meta file: ${filePath}`, error);
+              });
+
+            fetchPromises.push(fetchPromise);
+          }
+        });
 
         // Process each entity for text components that need fetching
         entities.forEach(entity => {
@@ -218,6 +235,11 @@ var Module = {
         // Wait for all fetches to complete before sending to C++
         Promise.all(fetchPromises)
           .then(() => {
+            // Send meta data to C++ after all file fetches complete
+            if (Object.keys(metaData).length > 0) {
+              this.js_to_c({ meta: metaData });
+            }
+
             ECONFIG = {
               "Entities": entities
             };
@@ -261,23 +283,6 @@ var Module = {
     })
   },
 
-  // Add a room to the config
-  addRoom(id, name, x, y, width, height) {
-    // Create room template based on the format in demo.txt
-    const roomTemplate = `
-id ${id} ${name} position ${x} ${y} 0 shape ${width} ${height} 0 color 0.5 0.5 0.5 1.0 renderPriority -1 interior 
-id ${id + 1} ${name}wall_top position ${x} ${y - 1} 0 shape ${width} 2 1 color 0.1 0.2 0.3 1.0 renderPriority 2 inside ${id} textureGroupPart room1 s227 ${width} 2
-id ${id + 2} ${name}wall_top_col position ${x} ${y + 0.5} 1 shape ${width} .1 1 color 0.1 0.2 0.3 1.0 renderPriority 0 inside ${id} collidable
-id ${id + 3} ${name}wall_bottom position ${x} ${y + height - 1} 1 shape ${width} 2 1 color 0.1 0.2 0.3 1.0 renderPriority 1 inside ${id} textureGroupPart room1 s227 ${width} 2
-id ${id + 4} ${name}wall_bottom_col position ${x} ${y + height + 0.5} 1 shape ${width} .1 1 color 0.1 0.2 0.3 1.0 renderPriority 0 inside ${id} collidable
-id ${id + 5} ${name}wall_left position ${x - 0.1} ${y + .5} 1 shape .1 ${height} 1 color 0.1 0.2 0.3 1.0 inside ${id} collidable
-id ${id + 6} ${name}wall_right position ${x + width} ${y + .5} 1 shape .1 ${height} 1 color 0.1 0.2 0.3 1.0 inside ${id} collidable
-`;
-
-    //Append the room template to the existing config data
-    return roomTemplate;
-  },
-  
   processMeta(metaData) {
     // Update document title
     if (metaData.title) {
@@ -369,11 +374,11 @@ id ${id + 6} ${name}wall_right position ${x + width} ${y + .5} 1 shape .1 ${heig
   processShaders(shaders) {
     const fetchPromises = shaders.map(shader => {
       const vertexPromise = shader.vertex && shader.vertex.includes('.glsl')
-        ? fetch(`resources/shaders/${shader.vertex}?${Math.random()}`).then(res => res.text())
+        ? fetch(`${shader.vertex}?${Math.random()}`).then(res => res.text())
         : Promise.resolve(shader.vertex);
 
       const fragmentPromise = shader.fragment && shader.fragment.includes('.glsl')
-        ? fetch(`resources/shaders/${shader.fragment}?${Math.random()}`).then(res => res.text())
+        ? fetch(`${shader.fragment}?${Math.random()}`).then(res => res.text())
         : Promise.resolve(shader.fragment);
 
       return Promise.all([vertexPromise, fragmentPromise]).then(([vertex, fragment]) => {

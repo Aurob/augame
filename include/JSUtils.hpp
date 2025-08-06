@@ -62,36 +62,3 @@ void _js__update_user_position(float x, float y) {
         Module.update_user_position($0, $1);
     }, x, y);
 }
-
-enum LogLevel {
-    CONSOLE = 1,       // Output to console
-    WARN = 2,          // Output to console as a warning
-    ERROR = 4,         // Output to console as an error
-    INFO = 512,        // Output to console as info
-    DEBUG = 256,       // Output to console as debug
-    JS_STACK = 16,     // Add a JS stack trace to the message
-    NO_PATHS = 64,     // Omit file paths in stack traces
-};
-
-void emlog(const char* msg, LogLevel level = CONSOLE) {
-    // Supports log levels:
-    // LogLevel::CONSOLE - Standard output (default)
-    // LogLevel::WARN - Warnings 
-    // LogLevel::ERROR - Errors
-    // LogLevel::DEBUG - Debug
-    // LogLevel::INFO - Info
-    // LogLevel::JS_STACK - Add a JS stack trace
-    // LogLevel::NO_PATHS - Omit file paths in stack traces
-    // Can combine with | for multiple flags
-    
-    // Use emscripten_log which will be compiled to call emscriptenLog internally
-    // This ensures proper warning coloring based on the flags
-    int flags = static_cast<int>(level);
-    
-    // Make sure CONSOLE flag is set if any output is desired
-    if (!(flags & CONSOLE) && (flags & (WARN | ERROR | INFO | DEBUG))) {
-        flags |= CONSOLE;
-    }
-    
-    emscripten_log(flags, "%s", msg);
-}

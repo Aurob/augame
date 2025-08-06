@@ -1,9 +1,17 @@
-id 1 room1 position -5 -5 0 shape 10 10 0 color 0.5 0.5 0.5 1.0 renderPriority -1 interior
-id 3 introtext position 0 1 0 shape 1 1 1 color 1 1 1 1 text "@resources/text/intro.txt" 1 0 renderPriority 4 inside 1
+meta world "test1"
+meta title "Testing"
+meta description "Testing this"
+meta author "rau"
+meta font "HomeVideo-Regular.ttf"
+meta terrain terrain
+meta void 25,25,25
+meta seed "Hello World"
+meta start_menu "Testing"
+meta pause_menu "Paused"
 
--- id 2 room2 position 5 -15 0 shape 2.5 10 0 color 0.5 0.5 0.5 1.0 renderPriority -1 interior textureGroupPart room1 s118 2.5 10 terrain
--- id 121 door1 position 5 -9.5 0 shape 1 .5 0 color 1 1 1 1 inside 1 renderPriority 2 collidable hoverable interactable
+id 1 entity1 position 1.0000 1.5000 0 shape 3.5000 3.5000 0 color 0.48 0.48 0.48 1 renderPriority 0 interior collidable
+id 2 entity2 position 2.0000 1.0000 0 shape 1.0000 1 0 color 0.17 0.14 0.30 1 renderPriority 0 player collidable inside 1 movement 2222 1 0 0 camera 2048 16 0 0 0
+id 2 entity2 position 2.0000 10.0000 0 shape 1.0000 1 0 color 0.17 0.14 0.30 1 renderPriority 0 collidable movement 2222 1 0 0 camera 512 16 0 0 0
 
--- id 91 ui_test collidable position 1 1 0 shape 1 1 1 color 0.26 0.34 0.59 1 inside 1 renderPriority 2 hoverable interactable .1 1  movement 575 .5 1 0
--- id 91 ui_test collidable position 3.32 -3.10 0 shape 0.12 0.31 0.24 color 0.68 0.09 0.37 1 inside 1 renderPriority 2 hoverable interactable .1 1 movement 575 .5 1 0
--- id 91 player_cursor position 5.26 0.32 0 shape .1 .1 0.05 color 0.96 0.39 0.11 1 inside 1 renderPriority 2
+id 2 entity2 position 1.5623 4.6865 0 shape 2.0000 0.5000 0 color 1.00 1.00 1.00 1 renderPriority 0 inside 1 interiorPortal 1 -1 0 -1
+--! id 3 ocean position -5000 -2500 0 shape 10000 10000 0 cshader water1
