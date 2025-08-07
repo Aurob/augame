@@ -57,7 +57,8 @@ const textures = [
     createBasicTexture("hand_open", "hand_thin_small_open.png"),
     createBasicTexture("hand_closed", "hand_thin_small_closed.png"),
     createBasicTexture("key", "key.png"),
-    createBasicTexture("tilewall1", "tilewall1.png")
+    createBasicTexture("tilewall1", "tilewall1.png"),
+    createBasicTexture("center", "center.png"),
 ];
 
 CONFIG.textures = CONFIG.textures.concat(playerTextures, textures);

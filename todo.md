@@ -87,3 +87,8 @@
 
 - Remember to add attributions for any assets
  - HomeVideo-Regular.ttf: https://ggbot.itch.io/home-video-font
+
+
+- when Player is in a room an entity in another room can be seen at certain positions
+ - its only ever at the very edges of the screen
+ - seems like a < <= or > >= problem
