@@ -76,8 +76,8 @@ bool js_loaded() {
     if(!first_start) {
         first_start = true;
         
-        gameState.seed = metaData.seed;
-        srand(gameState.seed);
+        srand(metaData.seed);
+        gameState.seed = rand() % 10000;
 
         loadTextures();
         loadFont();

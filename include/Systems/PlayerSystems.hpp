@@ -46,35 +46,13 @@ void updatePlayer(entt::registry &registry) {
     if(mainCameraEntity != entt::null) {
         auto& camera = registry.get<Camera>(mainCameraEntity);
         Position cameraPos = registry.get<Position>(mainCameraEntity);
+        Shape cameraShape = registry.get<Shape>(mainCameraEntity);
         
         // Calculate cursor world coordinates relative to camera position (not player position)
         playerCursorPos.position.sx = cameraPos.x + ((playerCursorPos.position.x - gameState.width / 2) * camera.defaultGSV / camera.gridSpacing);
         playerCursorPos.position.sy = cameraPos.y + ((playerCursorPos.position.y - gameState.height / 2) * camera.defaultGSV / camera.gridSpacing);
     }
 
-    // Find the entity with Id.name == "player_cursor"
-    // entt::entity cursorEntity = entt::null;
-    // auto idView = registry.view<Id>();
-    // for (auto entity : idView) {
-    //     const auto& id = idView.get<Id>(entity);
-    //     if (id.name == "player_cursor") {
-    //         cursorEntity = entity;
-    //         break;
-    //     }
-    // }
-
-    // if (cursorEntity != entt::null && registry.all_of<Texture>(cursorEntity)) {
-    //     auto& texture = registry.get<Texture>(cursorEntity);
-    //     if (playerKeys.keys[SDL_BUTTON_LEFT]) {
-    //         if (texture.name != "hand_closed") {
-    //             texture.name = "hand_closed";
-    //         }
-    //     } else {
-    //         if (texture.name != "hand_open") {
-    //             texture.name = "hand_open";
-    //         }
-    //     }
-    // }
 
 }
 
