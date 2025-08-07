@@ -128,10 +128,35 @@ class EntityBuilder {
         },
         meta: (parts, i) => {
             // Meta doesn't create components, it returns special metadata
+            const type = parts[i];
+            let value = parts[i+1];
+            
+            // Handle color parsing for terrain and void meta tags
+            if ((type === 'terrain' || type === 'void') && value) {
+                // Check for hex color format
+                if (value.startsWith('#') && value.length === 7) {
+                    const hex = value.substring(1);
+                    const r = parseInt(hex.substring(0, 2), 16) / 255.0;
+                    const g = parseInt(hex.substring(2, 4), 16) / 255.0;
+                    const b = parseInt(hex.substring(4, 6), 16) / 255.0;
+                    value = [r, g, b];
+                }
+                // Check for RGB format (r,g,b)
+                else if (value.includes(',')) {
+                    const rgbParts = value.split(',').map(s => s.trim());
+                    if (rgbParts.length === 3) {
+                        const r = Math.max(0, Math.min(255, parseInt(rgbParts[0]))) / 255.0;
+                        const g = Math.max(0, Math.min(255, parseInt(rgbParts[1]))) / 255.0;
+                        const b = Math.max(0, Math.min(255, parseInt(rgbParts[2]))) / 255.0;
+                        value = [r, g, b];
+                    }
+                }
+            }
+            
             return {
                 _meta: {
-                    type: parts[i],
-                    value: parts[i+1]
+                    type: type,
+                    value: value
                 }
             };
         },

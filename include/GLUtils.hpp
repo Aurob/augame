@@ -485,6 +485,30 @@ GLuint createProgram(const char* vertexShaderSrc, const char* fragmentShaderSrc)
     return program;
 }
 
+// Storage for persistent shader strings
+std::unordered_map<std::string, std::string> shaderSourceStorage;
+
+// Helper function to read shader files from embedded filesystem
+const char* readShaderFile(const std::string& filePath) {
+    FILE* file = fopen(filePath.c_str(), "r");
+    if (!file) {
+        printf("Failed to open shader file: %s\n", filePath.c_str());
+        return "";
+    }
+    
+    fseek(file, 0, SEEK_END);
+    long fileSize = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    
+    std::string content(fileSize, '\0');
+    fread(&content[0], 1, fileSize, file);
+    fclose(file);
+    
+    // Store in persistent storage and return pointer
+    shaderSourceStorage[filePath] = content;
+    return shaderSourceStorage[filePath].c_str();
+}
+
 void loadImageAndCreateTexture(const char* imagePath, GLuint &textureID) {
     SDL_Surface* image = IMG_Load(imagePath);
     if (!image) {
@@ -577,14 +601,44 @@ GLuint loadGLTexture(GLuint &shaderProgram, std::string textureSrc, int &width, 
 }
 
 void loadTextures() {
+    // Load static shaders from embedded files
+    
+    // Font shader
+    shaderGLSLMap["font"] = {
+        readShaderFile("resources/shaders/font_v.glsl"),
+        readShaderFile("resources/shaders/font_f.glsl")
+    };
+    
+    // Terrain shader
+    shaderGLSLMap["terrain"] = {
+        readShaderFile("resources/shaders/terrain_v.glsl"),
+        readShaderFile("resources/shaders/terrain_simple.glsl")
+    };
+    
+    // Debug entity shader (test_rgb)
+    shaderGLSLMap["debug_entity"] = {
+        readShaderFile("resources/shaders/test_rgb_v.glsl"),
+        readShaderFile("resources/shaders/test_rgb_f.glsl")
+    };
+    
+    // UI Layer shader
+    shaderGLSLMap["ui_layer"] = {
+        readShaderFile("resources/shaders/ui_layer_v.glsl"),
+        readShaderFile("resources/shaders/ui_layer_f.glsl")
+    };
+    
+    // Texture shader (vert_tex + frag_tex)
+    shaderGLSLMap["texture"] = {
+        readShaderFile("resources/shaders/vert_tex.glsl"),
+        readShaderFile("resources/shaders/frag_tex.glsl")
+    };
+    
+    // Create static shader programs
     createShader(shaderProgramMap["terrain"], "terrain");
     createShader(shaderProgramMap["ui_layer"], "ui_layer");
     createShader(shaderProgramMap["texture"], "texture");
     createShader(shaderProgramMap["debug_entity"], "debug_entity");
-    createShader(shaderProgramMap["grid"], "grid");
-    createShader(shaderProgramMap["colorquads"], "colorquads");
-    createShader(shaderProgramMap["terrainmap"], "terrainmap");
-    createShader(shaderProgramMap["water1"], "water1");
+    createShader(shaderProgramMap["font"], "font");
 
     // Load textures from textureMap
     for(auto& [name, src] : textureMap) {
@@ -727,6 +781,43 @@ void renderAll() {
         playerScreenY = playerPos.sy;
     }
 
+    // Set clear color based on player context and meta tags
+    float clearColor[3];
+    bool playerIsInside = false;
+    Inside playerInside{};
+    
+    if (hasPlayer) {
+        playerIsInside = registry.all_of<Inside>(_player);
+        playerInside = (playerIsInside) ? registry.get<Inside>(_player) : Inside{};
+    }
+    
+    if (playerIsInside && static_cast<int>(playerInside.interior) != -1) {
+        // Player is inside - use void color
+        if (metaData.void_bg == "color") {
+            clearColor[0] = metaData.void_color[0];
+            clearColor[1] = metaData.void_color[1];
+            clearColor[2] = metaData.void_color[2];
+        } else {
+            // Default void color is black
+            clearColor[0] = 0.0f;
+            clearColor[1] = 0.0f;
+            clearColor[2] = 0.0f;
+        }
+    } else {
+        // Player is outside - use terrain color if terrain is color
+        if (metaData.terrain == "color") {
+            clearColor[0] = metaData.terrain_color[0];
+            clearColor[1] = metaData.terrain_color[1];
+            clearColor[2] = metaData.terrain_color[2];
+        } else {
+            // Default clear color for terrain shaders
+            clearColor[0] = 0.0f;
+            clearColor[1] = 0.0f;
+            clearColor[2] = 0.0f;
+        }
+    }
+    
+    glClearColor(clearColor[0], clearColor[1], clearColor[2], 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -737,27 +828,29 @@ void renderAll() {
         if(cameraEntity == entt::null) return; // No camera, can't render
         
         auto& camera = registry.get<Camera>(cameraEntity);
-        bool playerIsInside = false;
-        Inside playerInside{};
-        if (hasPlayer) {
-            playerIsInside = registry.all_of<Inside>(_player);
-            playerInside = (playerIsInside) ? registry.get<Inside>(_player) : Inside{};
-        }
+        auto& cameraShape = registry.get<Shape>(cameraEntity); // Get camera shape for centering offset
 
-        float rgb[3] = {0.2f, 0.5f, 0.2f}; // lightish dark green
-        if (!playerIsInside || static_cast<int>(playerInside.interior) == -1) {
-            // Render terrain
+        // Render terrain shader if player is outside and terrain is a shader
+        if (!playerIsInside && metaData.terrain == "terrain") {
+            // Determine which shader to use
+            std::string shaderName = metaData.terrain;
+            
+            float rgb[3] = {0.2f, 0.5f, 0.2f}; // lightish dark green for terrain
             float offsetArray[2] = {camera.offset.x, camera.offset.y};
             float topleftArray[2] = {camera.topLeftTile.x, camera.topLeftTile.y};
-            updateUniforms(
-                shaderProgramMap["terrain"],
-                camera.gridSpacing, 
-                offsetArray, 
-                gameState.width, gameState.height, 
-                topleftArray,
-                generationSize,
-                rgb
-            );
+            
+            // Use the appropriate shader program
+            if (shaderProgramMap.find(shaderName) != shaderProgramMap.end()) {
+                updateUniforms(
+                    shaderProgramMap[shaderName],
+                    camera.gridSpacing, 
+                    offsetArray, 
+                    gameState.width, gameState.height, 
+                    topleftArray,
+                    generationSize,
+                    rgb
+                );
+            }
         }
             
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -819,8 +912,8 @@ void renderAll() {
                 // Back wall (top of interior shape) - rendered first when inside
                 updateUniformsDebug(shaderProgramMap["debug_entity"],
                     wallR, wallG, wallB, wallA, // Opaque when inside
-                    position.sx,
-                    position.sy + shape.scaled_size.y + standardWallHeight/2,
+                    position.sx + cameraShape.scaled_size.x,
+                    position.sy + cameraShape.scaled_size.y + shape.scaled_size.y + standardWallHeight/2,
                     shape.scaled_size.x, standardWallHeight + standardWallHeight*1.5,
                     0.0f);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -834,8 +927,8 @@ void renderAll() {
                 // Front wall (bottom of interior shape) - rendered first when outside, opaque
                 updateUniformsDebug(shaderProgramMap["debug_entity"],
                     wallR, wallG, wallB, wallA, // Opaque when outside
-                    position.sx,
-                    position.sy - shape.scaled_size.y + standardWallHeight,
+                    position.sx + cameraShape.scaled_size.x,
+                    position.sy + cameraShape.scaled_size.y - shape.scaled_size.y + standardWallHeight,
                     shape.scaled_size.x, standardWallHeight + standardWallHeight/2,
                     0.0f);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -867,8 +960,8 @@ void renderAll() {
                         // Use entity's own position, not offset by player
                         updateUniformsTexture(shaderProgramMap["texture"], 
                             textureIDMap[texture.name],
-                            position.sx,
-                            position.sy,
+                            position.sx + cameraShape.scaled_size.x,
+                            position.sy + cameraShape.scaled_size.y,
                             shape.scaled_size.x, 
                             shape.scaled_size.y,
                             texture.x, texture.y, texture.w, texture.h
@@ -890,8 +983,8 @@ void renderAll() {
                             int divisorY = textureGroupPart.tiley;
                             auto ssizex = shape.scaled_size.x / divisorX;
                             auto ssizey = shape.scaled_size.y / divisorY;
-                            auto posX = position.sx;
-                            auto posY = position.sy;
+                            auto posX = position.sx + cameraShape.scaled_size.x;
+                            auto posY = position.sy + cameraShape.scaled_size.y;
 
                             // Increase size by 1%
                             auto increasedSsizex = ssizex;
@@ -913,8 +1006,8 @@ void renderAll() {
                         else {
                             updateUniformsTexture(shaderProgramMap["texture"], 
                                 rootTexture,
-                                position.sx,
-                                position.sy,
+                                position.sx + cameraShape.scaled_size.x,
+                                position.sy + cameraShape.scaled_size.y,
                                 shape.scaled_size.x,
                                 shape.scaled_size.y,
                                 texture.x, texture.y, texture.w, texture.h
@@ -934,7 +1027,7 @@ void renderAll() {
 
                         updateUniformsTexture(shaderProgramMap["texture"], 
                             textureIDMap[current_texture.name],
-                            position.sx, position.sy,
+                            position.sx + cameraShape.scaled_size.x, position.sy + cameraShape.scaled_size.y,
                             shape.scaled_size.x * current_texture.scalex, shape.scaled_size.y * current_texture.scaley,
                             current_texture.x, current_texture.y, current_texture.w, current_texture.h, angle);
                         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -947,8 +1040,8 @@ void renderAll() {
 
                         updateUniformsTexture(shaderProgramMap["texture"], 
                             textureIDMap[current_texture.name],
-                            position.sx,
-                            position.sy,
+                            position.sx + cameraShape.scaled_size.x,
+                            position.sy + cameraShape.scaled_size.y,
                             shape.scaled_size.x * current_texture.scalex, 
                             shape.scaled_size.y * current_texture.scaley,
                             current_texture.x, current_texture.y, 
@@ -967,8 +1060,8 @@ void renderAll() {
                     // Use the same update pattern as debug/color entities
                     updateUniformsDebug(shaderProgramMap[customShader.shaderName],
                         1.0f, 1.0f, 1.0f, 1.0f, // Default white color
-                        position.sx, 
-                        position.sy,
+                        position.sx + cameraShape.scaled_size.x, 
+                        position.sy + cameraShape.scaled_size.y,
                         shape.scaled_size.x, shape.scaled_size.y, 
                         angle);
                     
@@ -1042,8 +1135,8 @@ void renderAll() {
 
                     updateUniformsDebug(shaderProgramMap["debug_entity"],
                         r, g, b, color.a,
-                        position.sx, 
-                        position.sy,
+                        position.sx + cameraShape.scaled_size.x,
+                        position.sy + cameraShape.scaled_size.y,
                         shape.scaled_size.x, shape.scaled_size.y, 
                         angle);
                     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -1065,8 +1158,8 @@ void renderAll() {
                 a = text.hide ? 0.0f : a;
 
                 std::string textStr = text.text;
-                float xVal = position.sx;
-                float yVal = position.sy;
+                float xVal = position.sx + cameraShape.scaled_size.x;
+                float yVal = position.sy + cameraShape.scaled_size.y;
                 float scaleVal = (shape.scaled_size.x+shape.scaled_size.y)/200;
 
                 renderText(textStr, xVal, yVal, scaleVal, r, g, b, a);
@@ -1074,22 +1167,7 @@ void renderAll() {
         }
 
         // PASS 3: Render second wall layer (depends on player context)
-        if (playerIsInside) {
-            // When inside: render front walls last (in front of everything) - semi-transparent
-            for(auto& entity : interiorEntities) {
-                auto position = registry.get<Position>(entity);
-                auto shape = registry.get<Shape>(entity);
-                
-                // Front wall (bottom of interior shape) - rendered last when inside, semi-transparent
-                updateUniformsDebug(shaderProgramMap["debug_entity"],
-                    wallR, wallG, wallB, 0.75f, // Semi-transparent when inside
-                    position.sx,
-                    position.sy - shape.scaled_size.y + standardWallHeight,
-                    shape.scaled_size.x, standardWallHeight + standardWallHeight/2,
-                    0.0f);
-                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-            }
-        } else {
+        if (!playerIsInside) {
             // When outside: render back walls last (so player walks under them) - translucent for visibility
             for(auto& entity : interiorEntities) {
                 auto position = registry.get<Position>(entity);
@@ -1097,9 +1175,9 @@ void renderAll() {
                 
                 // Back wall (top of interior shape) - rendered last when outside, translucent
                 updateUniformsDebug(shaderProgramMap["debug_entity"],
-                    wallR, wallG, wallB, 0.4f, // More translucent when outside for player visibility
-                    position.sx,
-                    position.sy + shape.scaled_size.y + standardWallHeight/2,
+                    wallR, wallG, wallB, wallA, // More translucent when outside for player visibility
+                    position.sx + cameraShape.scaled_size.x,
+                    position.sy + cameraShape.scaled_size.y + shape.scaled_size.y + standardWallHeight/2,
                     shape.scaled_size.x, standardWallHeight + standardWallHeight*1.5,
                     0.0f);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -1108,31 +1186,24 @@ void renderAll() {
 
     }
 
-    // Only render menu entity's Text if gameState == 0
+    // Render menu text from meta tags based on game state
     if (gameState.gameState <= 0) {
         // Get camera for UI scaling using priority-based selection
         entt::entity cameraEntity = selectMainCamera(registry);
         if(cameraEntity != entt::null) {
             auto& camera = registry.get<Camera>(cameraEntity);
-        // Find the entity with Id.name == "menu_entity" and a Text component
-        auto view = registry.view<Id, Text>();
-        for (auto e : view) {
-            const auto& id = view.get<Id>(e);
-            if ((gameState.gameState == 0 && id.name == "pause_entity") || (gameState.gameState == -1 && id.name == "start_entity")) {
-                const auto& textComp = view.get<Text>(e);
-                float r = 0.0f, g = 0.0f, b = 0.0f, a = 1.0f;
-                // Use color from entity if it has a Color component
-                if (registry.all_of<Color>(e)) {
-                    const auto& color = registry.get<Color>(e);
-                    r = color.r;
-                    g = color.g;
-                    b = color.b;
-                    a = color.a;
-                }
-                a = textComp.hide ? 0.0f : a;
-
-                // Center of the screen (use same values as before)
-                // Pre-calculate common scaling factors
+            
+            std::string menuText = "";
+            if (gameState.gameState == 0 && !metaData.pause_menu.empty()) {
+                // Pause menu
+                menuText = metaData.pause_menu;
+            } else if (gameState.gameState == -1 && !metaData.start_menu.empty()) {
+                // Start menu
+                menuText = metaData.start_menu;
+            }
+            
+            if (!menuText.empty()) {
+                // Center of the screen
                 float xScale = camera.gridSpacing / (camera.defaultGSV * gameState.width);
                 float yScale = camera.gridSpacing / (camera.defaultGSV * gameState.height);
                 float offsetArray[2] = {camera.offset.x, camera.offset.y};
@@ -1140,6 +1211,8 @@ void renderAll() {
                 float x = xScale;
                 float y = yScale;
                 float scale = 0.001f;
+                
+                float r = 0.0f, g = 0.0f, b = 0.0f, a = 1.0f;
                 
                 float rgb[3] = {0.0f, 0.0f, 0.0f};
                 updateUniforms(
@@ -1151,11 +1224,9 @@ void renderAll() {
                     generationSize,
                     rgb
                 );
-                renderText(textComp.text, x, y, scale, r, g, b, a);
-                break; // Only render the first found menu_entity
+                renderText(menuText, x, y, scale, r, g, b, a);
             }
         }
-        } // Close camera view check
     }
 
     

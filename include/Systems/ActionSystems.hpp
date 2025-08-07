@@ -9,6 +9,9 @@
 #include <vector>
 #include <unordered_map>
 
+// Forward declaration from ViewSystems.hpp
+entt::entity selectMainCamera(entt::registry &registry);
+
 extern p2d::Physics physics;
 extern float deltaTime;
 extern GameState gameState;
@@ -102,11 +105,19 @@ void updateInteractions(entt::registry &registry)
         float normalizedCursorX = -((cursor.position.x / gameState.width) * 2.0f - 1.0f);
         float normalizedCursorY = (1.0f - (cursor.position.y / gameState.height) * 2.0f);
 
+        // Get camera shape for centering offset (same as rendering)
+        entt::entity cameraEntity = selectMainCamera(registry);
+        auto& cameraShape = registry.get<Shape>(cameraEntity);
+        
+        // Apply same camera centering offset used in rendering
+        float adjustedEntityX = position.sx + cameraShape.scaled_size.x;
+        float adjustedEntityY = position.sy + cameraShape.scaled_size.y;
+
         // Rectangle (AABB) collision: no more radius, just exact bbox
-        if (normalizedCursorX >= position.sx - shape.scaled_size.x &&
-            normalizedCursorX <= position.sx + shape.scaled_size.x &&
-            normalizedCursorY >= position.sy - shape.scaled_size.y &&
-            normalizedCursorY <= position.sy + shape.scaled_size.y)
+        if (normalizedCursorX >= adjustedEntityX - shape.scaled_size.x &&
+            normalizedCursorX <= adjustedEntityX + shape.scaled_size.x &&
+            normalizedCursorY >= adjustedEntityY - shape.scaled_size.y &&
+            normalizedCursorY <= adjustedEntityY + shape.scaled_size.y)
         {
             mouseCollides = true;
         }
@@ -226,8 +237,13 @@ void updateInteractions(entt::registry &registry)
                 auto& cursor = registry.get<Cursor>(interacted.interactor);
                 // If Cursor.downtime > 2, move the interacted object's position to the cursor position
                 if (cursor.downtime > 2) {
-                    float final_x = cursor.position.sx;
-                    float final_y = cursor.position.sy;
+                    // Apply inverse camera offset to cursor position for consistent dragging
+                    entt::entity cameraEntity = selectMainCamera(registry);
+                    auto& cameraShape = registry.get<Shape>(cameraEntity);
+                    auto& shape = registry.get<Shape>(entity);
+
+                    float final_x = cursor.position.sx + shape.size.x/4;
+                    float final_y = cursor.position.sy + shape.size.y;
 
                     if (registry.all_of<PhysicsBodyRect>(entity)) {
                         auto& physBody = registry.get<PhysicsBodyRect>(entity);
@@ -235,12 +251,11 @@ void updateInteractions(entt::registry &registry)
                             physBody.body->setPosition({final_x, final_y});
                         }
                     }
-                    // If entity does not have a PhysicsBodyRect, just set its Position
+
                     if (registry.all_of<Position>(entity)) {
-                        auto& shape = registry.get<Shape>(entity);
                         auto& pos = registry.get<Position>(entity);
-                        pos.x = final_x - shape.size.x/2;
-                        pos.y = final_y - shape.size.y/2;
+                        pos.x = final_x;
+                        pos.y = final_y;
                     }
                 }
             }

@@ -32,7 +32,7 @@ float noise(vec2 p) {
 float fbm(vec2 p) {
     float value = 0.0;
     float amplitude = 4.5;
-    float frequency = 1.0;
+    float frequency = .20;
     
     for (int i = 0; i < 4; i++) {
         value += amplitude * noise(p * frequency);

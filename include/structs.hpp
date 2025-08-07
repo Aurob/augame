@@ -272,18 +272,16 @@ struct MetaData {
     std::string description = "";
     std::string author = "";
     std::string font = "HomeVideo-Regular.ttf";
+    std::string terrain = "terrain"; // shader name or color for outside rendering
+    std::vector<float> terrain_color = {0.0f, 0.0f, 0.0f}; // parsed color if terrain is color
+    std::string void_bg = ""; // color for inside rendering (empty = black)
+    std::vector<float> void_color = {0.0f, 0.0f, 0.0f}; // parsed void color
+    std::string start_menu = "Start"; // path to start menu text file
+    std::string pause_menu = "Paused"; // path to pause menu text file
     std::string str_seed = ""; // original seed as string (can be words, sentences, etc.)
     int seed = 0;              // numeric seed, converted from str_seed
+    
 
-    // Setter for str_seed that also updates the numeric seed
-    void set_seed(const std::string& s) {
-        str_seed = s;
-        unsigned int hash = 0;
-        for (char c : str_seed) {
-            hash = hash * 31 + static_cast<unsigned char>(c);
-        }
-        seed = static_cast<int>(hash);
-    }
 };
 
 struct GameState {
@@ -291,7 +289,7 @@ struct GameState {
     int height = 1024;
     float deltaTime = 0.0f;
     bool ready = false;
-    float seed = 0.0f;
+    int seed = 0;
     int gameState = -2;
     bool playerCameraMode = false; // true for player camera, false for priority camera
 };
