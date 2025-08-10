@@ -131,3 +131,15 @@ meta pause_menu "@resources/text/pause.txt"           // Load text from file
 - Shader names (like "terrain", "water1") render the corresponding shader programs
 - File references with `@` prefix are loaded asynchronously in JavaScript (same as text component)
 - Invalid color formats fall back to black
+
+## Config File Syntax
+
+Comments in econfig files use `--` (double dash), NOT `//`:
+```
+-- This is a comment
+id 100 entity position 1 2 0 shape 1 1 0 color 1 0 0 1
+```
+
+## Development Notes
+
+- don't compile or try to run the python server, I'll do that

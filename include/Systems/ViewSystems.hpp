@@ -205,24 +205,13 @@ void updatePositions(entt::registry &registry)
         bool isVisible = true;
         bool isInView = true;
 
-        // Skip if entity has Id.name == "player_cursor"
-        if (registry.all_of<Id>(entity)) {
-            auto &id = registry.get<Id>(entity);
-            if (id.name == "player_cursor") {
-                isWithinBounds = false;
-            }
-        }
-
         if (isWithinBounds)
         {
             bool entityIsPortal = registry.all_of<InteriorPortal>(entity);
 
             if(registry.all_of<Inside>(entity)) { 
                 auto _interior = registry.get<Inside>(entity).interior;
-                // if(_interior != playerInterior) {
-                //             isVisible = false;
-                //             isInView = false;
-                // }
+
                 if(!entityIsPortal) {
                     if(!cameraIsInside) {
                         bool hideInside = registry.get<Interior>(_interior).hideInside;
