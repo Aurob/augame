@@ -16,12 +16,14 @@ void updateFrame()
     updateActions(registry);
     updatePhysics(registry);
     updatePlayer(registry);
-    updateCamera(registry);
-    updateShapes(registry);
-    updatePositions(registry);   
+    updateShapes(registry);  
     updateInteractions(registry);
     updateAnimations(registry);
     updateOther(registry);
+    updatePositions(registry); 
+    updateCamera(registry);
+
+
 
 
     // Update JS with the player's position using a view to get Player

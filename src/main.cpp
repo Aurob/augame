@@ -72,7 +72,6 @@ int main(int argc, char *argv[])
 
 bool js_loaded() {
     if(!ready) return false;
-    printf("%d\n", ready);
     if(!first_start) {
         first_start = true;
         

@@ -409,8 +409,10 @@ void createShader(GLuint &shaderProgram, std::string program_name) {
 
     // Specify the layout of the shader vertex data
     GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
-    glEnableVertexAttribArray(posAttrib);
-    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    if (posAttrib != -1) {
+        glEnableVertexAttribArray(posAttrib);
+        glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    }
 
     // Don't forget to bind the VAO before you draw
     GLuint ebo;
@@ -464,6 +466,9 @@ void createShader(GLuint &shaderProgram, std::string program_name) {
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
+    // Clean up buffers to prevent memory leak
+    glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, &ebo);
 
     shaderProgramMap[program_name] = shaderProgram;
 }
@@ -590,12 +595,16 @@ GLuint loadGLTexture(GLuint &shaderProgram, std::string textureSrc, int &width, 
 
     // Get the location of the 'position' attribute in the shader program
     GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
-    glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
-    glEnableVertexAttribArray(posAttrib);
+    if (posAttrib != -1) {
+        glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
+        glEnableVertexAttribArray(posAttrib);
+    }
     // Get the location of the 'texCoord' attribute in the shader program
     GLint texAttrib = glGetAttribLocation(shaderProgram, "texCoord");
-    glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
-    glEnableVertexAttribArray(texAttrib);
+    if (texAttrib != -1) {
+        glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
+        glEnableVertexAttribArray(texAttrib);
+    }
 
     return textureID;
 }
@@ -745,6 +754,9 @@ void renderText(const std::string& text, float x, float y, float scale, float r,
     glUniform1i(texLoc, 0);
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+    // Clean up the texture to prevent memory leak
+    glDeleteTextures(1, &texture);
 
     SDL_FreeSurface(rgba_surface);
     SDL_FreeSurface(surface);
@@ -943,207 +955,210 @@ void renderAll() {
             bool isDebug = registry.all_of<Debug>(entity);
             bool is = registry.all_of<Teleport>(entity);
 
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            // Render texture components (if any)
+            if (registry.all_of<Texture>(entity)) {
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                const auto& texture = registry.get<Texture>(entity);
+
+                // Use entity's own position, not offset by player
+                updateUniformsTexture(shaderProgramMap["texture"], 
+                    textureIDMap[texture.name],
+                    position.sx + cameraShape.scaled_size.x,
+                    position.sy + cameraShape.scaled_size.y,
+                    shape.scaled_size.x, 
+                    shape.scaled_size.y,
+                    texture.x, texture.y, texture.w, texture.h
+                );
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            }
             
-            if(!registry.all_of<Text>(entity)) {
-                if (
-                    registry.all_of<Texture>(entity) ||
-                    registry.all_of<TextureGroupPart>(entity) ||
-                    registry.all_of<Textures>(entity) ||
-                    (registry.all_of<TextureAlts>(entity) && registry.all_of<Player>(entity))
-                ) {
-                    // --- Texture (single) ---
-                    if (registry.all_of<Texture>(entity)) {
-                        const auto& texture = registry.get<Texture>(entity);
+            // Render TextureGroupPart components (if any)
+            if (registry.all_of<TextureGroupPart>(entity)) {
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                const auto& textureGroupPart = registry.get<TextureGroupPart>(entity);
+                auto groupName = textureGroupPart.groupName;
+                auto partName = textureGroupPart.partName;
 
-                        // Use entity's own position, not offset by player
-                        updateUniformsTexture(shaderProgramMap["texture"], 
-                            textureIDMap[texture.name],
-                            position.sx + cameraShape.scaled_size.x,
-                            position.sy + cameraShape.scaled_size.y,
-                            shape.scaled_size.x, 
-                            shape.scaled_size.y,
-                            texture.x, texture.y, texture.w, texture.h
-                        );
-                        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-                    }
-                    // --- TextureGroupPart ---
-                    else if (registry.all_of<TextureGroupPart>(entity)) {
-                        const auto& textureGroupPart = registry.get<TextureGroupPart>(entity);
-                        auto groupName = textureGroupPart.groupName;
-                        auto partName = textureGroupPart.partName;
+                auto rootTexture = textureIDMap[groupName];
+                const auto& texture = textureGroupMap[groupName].at(partName);
 
-                        auto rootTexture = textureIDMap[groupName];
-                        const auto& texture = textureGroupMap[groupName].at(partName);
+                auto IdName = registry.get<Id>(entity).name;
+                if (textureGroupPart.tilex > 0 && textureGroupPart.tiley > 0) {
+                    int divisorX = textureGroupPart.tilex;
+                    int divisorY = textureGroupPart.tiley;
+                    auto ssizex = shape.scaled_size.x / divisorX;
+                    auto ssizey = shape.scaled_size.y / divisorY;
+                    auto posX = position.sx + cameraShape.scaled_size.x;
+                    auto posY = position.sy + cameraShape.scaled_size.y;
 
-                        auto IdName = registry.get<Id>(entity).name;
-                        if (textureGroupPart.tilex > 0 && textureGroupPart.tiley > 0) {
-                            int divisorX = textureGroupPart.tilex;
-                            int divisorY = textureGroupPart.tiley;
-                            auto ssizex = shape.scaled_size.x / divisorX;
-                            auto ssizey = shape.scaled_size.y / divisorY;
-                            auto posX = position.sx + cameraShape.scaled_size.x;
-                            auto posY = position.sy + cameraShape.scaled_size.y;
+                    // Increase size by 1%
+                    auto increasedSsizex = ssizex;
+                    auto increasedSsizey = ssizey;
 
-                            // Increase size by 1%
-                            auto increasedSsizex = ssizex;
-                            auto increasedSsizey = ssizey;
-
-                            for (int i = 0; i < divisorX; ++i) {
-                                for (int j = 0; j < divisorY; ++j) {
-                                    updateUniformsTexture(shaderProgramMap["texture"], 
-                                        rootTexture,
-                                        (posX + i * ssizex*2) - shape.scaled_size.x + ssizex - (increasedSsizex - ssizex) / 2,
-                                        (posY + j * ssizey*2),
-                                        increasedSsizex, increasedSsizey,
-                                        texture.x, texture.y, texture.w, texture.h
-                                    );
-                                    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-                                }
-                            }
-                        } 
-                        else {
+                    for (int i = 0; i < divisorX; ++i) {
+                        for (int j = 0; j < divisorY; ++j) {
                             updateUniformsTexture(shaderProgramMap["texture"], 
                                 rootTexture,
-                                position.sx + cameraShape.scaled_size.x,
-                                position.sy + cameraShape.scaled_size.y,
-                                shape.scaled_size.x,
-                                shape.scaled_size.y,
+                                (posX + i * ssizex*2) - shape.scaled_size.x + ssizex - (increasedSsizex - ssizex) / 2,
+                                (posY + j * ssizey*2),
+                                increasedSsizex, increasedSsizey,
                                 texture.x, texture.y, texture.w, texture.h
                             );
                             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
                         }
                     }
-                    // --- Textures (animated or multi-frame) ---
-                    else if (registry.all_of<Textures>(entity)) {
-                        const auto& textures = registry.get<Textures>(entity);
-                        const auto& current_texture = textures.textures[textures.current];
-
-                        float angle = 0.0f;
-                        if(registry.all_of<Rotation>(entity)) {
-                            angle = registry.get<Rotation>(entity).angle;
-                        }
-
-                        updateUniformsTexture(shaderProgramMap["texture"], 
-                            textureIDMap[current_texture.name],
-                            position.sx + cameraShape.scaled_size.x, position.sy + cameraShape.scaled_size.y,
-                            shape.scaled_size.x * current_texture.scalex, shape.scaled_size.y * current_texture.scaley,
-                            current_texture.x, current_texture.y, current_texture.w, current_texture.h, angle);
-                        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-                    }
-                    // --- TextureAlts (player) ---
-                    else if (registry.all_of<TextureAlts>(entity) && registry.all_of<Player>(entity)) {
-                        const auto& textureAlts = registry.get<TextureAlts>(entity);
-                        const auto& currentTextures = textureAlts.alts.at(textureAlts.current);
-                        const auto& current_texture = currentTextures.textures[currentTextures.current];
-
-                        updateUniformsTexture(shaderProgramMap["texture"], 
-                            textureIDMap[current_texture.name],
-                            position.sx + cameraShape.scaled_size.x,
-                            position.sy + cameraShape.scaled_size.y,
-                            shape.scaled_size.x * current_texture.scalex, 
-                            shape.scaled_size.y * current_texture.scaley,
-                            current_texture.x, current_texture.y, 
-                            current_texture.w, current_texture.h);
-                        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-                    }
-                }
-                else if(registry.all_of<CustomShader>(entity)) {
-                    const auto& customShader = registry.get<CustomShader>(entity);
-                    
-                    float angle = 0.0f;
-                    if(registry.all_of<Rotation>(entity)) {
-                        angle = registry.get<Rotation>(entity).angle;
-                    }
-                    
-                    // Use the same update pattern as debug/color entities
-                    updateUniformsDebug(shaderProgramMap[customShader.shaderName],
-                        1.0f, 1.0f, 1.0f, 1.0f, // Default white color
-                        position.sx + cameraShape.scaled_size.x, 
-                        position.sy + cameraShape.scaled_size.y,
-                        shape.scaled_size.x, shape.scaled_size.y, 
-                        angle);
-                    
-                    // Add custom uniforms for all cshaders
-                    if (customShader.uniforms.size() >= 3) {
-                        // All cshaders now support seed
-                        GLint seedLocation = glGetUniformLocation(shaderProgramMap[customShader.shaderName], "uSeed");
-                        glUniform1f(seedLocation, customShader.uniforms[2]);
-                        
-                        // Terrain shader also needs center position
-                        if (customShader.shaderName == "terrainmap") {
-                            GLint centerPosLocation = glGetUniformLocation(shaderProgramMap[customShader.shaderName], "uCenterPos");
-                            glUniform2f(centerPosLocation, customShader.uniforms[0], customShader.uniforms[1]);
-                        }
-                        
-                    }
-                    
-                    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-                }
-                else if(registry.all_of<Color>(entity)) {
-                    auto color = registry.get<Color>(entity);
-
-                    float angle = 0.0f;
-                    if(registry.all_of<Rotation>(entity)) {
-                        angle = registry.get<Rotation>(entity).angle;
-                    }
-
-                    float r = color.r;
-                    float g = color.g; 
-                    float b = color.b;
-
-                    // InteriorPortal color override
-                    if (registry.all_of<InteriorPortal>(entity)) {
-                        const auto& portal = registry.get<InteriorPortal>(entity);
-                        // Offset the original color toward green or red, preserving darkness/brightness
-                        float maxComponent = std::max({r, g, b, 0.0001f});
-                        float scale = (maxComponent > 0.0f) ? (1.0f / maxComponent) : 1.0f;
-                        // Normalize to [0,1] range for offsetting
-                        float orig_r = r * scale;
-                        float orig_g = g * scale;
-                        float orig_b = b * scale;
-
-                        if (!portal.locked) {
-                            // Green: keep original color, but set green to max, red and blue to original
-                            r = orig_r * 0.3f; // darken red
-                            g = std::max(0.7f, orig_g); // boost green
-                            b = orig_b * 0.3f; // darken blue
-                        } else {
-                            // Red: keep original color, but set red to max, green and blue to original
-                            r = std::max(0.7f, orig_r); // boost red
-                            g = orig_g * 0.3f; // darken green
-                            b = orig_b * 0.3f; // darken blue
-                        }
-                        // Rescale to original intensity
-                        float intensity = std::max({color.r, color.g, color.b, 0.0001f});
-                        r *= intensity;
-                        g *= intensity;
-                        b *= intensity;
-                    }
-
-                    if(registry.all_of<Hovered>(entity)) {
-                        r = 0.0f;
-                        g = 0.0f;
-                        b = 1.0f;
-                    }
-                    if(registry.all_of<Interacted>(entity)) {
-                        r = 0.0f;
-                        g = 1.0f;
-                        b = 0.0f;
-                    }
-
-                    updateUniformsDebug(shaderProgramMap["debug_entity"],
-                        r, g, b, color.a,
+                } 
+                else {
+                    updateUniformsTexture(shaderProgramMap["texture"], 
+                        rootTexture,
                         position.sx + cameraShape.scaled_size.x,
                         position.sy + cameraShape.scaled_size.y,
-                        shape.scaled_size.x, shape.scaled_size.y, 
-                        angle);
+                        shape.scaled_size.x,
+                        shape.scaled_size.y,
+                        texture.x, texture.y, texture.w, texture.h
+                    );
                     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
                 }
             }
             
-            // Render text entities within the main rendering order
+            // Render Textures (animated or multi-frame) components (if any)
+            if (registry.all_of<Textures>(entity)) {
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                const auto& textures = registry.get<Textures>(entity);
+                const auto& current_texture = textures.textures[textures.current];
+
+                float angle = 0.0f;
+                if(registry.all_of<Rotation>(entity)) {
+                    angle = registry.get<Rotation>(entity).angle;
+                }
+
+                updateUniformsTexture(shaderProgramMap["texture"], 
+                    textureIDMap[current_texture.name],
+                    position.sx + cameraShape.scaled_size.x, position.sy + cameraShape.scaled_size.y,
+                    shape.scaled_size.x * current_texture.scalex, shape.scaled_size.y * current_texture.scaley,
+                    current_texture.x, current_texture.y, current_texture.w, current_texture.h, angle);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            }
+            
+            // Render TextureAlts (player) components (if any)
+            if (registry.all_of<TextureAlts>(entity) && registry.all_of<Player>(entity)) {
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                const auto& textureAlts = registry.get<TextureAlts>(entity);
+                const auto& currentTextures = textureAlts.alts.at(textureAlts.current);
+                const auto& current_texture = currentTextures.textures[currentTextures.current];
+
+                updateUniformsTexture(shaderProgramMap["texture"], 
+                    textureIDMap[current_texture.name],
+                    position.sx + cameraShape.scaled_size.x,
+                    position.sy + cameraShape.scaled_size.y,
+                    shape.scaled_size.x * current_texture.scalex, 
+                    shape.scaled_size.y * current_texture.scaley,
+                    current_texture.x, current_texture.y, 
+                    current_texture.w, current_texture.h);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            }
+                
+            // Render CustomShader components (if any)
+            if(registry.all_of<CustomShader>(entity)) {
+                const auto& customShader = registry.get<CustomShader>(entity);
+                
+                float angle = 0.0f;
+                if(registry.all_of<Rotation>(entity)) {
+                    angle = registry.get<Rotation>(entity).angle;
+                }
+                
+                // Use the same update pattern as debug/color entities
+                updateUniformsDebug(shaderProgramMap[customShader.shaderName],
+                    1.0f, 1.0f, 1.0f, 1.0f, // Default white color
+                    position.sx + cameraShape.scaled_size.x, 
+                    position.sy + cameraShape.scaled_size.y,
+                    shape.scaled_size.x, shape.scaled_size.y, 
+                    angle);
+                
+                // Add custom uniforms for all cshaders
+                if (customShader.uniforms.size() >= 3) {
+                    // All cshaders now support seed
+                    GLint seedLocation = glGetUniformLocation(shaderProgramMap[customShader.shaderName], "uSeed");
+                    glUniform1f(seedLocation, customShader.uniforms[2]);
+                    
+                    // Terrain shader also needs center position
+                    if (customShader.shaderName == "terrainmap") {
+                        GLint centerPosLocation = glGetUniformLocation(shaderProgramMap[customShader.shaderName], "uCenterPos");
+                        glUniform2f(centerPosLocation, customShader.uniforms[0], customShader.uniforms[1]);
+                    }
+                    
+                }
+                
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            }
+            
+            // Render Color components (if any)
+            if(registry.all_of<Color>(entity)) {
+                auto color = registry.get<Color>(entity);
+
+                float angle = 0.0f;
+                if(registry.all_of<Rotation>(entity)) {
+                    angle = registry.get<Rotation>(entity).angle;
+                }
+
+                float r = color.r;
+                float g = color.g; 
+                float b = color.b;
+
+                // InteriorPortal color override
+                if (registry.all_of<InteriorPortal>(entity)) {
+                    const auto& portal = registry.get<InteriorPortal>(entity);
+                    // Offset the original color toward green or red, preserving darkness/brightness
+                    float maxComponent = std::max({r, g, b, 0.0001f});
+                    float scale = (maxComponent > 0.0f) ? (1.0f / maxComponent) : 1.0f;
+                    // Normalize to [0,1] range for offsetting
+                    float orig_r = r * scale;
+                    float orig_g = g * scale;
+                    float orig_b = b * scale;
+
+                    if (!portal.locked) {
+                        // Green: keep original color, but set green to max, red and blue to original
+                        r = orig_r * 0.3f; // darken red
+                        g = std::max(0.7f, orig_g); // boost green
+                        b = orig_b * 0.3f; // darken blue
+                    } else {
+                        // Red: keep original color, but set red to max, green and blue to original
+                        r = std::max(0.7f, orig_r); // boost red
+                        g = orig_g * 0.3f; // darken green
+                        b = orig_b * 0.3f; // darken blue
+                    }
+                    // Rescale to original intensity
+                    float intensity = std::max({color.r, color.g, color.b, 0.0001f});
+                    r *= intensity;
+                    g *= intensity;
+                    b *= intensity;
+                }
+
+                if(registry.all_of<Hovered>(entity)) {
+                    r = 0.0f;
+                    g = 0.0f;
+                    b = 1.0f;
+                }
+                if(registry.all_of<Interacted>(entity)) {
+                    r = 0.0f;
+                    g = 1.0f;
+                    b = 0.0f;
+                }
+
+                updateUniformsDebug(shaderProgramMap["debug_entity"],
+                    r, g, b, color.a,
+                    position.sx + cameraShape.scaled_size.x,
+                    position.sy + cameraShape.scaled_size.y,
+                    shape.scaled_size.x, shape.scaled_size.y, 
+                    angle);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            }
+            
+            // Render text component if present (on top of other render types)
             if(registry.all_of<Text>(entity)) {
                 Text text = registry.get<Text>(entity);
                 
@@ -1158,9 +1173,16 @@ void renderAll() {
                 a = text.hide ? 0.0f : a;
 
                 std::string textStr = text.text;
-                float xVal = position.sx + cameraShape.scaled_size.x;
-                float yVal = position.sy + cameraShape.scaled_size.y;
-                float scaleVal = (shape.scaled_size.x+shape.scaled_size.y)/200;
+                // Calculate scale factor from the entity's shape scaling
+                float scaleFactorX = (shape.size.x > 0) ? shape.scaled_size.x / shape.size.x : 1.0f;
+                float scaleFactorY = (shape.size.y > 0) ? shape.scaled_size.y / shape.size.y : 1.0f;
+                // Use the average scale factor for text offset scaling
+                float scaleFactor = (scaleFactorX + scaleFactorY) * 0.5f;
+                
+                float xVal = position.sx + cameraShape.scaled_size.x + (text.offsetX * scaleFactor);
+                float yVal = position.sy + cameraShape.scaled_size.y + (text.offsetY * scaleFactor);
+                // Use Text.scale for scale to apply after the initial scaleFactorX
+                float scaleVal = scaleFactorX * text.scale;
 
                 renderText(textStr, xVal, yVal, scaleVal, r, g, b, a);
             }
