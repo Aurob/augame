@@ -545,7 +545,9 @@ extern "C"
                                 if(components.contains("Text") && components["Text"].is_object()) {
                                     auto &text = components["Text"];
                                     bool hide = text["hide"] == 1 || text["hide"] == true;
-                                    registry.emplace<Text>(entity, text["text"], text["scale"], hide);
+                                    float offsetX = text.value("offsetX", 0.0f);
+                                    float offsetY = text.value("offsetY", 0.0f);
+                                    registry.emplace<Text>(entity, text["text"], text["scale"], hide, offsetX, offsetY);
                                 }
                             }, "Text");
 

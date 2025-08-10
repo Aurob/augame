@@ -52,9 +52,20 @@ void processCollisionInfo(p2d::CollisionInfo& info)
         // Log if the non-portal entity has Player component
         if (nonPortalEntity != entt::null) {
             // First, check if the non-door entity is inside, but not inside either A or B; if so, ignore
-            if (registry.all_of<Inside>(nonPortalEntity)) {
+            bool isInside = registry.all_of<Inside>(nonPortalEntity);
+            int currentInterior = -1;
+            if (isInside) {
                 auto& inside = registry.get<Inside>(nonPortalEntity);
+                currentInterior = static_cast<int>(inside.interior);
                 if (inside.interior != doorIP.A && inside.interior != doorIP.B) {
+                    return;
+                }
+            }
+
+            // If the entity is outside (not Inside), only allow transition if A or B is -1
+            if (!isInside) {
+                if (static_cast<int>(doorIP.A) != -1 && static_cast<int>(doorIP.B) != -1) {
+                    // Both sides are interiors, do not allow outside entity to enter
                     return;
                 }
             }
@@ -62,7 +73,7 @@ void processCollisionInfo(p2d::CollisionInfo& info)
             if (!registry.all_of<OnInteriorPortal>(nonPortalEntity)) {
 
                 // Add or update the Inside component for the non-interiorportal entity
-                if (registry.all_of<Inside>(nonPortalEntity)) {
+                if (isInside) {
                     auto& inside = registry.get<Inside>(nonPortalEntity);
                     if (inside.interior == doorIP.A)
                         inside.interior = doorIP.B;
@@ -88,7 +99,7 @@ void processCollisionInfo(p2d::CollisionInfo& info)
                 registry.emplace<OnInteriorPortal>(nonPortalEntity, OnInteriorPortal { door });
             }
         }
-    }		
+    }
 
 }
 
@@ -184,7 +195,7 @@ void updatePhysics(entt::registry& registry)
 
     // For each Inside entity, check if it is outside its Interior bounds and push
     // it back in
-    auto insideView = registry.view<Inside, PhysicsBodyRect>(entt::exclude<InteriorPortal, Text>);
+    auto insideView = registry.view<Inside, PhysicsBodyRect>(entt::exclude<InteriorPortal>);
     for (auto entity : insideView) {
         auto& inside = registry.get<Inside>(entity);
         auto interiorEntity = inside.interior;

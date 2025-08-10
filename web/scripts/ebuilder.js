@@ -23,7 +23,7 @@ class EntityBuilder {
         draggable: 2,
         tone: 5,
         ui: 5,
-        text: 4,
+        text: 6,
         player: 1,
         world: 1,
         terrain: 1,
@@ -38,7 +38,7 @@ class EntityBuilder {
         terrain: () => ({ Terrain: true }),
         world: (parts, i) => ({ World: true }),
         test: (parts, i) => ({ Test: { value: parts[i] } }),
-        text: (parts, i) => ({ Text: { text: parts[i], scale: parseFloat(parts[i+1]), hide: parseInt(parts[i+2])}}),
+        text: (parts, i) => ({ Text: { text: parts[i], scale: parseFloat(parts[i+1]), hide: parseInt(parts[i+2]), offsetX: parseFloat(parts[i+3]) || 0.0, offsetY: parseFloat(parts[i+4]) || 0.0}}),
         position: (parts, i) => ({ Position: { x: parseFloat(parts[i]), y: parseFloat(parts[i+1]), z: parseFloat(parts[i+2]) } }),
         shape: (parts, i) => ({ Shape: { size: [parseFloat(parts[i]), parseFloat(parts[i+1]), parseFloat(parts[i+2])] } }),
         color: (parts, i) => {

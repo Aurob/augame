@@ -45,40 +45,41 @@ void makePlayer(entt::registry &registry)
     registry.emplace<Cursor>(player);
     registry.emplace<Rotation>(player, Rotation{0.0f, 0.0f, 0.0f, 1.0f});
 
-    // if (!defaultPlayer) {
-    //     // Add textures to the player
-    //     std::vector<Textures> textureAlts;
-    //     const std::vector<std::string> actions = {"Idle", "Run"};
-    //     const std::vector<std::string> directions = {"Down", "Left", "Right", "Up"};
-    //     std::unordered_map<std::string, Textures> textureMap;
+    // Applies the animated player texture to the player entity
+    if (!defaultPlayer) {
+        // Add textures to the player
+        std::vector<Textures> textureAlts;
+        const std::vector<std::string> actions = {"Idle", "Run"};
+        const std::vector<std::string> directions = {"Down", "Left", "Right", "Up"};
+        std::unordered_map<std::string, Textures> textureMap;
 
-    //     const int numFrames = 6;
-    //     const float frameWidth = 1.0f / numFrames;
-    //     const float frameHeight = 1.0f;
-    //     const int textureWidth = 8;
-    //     const int textureHeight = 8;
+        const int numFrames = 6;
+        const float frameWidth = 1.0f / numFrames;
+        const float frameHeight = 1.0f;
+        const int textureWidth = 8;
+        const int textureHeight = 8;
 
-    //     for (size_t actionIndex = 0; actionIndex < actions.size(); ++actionIndex)
-    //     {
-    //         for (size_t directionIndex = 0; directionIndex < directions.size(); ++directionIndex)
-    //         {
-    //             std::string textureName = std::to_string(actionIndex + 1) + "_Template_" + actions[actionIndex] + "_" + directions[directionIndex] + "-Sheet";
-    //             std::vector<Texture> textures;
-    //             for (int i = 0; i < numFrames; ++i)
-    //             {
-    //                 textures.push_back({textureName, i * frameWidth, 0, frameWidth, frameHeight, textureWidth, textureHeight});
-    //             }
-    //             Texture metadata = {textureName, 0, 0, 0, 0, 0, 0};
-    //             textureMap[actions[actionIndex] + "_" + directions[directionIndex]] = Textures{textures, 0, metadata};
-    //         }
-    //     }
+        for (size_t actionIndex = 0; actionIndex < actions.size(); ++actionIndex)
+        {
+            for (size_t directionIndex = 0; directionIndex < directions.size(); ++directionIndex)
+            {
+                std::string textureName = std::to_string(actionIndex + 1) + "_Template_" + actions[actionIndex] + "_" + directions[directionIndex] + "-Sheet";
+                std::vector<Texture> textures;
+                for (int i = 0; i < numFrames; ++i)
+                {
+                    textures.push_back({textureName, i * frameWidth, 0, frameWidth, frameHeight, textureWidth, textureHeight});
+                }
+                Texture metadata = {textureName, 0, 0, 0, 0, 0, 0};
+                textureMap[actions[actionIndex] + "_" + directions[directionIndex]] = Textures{textures, 0, metadata};
+            }
+        }
 
-    //     registry.emplace_or_replace<TextureAlts>(player, TextureAlts{textureMap, "Idle_Down"});
+        registry.emplace_or_replace<TextureAlts>(player, TextureAlts{textureMap, "Idle_Down"});
         
     
-    //     // TickAction to animate the player textures
-    //     registry.emplace_or_replace<TickAction>(player, TickAction{TickActions::animateTextures(), .19f});
-    // }
+        // TickAction to animate the player textures
+        registry.emplace_or_replace<TickAction>(player, TickAction{TickActions::animateTextures(), .19f});
+    }
 
     _player = player;
     
