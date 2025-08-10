@@ -94,6 +94,11 @@ struct Text {
     std::string text;
     float scale;
     bool hide;
+    float offsetX;
+    float offsetY;
+    
+    Text(const std::string& text, float scale, bool hide, float offsetX = 0.0f, float offsetY = 0.0f)
+        : text(text), scale(scale), hide(hide), offsetX(offsetX), offsetY(offsetY) {}
 };
 
 struct Visible {};
@@ -124,6 +129,11 @@ struct Hovered {
 struct Interacted {
     entt::entity interactor;
     int interactions;
+    bool offset_initialized;
+    float offset_x;
+    float offset_y;
+    float offset_px;
+    float offset_py;
 };
 
 struct TickAction {

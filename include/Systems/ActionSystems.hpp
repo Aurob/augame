@@ -237,26 +237,56 @@ void updateInteractions(entt::registry &registry)
                 auto& cursor = registry.get<Cursor>(interacted.interactor);
                 // If Cursor.downtime > 2, move the interacted object's position to the cursor position
                 if (cursor.downtime > 2) {
-                    // Apply inverse camera offset to cursor position for consistent dragging
-                    entt::entity cameraEntity = selectMainCamera(registry);
-                    auto& cameraShape = registry.get<Shape>(cameraEntity);
-                    auto& shape = registry.get<Shape>(entity);
+                    // Maintain the original offset between the cursor and the entity when first clicked
+                    // We'll store this offset in the Interacted component the first time the interaction occurs
+                    // Add fields to Interacted if not already present: float offset_x, offset_y; bool offset_initialized;
+                    if (!interacted.offset_initialized) {
+                        // Get the entity's current position
+                        if (registry.all_of<PhysicsBodyRect>(entity)) {
+                            float entity_x = 0.0f, entity_y = 0.0f;
+                            auto& physBody = registry.get<PhysicsBodyRect>(entity);
+                            if (physBody.body) {
+                                entity_x = physBody.body->getPosition().x;
+                                entity_y = physBody.body->getPosition().y;
+                                // Calculate offset between cursor and entity position at the moment of click
+                                interacted.offset_px = entity_x - cursor.position.sx;
+                                interacted.offset_py = entity_y - cursor.position.sy;
+                            }
+                        } 
+                        if (registry.all_of<Position>(entity)) {
+                            float entity_x = 0.0f, entity_y = 0.0f;
 
-                    float final_x = cursor.position.sx + shape.size.x/4;
-                    float final_y = cursor.position.sy + shape.size.y;
+                            auto& pos = registry.get<Position>(entity);
+                            entity_x = pos.x;
+                            entity_y = pos.y;
+                            // Calculate offset between cursor and entity position at the moment of click
+                            interacted.offset_x = entity_x - cursor.position.sx;
+                            interacted.offset_y = entity_y - cursor.position.sy;
+                        }
+
+                        interacted.offset_initialized = true;
+                    }
+
+                    // Apply the stored offset so the entity follows the cursor at the same relative position
+                    float new_x = cursor.position.sx;
+                    float new_y = cursor.position.sy;
 
                     if (registry.all_of<PhysicsBodyRect>(entity)) {
                         auto& physBody = registry.get<PhysicsBodyRect>(entity);
                         if (physBody.body) {
-                            physBody.body->setPosition({final_x, final_y});
+                            physBody.body->setPosition({new_x + interacted.offset_px, new_y + interacted.offset_py});
                         }
                     }
 
+                    Shape shape = registry.get<Shape>(entity);
                     if (registry.all_of<Position>(entity)) {
                         auto& pos = registry.get<Position>(entity);
-                        pos.x = final_x;
-                        pos.y = final_y;
+                        pos.x = new_x + interacted.offset_x;
+                        pos.y = new_y + interacted.offset_y;
                     }
+                } else {
+                    // Reset offset_initialized when not dragging
+                    interacted.offset_initialized = false;
                 }
             }
         }
