@@ -1,0 +1,2 @@
+Move with WASD, zoom in/out with scroll wheel, and use the left mouse button to interact.
+press escape to pause, press 1 while paused to go to the main menu

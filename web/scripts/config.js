@@ -19,6 +19,16 @@ var CONFIG = {
             "name": "water1",
             "vertex": "resources/cshaders/water1_v.glsl",
             "fragment": "resources/cshaders/water1_f.glsl"
+        },
+        {
+            "name": "bookshelf",
+            "vertex": "resources/cshaders/bookshelf_v.glsl",
+            "fragment": "resources/cshaders/bookshelf_f.glsl"
+        },
+        {
+            "name": "carpet",
+            "vertex": "resources/cshaders/carpet_v.glsl",
+            "fragment": "resources/cshaders/carpet_f.glsl"
         }
     ],
     "textures": [],
@@ -59,6 +69,9 @@ const textures = [
     createBasicTexture("key", "key.png"),
     createBasicTexture("tilewall1", "tilewall1.png"),
     createBasicTexture("center", "center.png"),
+    createBasicTexture("bot_splash1", "bot2.png"),
+    createBasicTexture("bot_splash2", "bot3.png"),
+    createBasicTexture("red_carpet", "carpet_1.png"),
 ];
 
 CONFIG.textures = CONFIG.textures.concat(playerTextures, textures);

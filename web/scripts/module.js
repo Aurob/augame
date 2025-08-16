@@ -206,6 +206,32 @@ var Module = {
               });
 
             fetchPromises.push(fetchPromise);
+          } else if (key === 'scenes' && typeof value === 'object') {
+            // Handle scenes object - check each scene for file references
+            Object.keys(value).forEach(sceneId => {
+              const sceneText = value[sceneId];
+              if (typeof sceneText === 'string') {
+                let filePath = null;
+                if (sceneText.startsWith('@')) {
+                  filePath = sceneText.substring(1).trim();
+                }
+
+                if (filePath) {
+                  const fetchPromise = fetch(filePath+'?'+Math.random())
+                    .then(response => response.text())
+                    .then(fileContent => {
+                      // Update the scene with the file content
+                      console.log(filePath, fileContent);
+                      metaData.scenes[sceneId] = fileContent.trim();
+                    })
+                    .catch(error => {
+                      console.error(`Failed to fetch scene file: ${filePath}`, error);
+                    });
+
+                  fetchPromises.push(fetchPromise);
+                }
+              }
+            });
           }
         });
 

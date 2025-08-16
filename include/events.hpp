@@ -10,6 +10,7 @@ extern entt::entity _player;
 extern entt::registry registry;
 extern p2d::Physics physics;
 extern GameState gameState;
+extern MetaData metaData;
 
 void EventHandler(int type, SDL_Event *event)
 {
@@ -211,30 +212,68 @@ void processEvents() {
             }
         }
 
-        // Check for ESC key press to toggle gameState between 1 and 0
-        if ((gameState.gameState == 0 || gameState.gameState == 1)  && keys[SDLK_ESCAPE]) {
-            if (gameState.gameState == 1) {
-                gameState.gameState = 0;
-            } else {
-                gameState.gameState = 1;
-            }
+        // Check for ESC key press to toggle gameState between 0 (paused) and 1 (camera)
+        if ((gameState.gameState == 0 || gameState.gameState == 1) && keys[SDLK_ESCAPE]) {
+            gameState.gameState = (gameState.gameState == 1) ? 0 : 1;
             keys[SDLK_ESCAPE] = false; // Prevent repeated toggling while holding ESC
         }
         
         // Check for C key press to toggle camera mode when player exists
-        if (gameState.gameState > 0 && _player != entt::null && keys[SDLK_c]) {
+        if (gameState.gameState == 1 && _player != entt::null && keys[SDLK_c]) {
             gameState.playerCameraMode = !gameState.playerCameraMode;
             keys[SDLK_c] = false; // Prevent repeated toggling while holding C
         }
 
+        // Check for '1' key press to go from pause menu to start menu
         if (gameState.gameState == 0 && keys[SDLK_1]) {
             gameState.gameState = -1;
-            keys[SDLK_1] = false;
+            keys[SDLK_1] = false; // Prevent repeated toggling while holding 1
         }
 
-        if (gameState.gameState == -1) {
+        bool temp_skip = false;
+        // Transition from start menu to first cutscene
+        if (gameState.gameState == -1 && keys[SDL_BUTTON_LEFT]) {
+            gameState.gameState = 1;
+            temp_skip = true;
+        }
+
+        // Handle cutscene progression
+        if (gameState.gameState >= 1) {
             if (keys[SDL_BUTTON_LEFT]) {
-                gameState.gameState = 1;
+                if(gameState.gameState == 1 && temp_skip) {
+                    // Transition from start menu, find first scene or go to gameplay
+                    int firstScene = -1;
+                    for (const auto& scene : metaData.scenes) {
+                        if (firstScene == -1 || scene.first < firstScene) {
+                            firstScene = scene.first;
+                        }
+                    }
+                    gameState.gameState = (firstScene > 1) ? firstScene : 1;
+                } else if (gameState.gameState == 1 && !temp_skip) {
+                    // In gameplay, clicking should NOT change gameState - do nothing
+                    // This preserves normal gameplay interactions
+                } else {
+                    // In a scene, find the next scene or return to gameplay
+                    int maxSceneId = 1;
+                    int nextScene = -1;
+                    
+                    for (const auto& scene : metaData.scenes) {
+                        if (scene.first > maxSceneId) {
+                            maxSceneId = scene.first;
+                        }
+                        if (scene.first > gameState.gameState && (nextScene == -1 || scene.first < nextScene)) {
+                            nextScene = scene.first;
+                        }
+                    }
+                    
+                    if (gameState.gameState >= maxSceneId || nextScene == -1) {
+                        gameState.gameState = 1; // Transition to gameplay after last scene
+                    } else {
+                        gameState.gameState = nextScene; // Proceed to next scene
+                    }
+                }
+
+                keys[SDL_BUTTON_LEFT] = false;
             }
         }
     }

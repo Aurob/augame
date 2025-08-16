@@ -211,6 +211,21 @@ extern "C"
             if (meta.contains("pause_menu") && meta["pause_menu"].is_string()) {
                 metaData.pause_menu = meta["pause_menu"];
             }
+            if (meta.contains("scenes") && meta["scenes"].is_object()) {
+                auto scenes = meta["scenes"];
+                metaData.scenes.clear(); // Clear existing scenes
+                for (auto it = scenes.begin(); it != scenes.end(); ++it) {
+                    try {
+                        int sceneId = std::stoi(it.key());
+                        if (it.value().is_string()) {
+                            metaData.scenes[sceneId] = it.value().get<std::string>();
+                            printf("Meta: Scene %d set to '%s'\n", sceneId, metaData.scenes[sceneId].c_str());
+                        }
+                    } catch (const std::exception& e) {
+                        printf("Error parsing scene ID '%s': %s\n", it.key().c_str(), e.what());
+                    }
+                }
+            }
 
             // Converts the string seed into an int before storing
             if (meta.contains("seed") && meta["seed"].is_string()) {

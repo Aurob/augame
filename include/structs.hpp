@@ -78,8 +78,10 @@ struct Position {
 };
 
 struct Shape {
-    Vector3f size{1, 1, .1};
+    Vector3f size{1, 1, 1};
     Vector3f scaled_size;
+    Vector3f alt_size{0, 0, 0};
+    Vector3f alt_scaled_size;
 };
 
 struct Color {
@@ -290,6 +292,7 @@ struct MetaData {
     std::string pause_menu = "Paused"; // path to pause menu text file
     std::string str_seed = ""; // original seed as string (can be words, sentences, etc.)
     int seed = 0;              // numeric seed, converted from str_seed
+    std::unordered_map<int, std::string> scenes; // gameState -> text content mapping
     
 
 };
@@ -302,6 +305,8 @@ struct GameState {
     int seed = 0;
     int gameState = -2;
     bool playerCameraMode = false; // true for player camera, false for priority camera
+
+    int intro_scenes = 3;
 };
 
 struct world {
