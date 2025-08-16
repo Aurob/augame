@@ -26,3 +26,6 @@ id 100 npc_tes position 6.4154 15.1068 0 shape 2.0000 2.5000 0 color 1.00 0.85 0
 id 100 npc_tes position 6.4154 15.1068 0 shape 1.0000 1.5000 0 color 1.00 0.85 0.10 1 renderPriority 0 collidable inside 4 movement 555 1 0 0 interactable 1 0 hoverable
 id 100 npc_tes position 6.4154 15.1068 0 shape 3.0000 .5.5000 0 color 1.00 0.85 0.10 1 renderPriority 0 collidable inside 4 movement 555 1 0 0 interactable 1 0 hoverable
 id 100 npc_tes position 6.4154 15.1068 0 shape 2.0000 2 0 color 1.00 0.85 0.10 1 renderPriority 0 collidable inside 4 movement 555 1 0 0 interactable 1 0 hoverable
+id 101 bookshelf_small position 10.0000 12.0000 0 shape 1.0000 1.0000 0 renderPriority 2 cshader bookshelf inside 4
+id 102 bookshelf_medium position 8.0000 12.0000 0 shape 2.0000 2.0000 0 renderPriority 2 cshader bookshelf inside 4
+id 103 bookshelf_large position 5.0000 12.0000 0 shape 3.0000 4.0000 0 renderPriority 2 cshader bookshelf inside 4

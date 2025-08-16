@@ -131,8 +131,20 @@ class EntityBuilder {
             const type = parts[i];
             let value = parts[i+1];
             
+            // Handle scenes parsing for format like "text","text","@resources/text/test.txt"
+            if (type === 'scenes' && value) {
+                // Split value by comma first
+                const scenesArray = value.split(',').map(scene => scene.trim().replace(/^['"]|['"]$/g, ''));
+                
+                // Convert array to map with auto-assigned IDs starting from 2
+                const scenesMap = {};
+                for (let i = 0; i < scenesArray.length; i++) {
+                    scenesMap[i + 2] = scenesArray[i]; // Start scene IDs from 2
+                }
+                value = scenesMap;
+            }
             // Handle color parsing for terrain and void meta tags
-            if ((type === 'terrain' || type === 'void') && value) {
+            else if ((type === 'terrain' || type === 'void') && value) {
                 // Check for hex color format
                 if (value.startsWith('#') && value.length === 7) {
                     const hex = value.substring(1);

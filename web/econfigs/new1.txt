@@ -1,0 +1,18 @@
+meta world "test1"
+meta title "Testing"
+meta description "Testing this"
+meta author "rau"
+meta font "HomeVideo-Regular.ttf"
+meta terrain terrain
+meta void 25,25,25
+meta seed "Hello World"
+meta start_menu "@/resources/text/new1_intro.txt"
+meta pause_menu "Paused"
+-- meta scenes "Hello World","@https://ai.dump.garden?type=lore&k=raullmkey531&query=love","Hello World 2", "@https://rau.lol/d/quotes/Micromegas_Voltaire.txt"
+meta scenes "@/resources/text/new1_controls.txt", "@/resources/text/new1_last.txt"
+
+id 1 entity1 position 0.1435 15.3308 0 shape 49.8565 4.2488 0 color 0.87 0.87 0.87 1 renderPriority 0 collidable interior
+id 5 entity5 position 23.3382 16.3706 0 shape 2.0000 2.0000 0 color 0.87 0.04 0.04 0 renderPriority 0 player collidable movement 2000 .5 .5 0 camera 2048 16 0 0 0 inside 1
+id 2 entity2 position 3.0000 15.0000 0 shape 3.0000 0.5000 0 color 0.00 0.00 0.00 0.75 renderPriority 1 interiorPortal 1 -1 0 -1 inside 1 text "exit" .01 0
+id 3 entity3 position 3.0000 19.2500 0 shape 3.0000 0.5000 0 color 0.00 0.00 0.00 0.75 renderPriority 1 interiorPortal 1 -1 0 -1 inside 1 text "exit" .01 0
+id 4 entity4 position 45.4699 19.1928 0 shape 3.0000 0.5000 0 color 0.00 0.00 0.00 0.75 renderPriority 1 interiorPortal 1 -1 0 -1 inside 1 text "exit" .01 0

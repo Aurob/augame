@@ -680,6 +680,92 @@ bool isValidFont(const std::string& fontPath) {
     return false;
 }
 
+// Structure to hold image embedding information
+struct EmbeddedImage {
+    std::string textureName;
+    float x, y;
+    float width, height;
+};
+
+// Helper function to extract embedded images and clean text
+std::pair<std::string, std::vector<EmbeddedImage>> processEmbeddedImages(const std::string& text, float baseX, float baseY, float scale, TTF_Font* font) {
+    std::vector<EmbeddedImage> images;
+    std::string cleanText = text;
+    // Simple string replacement approach to avoid regex complications
+    const std::string startTag = "!@image:";
+    const std::string endTag = "@!";
+    
+    float currentX = baseX;
+    float currentY = baseY;
+    
+    size_t pos = 0;
+    while ((pos = cleanText.find(startTag, pos)) != std::string::npos) {
+        size_t endPos = cleanText.find(endTag, pos + startTag.length());
+        if (endPos == std::string::npos) {
+            // Malformed tag, skip
+            pos += startTag.length();
+            continue;
+        }
+        
+        // Extract the full tag content
+        size_t contentStart = pos + startTag.length();
+        size_t contentLength = endPos - contentStart;
+        std::string tagContent = cleanText.substr(contentStart, contentLength);
+        
+        // Split the tag content by commas to extract texture name, scalex, and scaley
+        size_t firstComma = tagContent.find(',');
+        size_t secondComma = tagContent.find(',', firstComma + 1);
+        
+        if (firstComma == std::string::npos || secondComma == std::string::npos) {
+            // Malformed tag, skip
+            pos += startTag.length();
+            continue;
+        }
+        
+        std::string textureName = tagContent.substr(0, firstComma);
+        float scaleX = std::stof(tagContent.substr(firstComma + 1, secondComma - firstComma - 1));
+        float scaleY = std::stof(tagContent.substr(secondComma + 1));
+        
+        // Calculate position based on text before this image
+        std::string textBefore = cleanText.substr(0, pos);
+        
+        // Count newlines to calculate Y position
+        size_t newlineCount = 0;
+        for (char c : textBefore) {
+            if (c == '\n') newlineCount++;
+        }
+        
+        // Find last newline to calculate X position for current line
+        size_t lastNewline = textBefore.find_last_of('\n');
+        std::string currentLineText = (lastNewline != std::string::npos) 
+            ? textBefore.substr(lastNewline + 1) 
+            : textBefore;
+        
+        // Measure text width for positioning
+        int textWidth = 0, textHeight = 0;
+        if (!currentLineText.empty() && font) {
+            TTF_SizeUTF8(font, currentLineText.c_str(), &textWidth, &textHeight);
+        }
+        
+        // Create embedded image
+        EmbeddedImage img;
+        img.textureName = textureName;
+        img.x = baseX + (textWidth * scale * 0.001f);
+        img.y = baseY + (newlineCount * TTF_FontLineSkip(font) * scale * 0.001f);
+        img.width = 50.0f * scale * scaleX;
+        img.height = 50.0f * scale * scaleY;
+        
+        images.push_back(img);
+        
+        // Remove the image tag from text
+        cleanText.erase(pos, endPos + endTag.length() - pos);
+        
+        // Don't increment pos since we removed text
+    }
+    
+    return {cleanText, images};
+}
+
 void renderText(const std::string& text, float x, float y, float scale, float r, float g, float b, float a) {
     glUseProgram(shaderProgramMap["font"]);
 
@@ -699,9 +785,12 @@ void renderText(const std::string& text, float x, float y, float scale, float r,
         return;
     }
 
+    // Process embedded images and get clean text
+    auto [cleanText, embeddedImages] = processEmbeddedImages(text, x, y, scale, font);
+
     // Reduce wrap width to avoid double spacing
-    int wrapWidth = gameState.width/1.5;
-    SDL_Surface* surface = TTF_RenderUTF8_Blended_Wrapped(font, text.c_str(), color, wrapWidth);
+    int wrapWidth = gameState.width/1.4;
+    SDL_Surface* surface = TTF_RenderUTF8_Blended_Wrapped(font, cleanText.c_str(), color, wrapWidth);
     if (!surface) {
         printf("Failed to render text: %s\n", TTF_GetError());
         TTF_CloseFont(font);
@@ -746,7 +835,7 @@ void renderText(const std::string& text, float x, float y, float scale, float r,
     float width = rgba_surface->w * scale;
     float height = rgba_surface->h * scale;
 
-    updateUniformFont(shaderProgramMap["font"], r, g, b, a, x, y, width, height);
+    updateUniformFont(shaderProgramMap["font"], r, g, b, a, x - width/3, y, width, height);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -755,12 +844,29 @@ void renderText(const std::string& text, float x, float y, float scale, float r,
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-    // Clean up the texture to prevent memory leak
+    // Clean up the texture to prevent memory leak and unbind to prevent flicker
+    glBindTexture(GL_TEXTURE_2D, 0);
     glDeleteTextures(1, &texture);
 
     SDL_FreeSurface(rgba_surface);
     SDL_FreeSurface(surface);
     TTF_CloseFont(font);
+
+    // Render embedded images
+    for (const auto& img : embeddedImages) {
+        // Check if texture exists
+        if (textureIDMap.find(img.textureName) != textureIDMap.end()) {
+            updateUniformsTexture(shaderProgramMap["texture"], 
+                textureIDMap[img.textureName],
+                img.x, img.y,
+                img.width, img.height,
+                0.0f, 0.0f, 1.0f, 1.0f  // Use full texture (no cropping)
+            );
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        } else {
+            printf("Warning: Embedded image texture '%s' not found\n", img.textureName.c_str());
+        }
+    }
 }
 
 void loadFont() {
@@ -834,7 +940,7 @@ void renderAll() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    if(gameState.gameState > 0) {
+    if(gameState.gameState > 0 and gameState.gameState < 2) {
         // Get camera data using priority-based selection
         entt::entity cameraEntity = selectMainCamera(registry);
         if(cameraEntity == entt::null) return; // No camera, can't render
@@ -892,9 +998,8 @@ void renderAll() {
             const auto& lhsShape = registry.get<Shape>(lhs);
             const auto& rhsShape = registry.get<Shape>(rhs);
 
-            // Compare y + z + shape.z
-            float lhsYZS = lhsPos.y;// + lhsPos.z + lhsShape.size.z;
-            float rhsYZS = rhsPos.y;// + rhsPos.z + rhsShape.size.z;
+            float lhsYZS = lhsPos.y;
+            float rhsYZS = rhsPos.y;
             return lhsYZS < rhsYZS;
         });
 
@@ -1080,17 +1185,56 @@ void renderAll() {
                     angle);
                 
                 // Add custom uniforms for all cshaders
-                if (customShader.uniforms.size() >= 3) {
-                    // All cshaders now support seed
-                    GLint seedLocation = glGetUniformLocation(shaderProgramMap[customShader.shaderName], "uSeed");
-                    glUniform1f(seedLocation, customShader.uniforms[2]);
+                // Calculate unique seed combining meta seed with entity properties
+                float uniqueSeed = 0.0f; // Start fresh
+                
+                // Add entity ID influence if available
+                if (registry.all_of<Id>(entity)) {
+                    const auto& id = registry.get<Id>(entity);
+                    // Use ID number as base
+                    uniqueSeed += static_cast<float>(id.id);
                     
-                    // Terrain shader also needs center position
-                    if (customShader.shaderName == "terrainmap") {
-                        GLint centerPosLocation = glGetUniformLocation(shaderProgramMap[customShader.shaderName], "uCenterPos");
-                        glUniform2f(centerPosLocation, customShader.uniforms[0], customShader.uniforms[1]);
+                    // Hash entity name if it exists to add more uniqueness
+                    if (!id.name.empty()) {
+                        unsigned int nameHash = 0;
+                        for (char c : id.name) {
+                            nameHash = nameHash * 31 + static_cast<unsigned char>(c);
+                        }
+                        uniqueSeed += static_cast<float>(nameHash % 1000);
                     }
-                    
+                }
+                
+                // Add position influence (scaled down to reasonable range)
+                uniqueSeed += position.x * 10.0f + position.y * 13.0f + position.z * 7.0f;
+                
+                // Add meta seed influence
+                uniqueSeed += static_cast<float>(metaData.seed);
+                
+                // Add original shader seed if available
+                if (customShader.uniforms.size() >= 3) {
+                    uniqueSeed += customShader.uniforms[2];
+                }
+                
+                // Keep seed in reasonable range (similar to original shader expectations)
+                uniqueSeed = fmod(abs(uniqueSeed), 1000.0f);
+                
+                // All cshaders now support unique per-entity seed
+                GLint seedLocation = glGetUniformLocation(shaderProgramMap[customShader.shaderName], "uSeed");
+                glUniform1f(seedLocation, uniqueSeed);
+                
+                // Pass entity color to shaders that support it (like carpet)
+                if (registry.all_of<Color>(entity)) {
+                    const auto& color = registry.get<Color>(entity);
+                    GLint colorLocation = glGetUniformLocation(shaderProgramMap[customShader.shaderName], "uColor");
+                    if (colorLocation != -1) {
+                        glUniform4f(colorLocation, color.r, color.g, color.b, color.a);
+                    }
+                }
+                
+                // Terrain shader also needs center position
+                if (customShader.shaderName == "terrainmap" && customShader.uniforms.size() >= 2) {
+                    GLint centerPosLocation = glGetUniformLocation(shaderProgramMap[customShader.shaderName], "uCenterPos");
+                    glUniform2f(centerPosLocation, customShader.uniforms[0], customShader.uniforms[1]);
                 }
                 
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -1200,7 +1344,7 @@ void renderAll() {
                     wallR, wallG, wallB, wallA, // More translucent when outside for player visibility
                     position.sx + cameraShape.scaled_size.x,
                     position.sy + cameraShape.scaled_size.y + shape.scaled_size.y + standardWallHeight/2,
-                    shape.scaled_size.x, standardWallHeight + standardWallHeight*1.5,
+                    shape.scaled_size.x, standardWallHeight + standardWallHeight/2,
                     0.0f);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
             }
@@ -1209,7 +1353,7 @@ void renderAll() {
     }
 
     // Render menu text from meta tags based on game state
-    if (gameState.gameState <= 0) {
+    if (gameState.gameState <= 0 || gameState.gameState > 1) {
         // Get camera for UI scaling using priority-based selection
         entt::entity cameraEntity = selectMainCamera(registry);
         if(cameraEntity != entt::null) {
@@ -1222,6 +1366,12 @@ void renderAll() {
             } else if (gameState.gameState == -1 && !metaData.start_menu.empty()) {
                 // Start menu
                 menuText = metaData.start_menu;
+            } else if (gameState.gameState > 1) {
+                // Check for custom scenes in metaData.scenes
+                auto sceneIt = metaData.scenes.find(gameState.gameState);
+                if (sceneIt != metaData.scenes.end()) {
+                    menuText = sceneIt->second;
+                }
             }
             
             if (!menuText.empty()) {

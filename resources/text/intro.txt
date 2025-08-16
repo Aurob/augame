@@ -1,7 +1,11 @@
-Welcome to the demo world!
+Hello Welcome!
 
-- Use WASD to move your character.
-- Scroll to zoom in and out.
-- Click objects to interact.
-- Press Escape to pause
-  - Press 1 while paused to quit
+
+
+
+
+
+
+
+
+!@image:bot_splash1,10,10@! 
