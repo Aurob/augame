@@ -1,69 +1,58 @@
+# AuGame
 
-<!-- Add your logo here -->
-<!-- ![AuGame Logo](path/to/logo.png) -->
+**2D game engine** - C++ with WebAssembly, SDL2, OpenGL  
+**ECS Architecture** - EnTT-based entity component system  
+**Web-Native** - Runs directly in browsers via WebAssembly
 
-# AuGame Game Engine
-
-> A lightweight, web-based 2D game engine powered by C++ and WebAssembly
-
-<!-- Add a demo image or gif here -->
-<!-- ![AuGame Demo](path/to/demo.gif) -->
-
-AuGame is an early prototype for a future unnamed game. It's a 2D game engine that runs directly in web browsers, combining the performance of C++ with the accessibility of web technologies.
 ## Features
 
-- 🚀 C++ core for high performance
-- 🌐 [WebAssembly](https://webassembly.org/) compilation for browser deployment
-- 🎮 [SDL2](https://www.libsdl.org/) for cross-platform compatibility
-- 🖼️ [WebGL](https://www.khronos.org/webgl/) for efficient rendering
-- 🧩 Entity-Component-System (ECS) architecture using [EnTT](https://github.com/skypjack/entt)
-- 🎨 Custom shader support
-- 🖼️ Texture loading and rendering
-- 🏃‍♂️ Basic physics and collision detection
-- 🕹️ Player movement and interactions
-- 🌍 Tile-based world generation
-- 🎭 Dynamic entity creation and management
+- Custom shader pipeline with dynamic loading
+- Multi-scene management system
+- Interactive entity system (hover, click, drag)
+- Text rendering with font support
+- Physics simulation
+- Configurable world generation
 
-## Key Components
+## Setup
 
-- `main.cpp`: Core game loop and initialization
-- `GLUtils.hpp`: OpenGL utility functions
-- `JSUtils.hpp`: JavaScript interop utilities
-- `Systems.hpp`: Game systems (movement, collisions, etc.)
-- `EFactory.hpp`: Entity factory for creating game objects
-- `events.hpp`: Event handling
-- Various GLSL shaders for rendering
-
-## Building and Running
-
-1. Set up Emscripten by following the [official installation guide](https://emscripten.org/docs/getting_started/downloads.html).
-   ```
+1. **Install Emscripten**:
+   ```bash
    git clone https://github.com/emscripten-core/emsdk.git
    cd emsdk
    ./emsdk install latest
    ./emsdk activate latest
    source ./emsdk_env.sh
    ```
-2. Clone this repository:
-   ```
+
+2. **Build & Run**:
+   ```bash
    git clone https://github.com/Aurob/augame.git
    cd augame
-   ```
-3. Compile the project:
-   ```
-   ./compile.sh main
-   ```
-4. Serve the resulting files using a local web server and open in your browser. You can use Python's built-in HTTP server:
-   ```
+   ./compile.sh
    python -m http.server 8000
    ```
-   Then open your web browser and navigate to `http://localhost:8000`.
+   
+   Open `http://localhost:8000`
 
-## Contributing
+## Architecture
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+- **Core**: `src/main.cpp` - Main game loop
+- **Rendering**: `include/GLUtils.hpp` - OpenGL pipeline
+- **Systems**: `include/Systems/` - ECS system implementations  
+- **Physics**: `include/lib/physics.hpp` - 2D physics engine (based on [Physics2D](https://github.com/SifuF/physics-2d))
+- **Config**: `web/econfigs/` - Scene definitions
+- **Assets**: `resources/` - Shaders, textures, fonts
+
+See `CLAUDE.md` for detailed development documentation.
+
+## Controls
+
+- **WASD**: Player movement
+- **Mouse**: Entity interaction (hover, click, drag)
+- **ESC**: Pause/unpause
+- **C**: Toggle camera mode
+- **Shift+</>**: Scene navigation
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
+MIT License
