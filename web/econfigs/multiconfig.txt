@@ -1,0 +1,8 @@
+-- # This config file defines 3 scenes with different settings and entities.
+-- # Each scene has its own metadata and entities defined.
+-- # The entities for each scene will be loaded into the game engine.
+
+meta scene "@web/econfigs/builder1.txt"
+meta scene "@web/econfigs/temp.txt"
+meta scene "@web/econfigs/new1.txt"
+meta scene "@web/econfigs/builder2.txt"

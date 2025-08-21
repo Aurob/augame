@@ -1,0 +1,29 @@
+-- # This config file defines 3 scenes with different settings and entities.
+-- # Each scene has its own metadata and entities defined.
+-- # The entities for each scene will be loaded into the game engine.
+
+meta scene "test1"
+meta terrain water
+meta void 0,0,0
+meta start_menu "Long Hallway"
+
+id 10 room position 0.0000 0.0000 0 shape 20.0000 2000.0000 0 color 0.87 0.87 0.87 1 renderPriority 0 interior 1 collidable
+id 12 room2 position 20.0000 0.0000 0 shape 10.0000 10.0000 0 color 0.87 0.87 0.87 1 renderPriority 0 interior 1 collidable
+id 13 portal2 position 19.99995 0.0000 0 shape .0001 10.000 0 color 1.00 1.00 0.00 1 renderPriority 3 interiorPortal 12 10 0 -1 inside 12
+
+-- id 1 camera position 10.0000 10.0000 0 shape 1.0000 1.0000 0 color 0.35 0.04 0.38 1 inside 10 camera 1024 64 0 0 0
+id 1 player position 28.0000 5.0000 0 shape 1.0000 1.0000 0 color 0.35 0.04 0.38 1 player collidable movement 1888 1 1 0 renderPriority 2 inside 12
+id 11 a position 5.0000 3.0000 0 shape 0.5000 3.0000 0 color 1.00 1.00 0.00 0.75 renderPriority 3 collidable inside 10 movement 1888 1 1 0 
+id 11 portal position 0.0000 9.75000 0 shape 0.5000 3.0000 0 color 0.00 1.00 0.00 0.75 renderPriority 3 interiorPortal 10 -1 0 -1 collidable inside 10
+id 11 a position -5.0000 3.0000 0 shape 5 5 0 color 1.00 1.00 0.00 0.001 renderPriority 3 collidable movement 1888 1 1 0 cshader water1
+
+
+
+meta scene "test2"
+meta terrain water
+meta void water
+meta start_menu "@/resources/text/new1_intro.txt"
+id 20 room position 0.0000 0.0000 0 shape 20.0000 20.0000 0 color 0.87 0.87 0.87 1 renderPriority 0 collidable interior
+id 2 player position 3.0000 10.0000 0 shape 1.0000 1.0000 0 color 0.35 0.04 0.38 1 player collidable movement 888 1 1 0 renderPriority 2 inside 20
+id 11 portal position 0.0000 10.0000 0 shape 0.5000 3.0000 0 color 0.00 1.00 0.00 0.75 renderPriority 3 interiorPortal 20 -1 0 -1 collidable inside 20
+id 11 a position 5.0000 3.0000 0 shape 0.5000 3.0000 0 color 1.00 1.00 0.00 0.001 renderPriority 3 collidable inside 10 movement 1888 1 1 0 cshader water1

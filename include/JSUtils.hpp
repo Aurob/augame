@@ -3,11 +3,12 @@
 #include "shaders.hpp"
 #include "lib/entt.hpp"
 #include "../include/structs.hpp"
+#include "SceneManager.hpp"
 
 using namespace std;
 
 extern entt::entity _player;
-extern entt::registry registry;
+extern SceneManager sceneManager;
 
 // key, float value
 void _js__kvdata(string k, float v)

@@ -25,8 +25,9 @@
 #include <vector>
 #include "entt.hpp"
 #include "../structs.hpp"
+#include "../SceneManager.hpp"
 
-extern entt::registry registry;
+extern SceneManager sceneManager;
 
 
 namespace p2d {
@@ -500,23 +501,25 @@ namespace p2d {
 				}
 				
 				// Check if o or p is an Interior entity
-				bool o_is_interior = registry.all_of<Interior>(o->m_entity);
-				bool p_is_interior = registry.all_of<Interior>(p->m_entity);
+				bool o_is_interior = sceneManager.getCurrentRegistry().all_of<Interior>(o->m_entity);
+
+				bool p_is_interior = sceneManager.getCurrentRegistry().all_of<Interior>(p->m_entity);
 
 				if (o_is_interior) {
 					// Check if p has Inside and its .interior == o->m_entity
-					if (registry.all_of<Inside>(p->m_entity)) {
-						const auto& inside = registry.get<Inside>(p->m_entity);
+					if (sceneManager.getCurrentRegistry().all_of<Inside>(p->m_entity)) {
+						const auto& inside = sceneManager.getCurrentRegistry().get<Inside>(p->m_entity);
 						// If inside.interior == o->m_entity, set o->ignore = true
 						if (inside.interior == o->m_entity) {
 							return;
 						}
 					}
 				}
+
 				if (p_is_interior) {
 					// Check if o has Inside and its .interior == p->m_entity
-					if (registry.all_of<Inside>(o->m_entity)) {
-						const auto& inside = registry.get<Inside>(o->m_entity);
+					if (sceneManager.getCurrentRegistry().all_of<Inside>(o->m_entity)) {
+						const auto& inside = sceneManager.getCurrentRegistry().get<Inside>(o->m_entity);
 						if (inside.interior == p->m_entity) {
 							return;
 						}
@@ -614,9 +617,16 @@ namespace p2d {
 			float dt = float(d);
 			
 			//Apply forces
-			for (Body* o : m_Body) {
+			for (auto it = m_Body.begin(); it != m_Body.end(); ) {
+				Body* o = *it;
 				
+				if (!sceneManager.getCurrentRegistry().valid(o->m_entity)) {
+					it = m_Body.erase(it);
+					continue;
+				}
+
 				if (o->isStatic()) {
+					++it;
 					continue;
 				}
 				
@@ -634,10 +644,13 @@ namespace p2d {
 				float ang_velocityUnit = (o->getThetaDot() < 0) ? -1.0f : 1.0f;
 				o->applyIthetaDotDot(ang_velocityUnit * ang_speed * -m_drag_rotational.x);
 				o->applyIthetaDotDot(ang_velocityUnit * ang_speed * ang_speed * -m_drag_rotational.y);
+
+				++it;
 			}
 
 			//Euler integrator
 			for (Body* o : m_Body) {
+				
 				
 				//Linear
 				Vec2f acc = o->getAcceleration() + o->getForce() / o->getMass();

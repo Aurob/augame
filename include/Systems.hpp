@@ -7,27 +7,37 @@
 #include "Systems/PhysicsSystems.hpp"
 #include "Systems/TextureSystems.hpp"
 #include "../include/JSUtils.hpp"
+#include "SceneManager.hpp"
 
     
 extern float deltaTime;
+extern SceneManager sceneManager;
 void updateFrame()
 {
+    auto& currentRegistry = sceneManager.getCurrentRegistry();
     
-    updateActions(registry);
-    updatePhysics(registry);
-    updatePlayer(registry);
-    updateShapes(registry);  
-    updateInteractions(registry);
-    updateAnimations(registry);
-    updateOther(registry);
-    updatePositions(registry); 
-    updateCamera(registry);
-
+    updateActions(currentRegistry);
+    
+    updatePhysics(currentRegistry);
+    
+    updatePlayer(currentRegistry);
+    
+    updateShapes(currentRegistry);
+    
+    updateInteractions(currentRegistry);
+    
+    updateAnimations(currentRegistry);
+    
+    updateOther(currentRegistry);
+    
+    updatePositions(currentRegistry);
+    
+    updateCamera(currentRegistry);
 
 
 
     // Update JS with the player's position using a view to get Player
-    auto playerView = registry.view<Player, Position>();
+    auto playerView = currentRegistry.view<Player, Position>();
     for (auto entity : playerView) {
         Position &playerPos = playerView.get<Position>(entity);
         _js__update_user_position(playerPos.x, playerPos.y);

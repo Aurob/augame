@@ -196,7 +196,6 @@ void updateInteractions(entt::registry &registry)
                     } 
                 }
 
-                keys[SDL_BUTTON_LEFT] = false;
             }
         }
         else

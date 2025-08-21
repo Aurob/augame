@@ -41,12 +41,13 @@ void makePlayer(entt::registry &registry)
     if (player == entt::null) return;
 
     registry.emplace_or_replace<Player>(player);
-    registry.emplace<Keys>(player);
-    registry.emplace<Cursor>(player);
-    registry.emplace<Rotation>(player, Rotation{0.0f, 0.0f, 0.0f, 1.0f});
+    registry.emplace_or_replace<Keys>(player);
+    registry.emplace_or_replace<Cursor>(player);
+    registry.emplace_or_replace<Rotation>(player, Rotation{0.0f, 0.0f, 0.0f, 1.0f});
 
-    // Applies the animated player texture to the player entity
-    if (!defaultPlayer) {
+    // Applies the animated player texture to the player entity (always add TextureAlts)
+    if(!registry.any_of<Texture, TextureGroupPart, TextureAlts>(player))
+    {
         // Add textures to the player
         std::vector<Textures> textureAlts;
         const std::vector<std::string> actions = {"Idle", "Run"};

@@ -8,10 +8,10 @@
 #include "../include/EntityFactory.hpp"
 #include "../include/Systems.hpp"
 #include "../include/lib/physics.hpp"
+#include "../include/SceneManager.hpp"
 
 using namespace std;
 // External variables
-extern entt::registry registry;
 extern float deltaTime;
 extern bool ready;
 extern entt::entity _player;
@@ -30,7 +30,7 @@ GameState gameState;
 MetaData metaData;
 
 entt::entity _player = entt::null;
-entt::registry registry;
+SceneManager sceneManager;
 
 context ctx;
 // 
@@ -75,14 +75,15 @@ bool js_loaded() {
     if(!first_start) {
         first_start = true;
         
+        metaData = sceneManager.getCurrentMetadata();
         srand(metaData.seed);
         gameState.seed = rand() % 10000;
 
         loadTextures();
         loadFont();
 
-        makePlayer(registry);
-        runFactories(registry);
+        makePlayer(sceneManager.getCurrentRegistry());
+        runFactories(sceneManager.getCurrentRegistry());
 
         gameState.gameState = -1;        
         
@@ -101,6 +102,9 @@ void mainloop(void *arg)
     // Handle events
     processEvents();
 
+    // Sync global metadata with current scene
+    metaData = sceneManager.getCurrentMetadata();
+    
     // Update frame
     updateFrame();
 

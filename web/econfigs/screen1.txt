@@ -1,0 +1,4 @@
+meta terrain 255,255,125
+meta start_menu "Hello"
+id 0 player position 222 0 0 shape 1 1 1 movement 10 1 1 0 camera 1024 16 0 0 0 renderPriority 0 collidable color 0 0 0 0
+id 2 b position 220 0 0 shape 1 .1 0 movement 1 1 1 0 color 0 0 0 1 renderPriority 0 text "Hello World" 0.01 0 0 1

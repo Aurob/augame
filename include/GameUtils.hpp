@@ -1,11 +1,12 @@
 #pragma once
 #include "structs.hpp"
+#include "SceneManager.hpp"
 
-extern entt::registry registry;
+extern SceneManager sceneManager;
 
 // Utility function to get an entity by name
 inline entt::entity getEntityByName(const std::string& name) {
-    auto idView = registry.view<Id>();
+    auto idView = sceneManager.getCurrentRegistry().view<Id>();
     for (auto entity : idView) {
         const auto& id = idView.get<Id>(entity);
         if (id.name == name) {
@@ -56,6 +57,6 @@ namespace TickActions {
 inline void addTickAction(const std::string& entityName, std::function<void(entt::registry&, entt::entity)> action, float interval = 0.19f) {
     entt::entity entity = getEntityByName(entityName);
     if (entity != entt::null) {
-        registry.emplace_or_replace<TickAction>(entity, TickAction{action, interval});
+        sceneManager.getCurrentRegistry().emplace_or_replace<TickAction>(entity, TickAction{action, interval});
     }
 }

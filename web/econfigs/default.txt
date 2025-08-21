@@ -1,13 +1,13 @@
-meta world "world1"
+meta scene "world1"
 meta title "Default World"
 meta description "This is the default world configuration file for the game."
 meta seed "Hello World"
 meta author "rau"
 meta font "HomeVideo-Regular.ttf"
-meta terrain "terrain"
+meta terrain terrain
 meta void "#000000"
-meta start_menu "@resources/text/start.txt"
-meta pause_menu "@resources/text/pause.txt"
+meta start_menu "Demo
+meta pause_menu "Paused"
 
 
 id 4 entity4 position 3.0000 3.0000 0 shape 10.0000 10.0000 0 color 0.87 0.87 0.87 1 renderPriority 0 collidable interior
@@ -16,16 +16,17 @@ id 7 entity7 position 25.0000 3.0000 0 shape 10.0000 10.0000 0 color 0.87 0.87 0
 id 8 entity8 position 6.4154 12.1068 0 shape 2.0000 0.5000 0 color 1.00 0.85 0.10 1 renderPriority 0 collidable inside 4 movement 555 1 0 0 interactable 1 0 hoverable
 id 9 entity8 position 17.5000 5.7500 0 shape 3.0000 0.5000 0 color 0.00 1.00 0.00 1 renderPriority 0 interiorPortal 5 -1 1 8 inside 5 collidable
 id 1 entity1 position 12.7500 3.0000 0 shape 0.5000 3.0000 0 color 0.00 1.00 0.00 0.75 renderPriority 3 interiorPortal 4 5 0 -1 collidable inside 4
-id 3 entity3 position 6.5000 10.5000 0 shape 2.0000 2.0000 0 renderPriority 3 player collidable movement 2500 0.4 0.8 0 camera 2048 16 0 0 0 inside 4
+
+id 3 player position -6.5000 10.5000 0 shape 1.0000 1.0000 0 renderPriority 3 player collidable movement 1500 0.4 0.8 0 camera 1024 16 0 0 0 inside 4
+
 id 6 entity6 position 24.7500 3.0000 0 shape 0.5000 3.0000 0 color 0.00 1.00 0.00 0.75 renderPriority 3 interiorPortal 5 7 0 -1 collidable inside 4
-id 12 entity12 position 29.4154 12.1068 0 shape 1.0000 0.5000 0 color 1.00 0.85 0.10 1 renderPriority 0 inside 7 text "@resources/text/temp.txt" 1 0 0.0 0.5
 id 13 entity13 position 19 8 0 shape 0.5000 3.0000 0 color 0.00 1.00 0.00 0.0 camera 512 16 0 0 0
 
-id 100 npc_tes position 6.4154 15.1068 0 shape 2.0000 2.5000 0 color 1.00 0.85 0.10 1 renderPriority 0 collidable inside 4 movement 555 1 0 0 interactable 1 0 hoverable
-
-id 100 npc_tes position 6.4154 15.1068 0 shape 1.0000 1.5000 0 color 1.00 0.85 0.10 1 renderPriority 0 collidable inside 4 movement 555 1 0 0 interactable 1 0 hoverable
-id 100 npc_tes position 6.4154 15.1068 0 shape 3.0000 .5.5000 0 color 1.00 0.85 0.10 1 renderPriority 0 collidable inside 4 movement 555 1 0 0 interactable 1 0 hoverable
-id 100 npc_tes position 6.4154 15.1068 0 shape 2.0000 2 0 color 1.00 0.85 0.10 1 renderPriority 0 collidable inside 4 movement 555 1 0 0 interactable 1 0 hoverable
-id 101 bookshelf_small position 10.0000 12.0000 0 shape 1.0000 1.0000 0 renderPriority 2 cshader bookshelf inside 4
-id 102 bookshelf_medium position 8.0000 12.0000 0 shape 2.0000 2.0000 0 renderPriority 2 cshader bookshelf inside 4
-id 103 bookshelf_large position 5.0000 12.0000 0 shape 3.0000 4.0000 0 renderPriority 2 cshader bookshelf inside 4
+id 101 objA position 6.5 15.1 0 shape 2.0 2.5 0 color 0.98 0.82 0.92 1 renderPriority 0 collidable inside 4 movement 555 1 0 0 interactable 1 0 hoverablexw
+id 102 objB position 7.2 14.8 0 shape 1.2 1.7 0 color 0.80 0.92 0.98 1 renderPriority 0 collidable inside 4 movement 555 1 0 0 interactable 1 0 hoverable
+id 103 objC position 8.1 13.9 0 shape 2.5 1.5 0 color 0.90 0.98 0.85 1 renderPriority 0 collidable inside 4 movement 555 1 0 0 interactable 1 0 hoverable
+id 104 objD position 9.0 13.2 0 shape 1.8 2.2 0 color 0.98 0.90 0.80 1 renderPriority 0 collidable inside 4 movement 555 1 0 0 interactable 1 0 hoverable
+id 105 objE position 10.3 12.7 0 shape 2.3 1.8 0 color 0.85 0.90 0.98 1 renderPriority 0 collidable inside 4 movement 555 1 0 0 interactable 1 0 hoverable
+id 106 objF position 11.5 11.9 0 shape 1.6 2.0 0 color 0.98 0.85 0.90 1 renderPriority 0 collidable inside 4 movement 555 1 0 0 interactable 1 0 hoverable
+id 107 objG position 12.8 10.8 0 shape 2.1 2.1 0 color 0.92 0.98 0.88 1 renderPriority 0 collidable inside 4 movement 555 1 0 0 interactable 1 0 hoverable
+id 108 objH position 13.7 9.5 0 shape 1.9 1.6 0 color 0.88 0.92 0.98 1 renderPriority 0 collidable inside 4 movement 555 1 0 0 interactable 1 0 hoverable

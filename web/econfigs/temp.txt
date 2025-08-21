@@ -1,5 +1,5 @@
-meta world "test1"
-meta title "Testing"
+meta scene "temp"
+meta title "temp"
 meta description "Testing this"
 meta author "rau"
 meta font "HomeVideo-Regular.ttf"
@@ -8,14 +8,15 @@ meta void 25,25,25
 meta seed "Hello World"
 meta start_menu "Testing"
 meta pause_menu "Paused"
+
 meta scenes "Welcome to the tutorial! Click to continue.","@resources/text/intro2.txt"
 
-id 1 entity1 position 1.0000 1.5000 0 shape 25 100 0 renderPriority 0 interior collidable cshader carpet color .4 .1 .2 1
+id 6 entity1 position 1.0000 1.5000 0 shape 25 100 0 renderPriority 0 interior collidable cshader carpet
 
-id 2 entity2 position 50.0623 5.3980 0 shape 1.0000 1 0 renderPriority 0 player collidable movement 2222 1 0 0 camera 2048 16 0 0 0 inside 1
+id 7 entity2 position 50.0623 5.3980 0 shape 1.0000 1 0 renderPriority 0 player collidable movement 2222 1 0 0 camera 2048 16 0 0 0 inside 6 texture key 1 1
 
-id 5 bs1 position 1 5 0 shape 25 3.3 0 renderPriority 1 inside 1 cshader bookshelf
-id 6 bs1_blocker position 5 14.899999999999999 0 shape 100 0.1 0 color 0 0 0 0 renderPriority 1 inside 1 collidable
+id 8 bs1 position 1 5 0 shape 25 3.3 0 renderPriority 1 inside 6 cshader bookshelf
+id 9 bs1_blocker position 5 14.899999999999999 0 shape 100 0.1 0 color 0 0 0 0 renderPriority 1 inside 6 collidable
 
-id 7 bs2 position 30 0 shape 25 3.3 0 renderPriority 1 inside 1 cshader bookshelf
-id 8 bs2_blocker position 55.0623 14.899999999999999 0 shape 100 0.1 0 color 0 0 0 0 renderPriority 1 inside 1 collidable
+id 10 bs2 position 30 0 0 shape 25 3.3 0 renderPriority 1 inside 5 cshader bookshelf
+id 11 bs2_blocker position 55.0623 14.899999999999999 0 shape 100 0.1 0 color 0 0 0 0 renderPriority 1 inside 6 collidable

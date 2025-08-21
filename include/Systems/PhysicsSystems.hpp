@@ -6,12 +6,14 @@
 #include "../lib/entt.hpp"
 #include "../lib/physics.hpp"
 #include "../structs.hpp"
+#include "../SceneManager.hpp"
 
 extern entt::entity _player;
 extern p2d::Physics physics;
 extern float deltaTime;
+extern SceneManager sceneManager;
 
-void processCollisionInfo(p2d::CollisionInfo& info)
+void processCollisionInfo(p2d::CollisionInfo& info, entt::registry& registry)
 {
     auto entityA = info.bodyA->m_entity;
     auto entityB = info.bodyB->m_entity;
@@ -103,7 +105,7 @@ void processCollisionInfo(p2d::CollisionInfo& info)
 
 }
 
-void onCollision(p2d::CollisionInfo& info) { processCollisionInfo(info); }
+void onCollision(p2d::CollisionInfo& info) { processCollisionInfo(info, sceneManager.getCurrentRegistry()); }
 
 void updatePhysics(entt::registry& registry)
 { 
@@ -164,11 +166,12 @@ void updatePhysics(entt::registry& registry)
 
     // After update, you can also access all collisions that occurred
     const auto& collisions = physics.getCollisions();
+
     for (auto info : collisions) {
-        processCollisionInfo(info);
+        processCollisionInfo(info, registry);
     }
 
-	
+
     // Map from entity to the set of entities it is colliding with
     std::unordered_map<entt::entity, std::vector<entt::entity>> entityCollisions;
 
