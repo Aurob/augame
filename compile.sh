@@ -14,7 +14,7 @@ start_time=$(date +%s)
   -sNO_DISABLE_EXCEPTION_CATCHING\
   -lSDL\
   -s SDL2_IMAGE_FORMATS='["png", "jpg"]'\
-  -s EXPORTED_FUNCTIONS="['_main', '_load_json', '_isready','_reload', _malloc, _free, UTF8ToString, stringToUTF8]"\
+  -s EXPORTED_FUNCTIONS="['_main', '_load_json', '_isready','_reload', '_createSceneFromJson', '_switchToNextScene', '_switchToPrevScene', _malloc, _free, UTF8ToString, stringToUTF8]"\
   -o build/main.js\
   -O0
   

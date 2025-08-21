@@ -13,7 +13,7 @@ class EntityBuilder {
         test: 2,
         renderPriority: 2,
         collidable: 1,
-        interior: 1,
+        interior: 2,
         moveable: 1,
         hoverable: 1,
         interactable: 3,
@@ -48,7 +48,7 @@ class EntityBuilder {
         },
         renderPriority: (parts, i) => ({ RenderPriority: { priority: parseInt(parts[i], 10) } }),
         collidable: () => ({ Collidable: true }),
-        interior: () => ({ Interior: { hideInside: true } }),
+        interior: (parts, i) => ({ Interior: { showInside: parts[i] === "1" || parts[i] === "true" || false } }),
         interiorPortal: (parts, i) => ({ InteriorPortal: { A: parseInt(parts[i], 10), B: parseInt(parts[i+1], 10), locked: parts[i+2] === "1", key: parseInt(parts[i+3], 10) } }),
         inside: (parts, i) => ({ Inside: { interiorEntity: parseInt(parts[i], 10), showOutside: parts[i+1] === "true" } }),
         associated: (parts, i) => ({ Associated: { entities: [parseInt(parts[i], 10)] } }),
@@ -131,17 +131,17 @@ class EntityBuilder {
             const type = parts[i];
             let value = parts[i+1];
             
-            // Handle scenes parsing for format like "text","text","@resources/text/test.txt"
-            if (type === 'scenes' && value) {
+            // Handle slides parsing for format like "text","text","@resources/text/test.txt"
+            if (type === 'slides' && value) {
                 // Split value by comma first
                 const scenesArray = value.split(',').map(scene => scene.trim().replace(/^['"]|['"]$/g, ''));
                 
                 // Convert array to map with auto-assigned IDs starting from 2
-                const scenesMap = {};
+                const slidesMap = {};
                 for (let i = 0; i < scenesArray.length; i++) {
-                    scenesMap[i + 2] = scenesArray[i]; // Start scene IDs from 2
+                    slidesMap[i + 2] = scenesArray[i]; // Start slide IDs from 2
                 }
-                value = scenesMap;
+                value = slidesMap;
             }
             // Handle color parsing for terrain and void meta tags
             else if ((type === 'terrain' || type === 'void') && value) {

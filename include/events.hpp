@@ -5,9 +5,11 @@
 #include "structs.hpp"
 #include "../include/lib/physics.hpp"
 #include "../include/Systems/ViewSystems.hpp"
+#include "../include/SceneManager.hpp"
+#include "../include/WebUtils.hpp"
 
 extern entt::entity _player;
-extern entt::registry registry;
+extern SceneManager sceneManager;
 extern p2d::Physics physics;
 extern GameState gameState;
 extern MetaData metaData;
@@ -15,10 +17,20 @@ extern MetaData metaData;
 void EventHandler(int type, SDL_Event *event)
 {
     // wasd for offset
-    auto &playerKeys = registry.get<Keys>(_player).keys;
+    auto &playerKeys = sceneManager.getCurrentRegistry().get<Keys>(_player).keys;
     if (event->type == SDL_KEYDOWN)
     {
         playerKeys[event->key.keysym.sym] = true;
+        
+        // Scene switching with Shift+< and Shift+>
+        if ((event->key.keysym.mod & KMOD_SHIFT) && 
+            event->key.keysym.sym == SDLK_COMMA) {
+            switchToPrevScene();
+        }
+        else if ((event->key.keysym.mod & KMOD_SHIFT) && 
+                 event->key.keysym.sym == SDLK_PERIOD) {
+            switchToNextScene();
+        }
     }
     else if (event->type == SDL_KEYUP)
     {
@@ -36,7 +48,7 @@ void EventHandler(int type, SDL_Event *event)
     }
 
     // Handle downtime increment/reset for Cursor while button is held or released
-    auto view = registry.view<Cursor, Player>();
+    auto view = sceneManager.getCurrentRegistry().view<Cursor, Player>();
     for (auto entity : view)
     {
         auto &cursor = view.get<Cursor>(entity);
@@ -53,13 +65,13 @@ void EventHandler(int type, SDL_Event *event)
     // Mouse/Touch position
     if (event->type == SDL_MOUSEMOTION || event->type == SDL_FINGERMOTION)
     {
-        auto view = registry.view<Cursor, Player>();
+        auto view = sceneManager.getCurrentRegistry().view<Cursor, Player>();
         for (auto entity : view)
         {
             auto &cursor = view.get<Cursor>(entity);
 
             // Get player position
-            auto &playerPos = registry.get<Position>(_player);
+            auto &playerPos = sceneManager.getCurrentRegistry().get<Position>(_player);
 
             // Get cursor position in screen coordinates
             float screenX, screenY;
@@ -96,9 +108,9 @@ void EventHandler(int type, SDL_Event *event)
 
     if(gameState.gameState > 0) {
         // Find camera for zoom adjustments using priority-based selection
-        entt::entity cameraEntity = selectMainCamera(registry);
+        entt::entity cameraEntity = selectMainCamera(sceneManager.getCurrentRegistry());
         if(cameraEntity != entt::null) {
-            auto& camera = registry.get<Camera>(cameraEntity);
+            auto& camera = sceneManager.getCurrentRegistry().get<Camera>(cameraEntity);
         
         // Zoom in and out (Mouse wheel and pinch)
         if (event->type == SDL_MOUSEWHEEL)
@@ -137,28 +149,28 @@ void processEvents() {
         EventHandler(0, &event);
     }
 
-    auto key_entities = registry.view<Keys>();
+    auto key_entities = sceneManager.getCurrentRegistry().view<Keys>();
     for (auto e: key_entities) {
         auto &keys = key_entities.get<Keys>(e).keys;
 
         if(gameState.gameState > 0) {
             // If B increase player z
             if(keys[SDLK_b]) {
-                auto& playerPos = registry.get<Position>(_player);
+                auto& playerPos = sceneManager.getCurrentRegistry().get<Position>(_player);
                 playerPos.z += 1;
                 keys[SDLK_b] = false;
             }
             // If N decrease player z
             if(keys[SDLK_n]) {
-                auto& playerPos = registry.get<Position>(_player);
+                auto& playerPos = sceneManager.getCurrentRegistry().get<Position>(_player);
                 playerPos.z -= 1;
                 keys[SDLK_n] = false;
             }
             
             // Get _player shape and increase by 10 only when RSHIFT and '/' are held
             if (keys[SDLK_RSHIFT] && keys[SDLK_SLASH]) {
-                if (registry.all_of<Shape>(_player)) {
-                    auto& playerShape = registry.get<Shape>(_player);
+                if (sceneManager.getCurrentRegistry().all_of<Shape>(_player)) {
+                    auto& playerShape = sceneManager.getCurrentRegistry().get<Shape>(_player);
                     playerShape.size.x += 10;
                     playerShape.size.y += 10;
                     playerShape.size.z += 10;
@@ -166,8 +178,8 @@ void processEvents() {
             }
 
             // Speed Boost
-            if (registry.all_of<Movement>(e)) {
-                auto &movement = registry.get<Movement>(e);
+            if (sceneManager.getCurrentRegistry().all_of<Movement>(e)) {
+                auto &movement = sceneManager.getCurrentRegistry().get<Movement>(e);
                 if (keys[SDLK_LSHIFT]) {
                     movement.speed = movement.default_speed * 2;
                 }
@@ -177,8 +189,8 @@ void processEvents() {
             }
 
             // Update player's TextureAlts based on direction and movement
-            if (registry.all_of<TextureAlts>(e)) {
-                auto& textureAlts = registry.get<TextureAlts>(e);
+            if (sceneManager.getCurrentRegistry().all_of<TextureAlts>(e)) {
+                auto& textureAlts = sceneManager.getCurrentRegistry().get<TextureAlts>(e);
                 bool isMoving = keys[SDLK_w] || keys[SDLK_s] || keys[SDLK_a] || keys[SDLK_d];
                 std::string action = isMoving ? "Run" : "Idle";
                 static std::string lastDirection = "Down"; // Static variable to remember last direction
@@ -196,8 +208,8 @@ void processEvents() {
                 textureAlts.current = action + "_" + lastDirection;
 
                 // If entity has Rotation, set angle to 90 degree increments based on direction
-                if (registry.all_of<Rotation>(e)) {
-                    auto& rotation = registry.get<Rotation>(e);
+                if (sceneManager.getCurrentRegistry().all_of<Rotation>(e)) {
+                    auto& rotation = sceneManager.getCurrentRegistry().get<Rotation>(e);
                     // Use .angle field as defined in structs.hpp
                     if (lastDirection == "Up") {
                         rotation.angle = 270.0f;
@@ -241,35 +253,37 @@ void processEvents() {
         if (gameState.gameState >= 1) {
             if (keys[SDL_BUTTON_LEFT]) {
                 if(gameState.gameState == 1 && temp_skip) {
-                    // Transition from start menu, find first scene or go to gameplay
-                    int firstScene = -1;
-                    for (const auto& scene : metaData.scenes) {
-                        if (firstScene == -1 || scene.first < firstScene) {
-                            firstScene = scene.first;
+                    // Transition from start menu, find first slide or go to gameplay
+                    int firstSlide = -1;
+                    for (const auto& slide : sceneManager.getCurrentMetadata().slides) {
+                        if (firstSlide == -1 || slide.first < firstSlide) {
+                            firstSlide = slide.first;
                         }
                     }
-                    gameState.gameState = (firstScene > 1) ? firstScene : 1;
+                    gameState.gameState = (firstSlide > 1) ? firstSlide : 1;
                 } else if (gameState.gameState == 1 && !temp_skip) {
                     // In gameplay, clicking should NOT change gameState - do nothing
                     // This preserves normal gameplay interactions
+                    // Do NOT clear SDL_BUTTON_LEFT here - let interaction system handle it
+                    return; // Exit early to avoid clearing button state
                 } else {
-                    // In a scene, find the next scene or return to gameplay
-                    int maxSceneId = 1;
-                    int nextScene = -1;
+                    // In a slide, find the next slide or return to gameplay
+                    int maxSlideId = 1;
+                    int nextSlide = -1;
                     
-                    for (const auto& scene : metaData.scenes) {
-                        if (scene.first > maxSceneId) {
-                            maxSceneId = scene.first;
+                    for (const auto& slide : sceneManager.getCurrentMetadata().slides) {
+                        if (slide.first > maxSlideId) {
+                            maxSlideId = slide.first;
                         }
-                        if (scene.first > gameState.gameState && (nextScene == -1 || scene.first < nextScene)) {
-                            nextScene = scene.first;
+                        if (slide.first > gameState.gameState && (nextSlide == -1 || slide.first < nextSlide)) {
+                            nextSlide = slide.first;
                         }
                     }
                     
-                    if (gameState.gameState >= maxSceneId || nextScene == -1) {
-                        gameState.gameState = 1; // Transition to gameplay after last scene
+                    if (gameState.gameState >= maxSlideId || nextSlide == -1) {
+                        gameState.gameState = 1; // Transition to gameplay after last slide
                     } else {
-                        gameState.gameState = nextScene; // Proceed to next scene
+                        gameState.gameState = nextSlide; // Proceed to next slide
                     }
                 }
 

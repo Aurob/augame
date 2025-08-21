@@ -6,5 +6,5 @@ uniform vec4 uTextColor;
 
 void main() {
     vec4 sampled = vec4(1.0, 1.0, 1.0, texture2D(uTexture, vTexCoord).a);
-    gl_FragColor = vec4(1.0 - uTextColor.rgb, uTextColor.a) * sampled;
+    gl_FragColor = vec4(uTextColor.rgb, uTextColor.a) * sampled;
 }

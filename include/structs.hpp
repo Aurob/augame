@@ -163,7 +163,7 @@ struct Movement {
     float friction{1};
     float mass{1};
     float restitution{0.5};
-    
+
     Movement(float _speed = 10, float _mass = 1, float _restitution = 0.5, float _friction = 0.5) 
         : speed(_speed), default_speed(_speed), mass(_mass), restitution(_restitution), friction(_friction){}
 };
@@ -179,7 +179,7 @@ struct Rotation {
 
 // Interiors
 struct Interior {
-    bool hideInside;
+    bool showInside;
 };
 struct InteriorColliding {
     entt::entity interior;
@@ -279,7 +279,7 @@ struct Camera {
 };
 
 struct MetaData {
-    std::string world = "";
+    std::string scene = "";
     std::string title = "";
     std::string description = "";
     std::string author = "";
@@ -292,7 +292,7 @@ struct MetaData {
     std::string pause_menu = "Paused"; // path to pause menu text file
     std::string str_seed = ""; // original seed as string (can be words, sentences, etc.)
     int seed = 0;              // numeric seed, converted from str_seed
-    std::unordered_map<int, std::string> scenes; // gameState -> text content mapping
+    std::unordered_map<int, std::string> slides; // gameState -> text content mapping
     
 
 };

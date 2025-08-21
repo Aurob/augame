@@ -138,6 +138,8 @@ entt::entity selectMainCamera(entt::registry &registry) {
 
         return closestCamera;
     }
+
+
 }
 
 void updatePositions(entt::registry &registry)
@@ -149,7 +151,7 @@ void updatePositions(entt::registry &registry)
         lastPlayerCameraMode = gameState.playerCameraMode;
     }
 
-    // Select the main camera using our helper function
+    // Select the main camera using  helper function
     entt::entity cameraEntity = selectMainCamera(registry);
     if(cameraEntity == entt::null) return;
     
@@ -211,28 +213,21 @@ void updatePositions(entt::registry &registry)
 
             if(registry.all_of<Inside>(entity)) { 
                 auto _interior = registry.get<Inside>(entity).interior;
+                // bool hideInside = registry.get<Interior>(_interior).hideInside;
 
                 if(!entityIsPortal) {
-                    if(!cameraIsInside) {
-                        bool hideInside = registry.get<Interior>(_interior).hideInside;
-                        if(hideInside) {
-                            isVisible = false;
-                            isInView = false;
-                        }
+                    // if(!cameraIsInside) {
+                    //     if(hideInside) {
+                    //         isVisible = false;
+                    //         isInView = false;
+                    //     }
+                    // }
+                    // else 
+                    if(entity != cameraInterior && _interior != cameraInterior) {
+                        isVisible = false;
+                        isInView = false;
                     }
-                    else if(entityIsPortal) {
-                        if(_interior != cameraInterior) {
-                            isVisible = false;
-                            isInView = false;
-                        }
-                    }
-                    else {
 
-                        if(entity != cameraInterior && _interior != cameraInterior) {
-                            isVisible = false;
-                            isInView = false;
-                        }
-                    }
                 }
                 else {
                     auto portal = registry.get<InteriorPortal>(entity);
@@ -265,6 +260,15 @@ void updatePositions(entt::registry &registry)
                         isVisible = false;
                         isInView = false;
                     }
+                }
+            }
+
+
+            if(registry.all_of<Interior>(entity)) {
+                auto& _inside = registry.get<Interior>(entity);
+                if(_inside.showInside) {
+                    isVisible = true;
+                    isInView = true;
                 }
             }
         }

@@ -6,9 +6,10 @@
 #include "../include/shaders.hpp"
 #include "events.hpp"
 #include "JSUtils.hpp"
+#include "SceneManager.hpp"
 
 extern float generationSize[2];
-extern entt::registry registry;
+extern SceneManager sceneManager;
 extern GameState gameState;
 extern MetaData metaData;
 
@@ -222,6 +223,7 @@ void updateUniforms(GLuint &shaderProgram,
                     float _width, float _height,
                     float toplefttile[2],
                     float generationSize[2],
+                    entt::registry& registry,
                     float rgb[3] = nullptr)   // Optional rgb parameter, default nullptr
 {
 
@@ -248,7 +250,7 @@ void updateUniforms(GLuint &shaderProgram,
     glUniform2f(cursorPosLocation, cursor.position.x, cursor.position.y);
 
     // time
-    float timeValue = SDL_GetTicks() / 1000000.0f;
+    float timeValue = SDL_GetTicks() / 10000.0f;
     GLint timeLocation = glGetUniformLocation(shaderProgram, "time");
     glUniform1f(timeLocation, timeValue);
 
@@ -267,7 +269,7 @@ void updateUniforms(GLuint &shaderProgram,
     }
 }
 
-void updateUIShader(GLuint &shaderProgram, float _width, float _height, float gridSpacingValue, float toplefttile[2])
+void updateUIShader(GLuint &shaderProgram, float _width, float _height, float gridSpacingValue, float toplefttile[2], entt::registry& registry)
 {
     glUseProgram(shaderProgram);
 
@@ -623,6 +625,13 @@ void loadTextures() {
         readShaderFile("resources/shaders/terrain_v.glsl"),
         readShaderFile("resources/shaders/terrain_simple.glsl")
     };
+
+    // Terrain shader
+    shaderGLSLMap["water"] = {
+        readShaderFile("resources/shaders/terrain_v.glsl"),
+        readShaderFile("resources/shaders/ocean.glsl")
+    };
+    
     
     // Debug entity shader (test_rgb)
     shaderGLSLMap["debug_entity"] = {
@@ -644,6 +653,7 @@ void loadTextures() {
     
     // Create static shader programs
     createShader(shaderProgramMap["terrain"], "terrain");
+    createShader(shaderProgramMap["water"], "water");
     createShader(shaderProgramMap["ui_layer"], "ui_layer");
     createShader(shaderProgramMap["texture"], "texture");
     createShader(shaderProgramMap["debug_entity"], "debug_entity");
@@ -769,10 +779,10 @@ std::pair<std::string, std::vector<EmbeddedImage>> processEmbeddedImages(const s
 void renderText(const std::string& text, float x, float y, float scale, float r, float g, float b, float a) {
     glUseProgram(shaderProgramMap["font"]);
 
-    SDL_Color color = {static_cast<Uint8>(r * 255), static_cast<Uint8>(g * 255), static_cast<Uint8>(b * 255), static_cast<Uint8>(a * 255)};
+    SDL_Color color = {255, 255, 255, 255}; // Always render white, let shader handle coloring
 
     // Build the full font path and validate
-    std::string fontPath = "resources/fonts/" + metaData.font;
+    std::string fontPath = "resources/fonts/" + sceneManager.getCurrentMetadata().font;
     
     // Validate the font exists, otherwise use default
     if (!isValidFont(fontPath)) {
@@ -882,8 +892,10 @@ void loadFont() {
 }
 
 void renderAll() {
+    auto& currentRegistry = sceneManager.getCurrentRegistry();
+    auto& currentMetadata = sceneManager.getCurrentMetadata();
     // Only proceed if there is at least one Player entity
-    auto playerView = registry.view<Player>();
+    auto playerView = currentRegistry.view<Player>();
     Position playerPos = {0, 0, 0}; // Default to zeroed Position
     Shape playerShape = {0, 0};  // Default to zeroed Shape
     float playerScreenX = 0.0f, playerScreenY = 0.0f; // Player's actual screen position
@@ -892,8 +904,8 @@ void renderAll() {
     entt::entity _player;
     if (hasPlayer) {
         _player = playerView.front();
-        playerPos = registry.get<Position>(_player);
-        playerShape = registry.get<Shape>(_player);
+        playerPos = currentRegistry.get<Position>(_player);
+        playerShape = currentRegistry.get<Shape>(_player);
         // Calculate player's actual screen position for interactions
         playerScreenX = playerPos.sx;
         playerScreenY = playerPos.sy;
@@ -905,16 +917,16 @@ void renderAll() {
     Inside playerInside{};
     
     if (hasPlayer) {
-        playerIsInside = registry.all_of<Inside>(_player);
-        playerInside = (playerIsInside) ? registry.get<Inside>(_player) : Inside{};
+        playerIsInside = currentRegistry.all_of<Inside>(_player);
+        playerInside = (playerIsInside) ? currentRegistry.get<Inside>(_player) : Inside{};
     }
     
     if (playerIsInside && static_cast<int>(playerInside.interior) != -1) {
         // Player is inside - use void color
-        if (metaData.void_bg == "color") {
-            clearColor[0] = metaData.void_color[0];
-            clearColor[1] = metaData.void_color[1];
-            clearColor[2] = metaData.void_color[2];
+        if (currentMetadata.void_bg == "color") {
+            clearColor[0] = currentMetadata.void_color[0];
+            clearColor[1] = currentMetadata.void_color[1];
+            clearColor[2] = currentMetadata.void_color[2];
         } else {
             // Default void color is black
             clearColor[0] = 0.0f;
@@ -923,10 +935,10 @@ void renderAll() {
         }
     } else {
         // Player is outside - use terrain color if terrain is color
-        if (metaData.terrain == "color") {
-            clearColor[0] = metaData.terrain_color[0];
-            clearColor[1] = metaData.terrain_color[1];
-            clearColor[2] = metaData.terrain_color[2];
+        if (currentMetadata.terrain == "color") {
+            clearColor[0] = currentMetadata.terrain_color[0];
+            clearColor[1] = currentMetadata.terrain_color[1];
+            clearColor[2] = currentMetadata.terrain_color[2];
         } else {
             // Default clear color for terrain shaders
             clearColor[0] = 0.0f;
@@ -942,21 +954,31 @@ void renderAll() {
 
     if(gameState.gameState > 0 and gameState.gameState < 2) {
         // Get camera data using priority-based selection
-        entt::entity cameraEntity = selectMainCamera(registry);
+        entt::entity cameraEntity = selectMainCamera(currentRegistry);
         if(cameraEntity == entt::null) return; // No camera, can't render
         
-        auto& camera = registry.get<Camera>(cameraEntity);
-        auto& cameraShape = registry.get<Shape>(cameraEntity); // Get camera shape for centering offset
+        auto& camera = currentRegistry.get<Camera>(cameraEntity);
+        auto& cameraShape = currentRegistry.get<Shape>(cameraEntity); // Get camera shape for centering offset
 
-        // Render terrain shader if player is outside and terrain is a shader
-        if (!playerIsInside && metaData.terrain == "terrain") {
+        // Render terrain shader if player is outside and terrain is a shader,
+        // or if player is inside and the void background is set to "terrain"
+        bool shouldRenderTerrainShader = 
+            (!playerIsInside && (currentMetadata.terrain == "terrain" || currentMetadata.terrain == "water")) ||
+            (playerIsInside && (currentMetadata.void_bg == "terrain" || currentMetadata.void_bg == "water"));
+
+        if (shouldRenderTerrainShader) {
             // Determine which shader to use
-            std::string shaderName = metaData.terrain;
-            
-            float rgb[3] = {0.2f, 0.5f, 0.2f}; // lightish dark green for terrain
+            std::string shaderName;
+            if (!playerIsInside) {
+                shaderName = (currentMetadata.terrain == "water") ? "water" : currentMetadata.terrain;
+            } else {
+                shaderName = (currentMetadata.void_bg == "water") ? "water" : currentMetadata.void_bg;
+            }
+
+            float rgb[3];
             float offsetArray[2] = {camera.offset.x, camera.offset.y};
             float topleftArray[2] = {camera.topLeftTile.x, camera.topLeftTile.y};
-            
+
             // Use the appropriate shader program
             if (shaderProgramMap.find(shaderName) != shaderProgramMap.end()) {
                 updateUniforms(
@@ -966,16 +988,16 @@ void renderAll() {
                     gameState.width, gameState.height, 
                     topleftArray,
                     generationSize,
+                    currentRegistry,
                     rgb
                 );
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
             }
         }
-            
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-        registry.sort<Visible>([&](const entt::entity lhs, const entt::entity rhs) {
-            bool lhsHasPrio = registry.all_of<RenderPriority>(lhs);
-            bool rhsHasPrio = registry.all_of<RenderPriority>(rhs);
+        currentRegistry.sort<Visible>([&](const entt::entity lhs, const entt::entity rhs) {
+            bool lhsHasPrio = currentRegistry.all_of<RenderPriority>(lhs);
+            bool rhsHasPrio = currentRegistry.all_of<RenderPriority>(rhs);
             
             // If one has priority and the other doesn't, prioritize the one with priority
             if (lhsHasPrio && !rhsHasPrio)
@@ -985,18 +1007,18 @@ void renderAll() {
                 
             // If both have priority, compare their priority values
             if (lhsHasPrio && rhsHasPrio) {
-                const auto& lhsPrio = registry.get<RenderPriority>(lhs);
-                const auto& rhsPrio = registry.get<RenderPriority>(rhs);
+                const auto& lhsPrio = currentRegistry.get<RenderPriority>(lhs);
+                const auto& rhsPrio = currentRegistry.get<RenderPriority>(rhs);
                 
                 if (lhsPrio.priority != rhsPrio.priority)
                     return lhsPrio.priority < rhsPrio.priority;
             }
             
             // If neither has priority or they have the same priority, sort by position
-            const auto& lhsPos = registry.get<Position>(lhs);
-            const auto& rhsPos = registry.get<Position>(rhs);
-            const auto& lhsShape = registry.get<Shape>(lhs);
-            const auto& rhsShape = registry.get<Shape>(rhs);
+            const auto& lhsPos = currentRegistry.get<Position>(lhs);
+            const auto& rhsPos = currentRegistry.get<Position>(rhs);
+            const auto& lhsShape = currentRegistry.get<Shape>(lhs);
+            const auto& rhsShape = currentRegistry.get<Shape>(rhs);
 
             float lhsYZS = lhsPos.y;
             float rhsYZS = rhsPos.y;
@@ -1005,9 +1027,9 @@ void renderAll() {
 
         // Collect Interior entities for wall rendering
         std::vector<entt::entity> interiorEntities;
-        auto visible_entities = registry.view<Visible, InView>();
+        auto visible_entities = currentRegistry.view<Visible, InView>();
         for(auto& entity : visible_entities) {
-            if(registry.all_of<Interior>(entity)) {
+            if(currentRegistry.all_of<Interior>(entity)) {
                 interiorEntities.push_back(entity);
             }
         }
@@ -1023,48 +1045,34 @@ void renderAll() {
         if (playerIsInside) {
             // When inside: render back walls first (behind everything) - opaque
             for(auto& entity : interiorEntities) {
-                auto position = registry.get<Position>(entity);
-                auto shape = registry.get<Shape>(entity);
+                auto position = currentRegistry.get<Position>(entity);
+                auto shape = currentRegistry.get<Shape>(entity);
                 
                 // Back wall (top of interior shape) - rendered first when inside
                 updateUniformsDebug(shaderProgramMap["debug_entity"],
                     wallR, wallG, wallB, wallA, // Opaque when inside
                     position.sx + cameraShape.scaled_size.x,
-                    position.sy + cameraShape.scaled_size.y + shape.scaled_size.y + standardWallHeight/2,
+                    position.sy + cameraShape.scaled_size.y + shape.scaled_size.y + (standardWallHeight + standardWallHeight*1.5),
                     shape.scaled_size.x, standardWallHeight + standardWallHeight*1.5,
                     0.0f);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
             }
         } else {
-            // When outside: render front walls first (so player can walk behind them) - opaque
-            for(auto& entity : interiorEntities) {
-                auto position = registry.get<Position>(entity);
-                auto shape = registry.get<Shape>(entity);
-                
-                // Front wall (bottom of interior shape) - rendered first when outside, opaque
-                updateUniformsDebug(shaderProgramMap["debug_entity"],
-                    wallR, wallG, wallB, wallA, // Opaque when outside
-                    position.sx + cameraShape.scaled_size.x,
-                    position.sy + cameraShape.scaled_size.y - shape.scaled_size.y + standardWallHeight,
-                    shape.scaled_size.x, standardWallHeight + standardWallHeight/2,
-                    0.0f);
-                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-            }
         }
 
         // PASS 2: Render all main entities (including Interiors)
         for(auto& entity : visible_entities) {
-            auto position = registry.get<Position>(entity);
-            auto shape = registry.get<Shape>(entity);
+            auto position = currentRegistry.get<Position>(entity);
+            auto shape = currentRegistry.get<Shape>(entity);
             
-            bool isDebug = registry.all_of<Debug>(entity);
-            bool is = registry.all_of<Teleport>(entity);
+            bool isDebug = currentRegistry.all_of<Debug>(entity);
+            bool is = currentRegistry.all_of<Teleport>(entity);
 
             // Render texture components (if any)
-            if (registry.all_of<Texture>(entity)) {
+            if (currentRegistry.all_of<Texture>(entity)) {
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-                const auto& texture = registry.get<Texture>(entity);
+                const auto& texture = currentRegistry.get<Texture>(entity);
 
                 // Use entity's own position, not offset by player
                 updateUniformsTexture(shaderProgramMap["texture"], 
@@ -1079,17 +1087,17 @@ void renderAll() {
             }
             
             // Render TextureGroupPart components (if any)
-            if (registry.all_of<TextureGroupPart>(entity)) {
+            if (currentRegistry.all_of<TextureGroupPart>(entity)) {
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-                const auto& textureGroupPart = registry.get<TextureGroupPart>(entity);
+                const auto& textureGroupPart = currentRegistry.get<TextureGroupPart>(entity);
                 auto groupName = textureGroupPart.groupName;
                 auto partName = textureGroupPart.partName;
 
                 auto rootTexture = textureIDMap[groupName];
                 const auto& texture = textureGroupMap[groupName].at(partName);
 
-                auto IdName = registry.get<Id>(entity).name;
+                auto IdName = currentRegistry.get<Id>(entity).name;
                 if (textureGroupPart.tilex > 0 && textureGroupPart.tiley > 0) {
                     int divisorX = textureGroupPart.tilex;
                     int divisorY = textureGroupPart.tiley;
@@ -1129,15 +1137,15 @@ void renderAll() {
             }
             
             // Render Textures (animated or multi-frame) components (if any)
-            if (registry.all_of<Textures>(entity)) {
+            if (currentRegistry.all_of<Textures>(entity)) {
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-                const auto& textures = registry.get<Textures>(entity);
+                const auto& textures = currentRegistry.get<Textures>(entity);
                 const auto& current_texture = textures.textures[textures.current];
 
                 float angle = 0.0f;
-                if(registry.all_of<Rotation>(entity)) {
-                    angle = registry.get<Rotation>(entity).angle;
+                if(currentRegistry.all_of<Rotation>(entity)) {
+                    angle = currentRegistry.get<Rotation>(entity).angle;
                 }
 
                 updateUniformsTexture(shaderProgramMap["texture"], 
@@ -1149,10 +1157,10 @@ void renderAll() {
             }
             
             // Render TextureAlts (player) components (if any)
-            if (registry.all_of<TextureAlts>(entity) && registry.all_of<Player>(entity)) {
+            if (currentRegistry.all_of<TextureAlts>(entity) && currentRegistry.all_of<Player>(entity)) {
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-                const auto& textureAlts = registry.get<TextureAlts>(entity);
+                const auto& textureAlts = currentRegistry.get<TextureAlts>(entity);
                 const auto& currentTextures = textureAlts.alts.at(textureAlts.current);
                 const auto& current_texture = currentTextures.textures[currentTextures.current];
 
@@ -1168,12 +1176,12 @@ void renderAll() {
             }
                 
             // Render CustomShader components (if any)
-            if(registry.all_of<CustomShader>(entity)) {
-                const auto& customShader = registry.get<CustomShader>(entity);
+            if(currentRegistry.all_of<CustomShader>(entity)) {
+                const auto& customShader = currentRegistry.get<CustomShader>(entity);
                 
                 float angle = 0.0f;
-                if(registry.all_of<Rotation>(entity)) {
-                    angle = registry.get<Rotation>(entity).angle;
+                if(currentRegistry.all_of<Rotation>(entity)) {
+                    angle = currentRegistry.get<Rotation>(entity).angle;
                 }
                 
                 // Use the same update pattern as debug/color entities
@@ -1189,8 +1197,8 @@ void renderAll() {
                 float uniqueSeed = 0.0f; // Start fresh
                 
                 // Add entity ID influence if available
-                if (registry.all_of<Id>(entity)) {
-                    const auto& id = registry.get<Id>(entity);
+                if (currentRegistry.all_of<Id>(entity)) {
+                    const auto& id = currentRegistry.get<Id>(entity);
                     // Use ID number as base
                     uniqueSeed += static_cast<float>(id.id);
                     
@@ -1208,7 +1216,7 @@ void renderAll() {
                 uniqueSeed += position.x * 10.0f + position.y * 13.0f + position.z * 7.0f;
                 
                 // Add meta seed influence
-                uniqueSeed += static_cast<float>(metaData.seed);
+                uniqueSeed += static_cast<float>(currentMetadata.seed);
                 
                 // Add original shader seed if available
                 if (customShader.uniforms.size() >= 3) {
@@ -1223,8 +1231,8 @@ void renderAll() {
                 glUniform1f(seedLocation, uniqueSeed);
                 
                 // Pass entity color to shaders that support it (like carpet)
-                if (registry.all_of<Color>(entity)) {
-                    const auto& color = registry.get<Color>(entity);
+                if (currentRegistry.all_of<Color>(entity)) {
+                    const auto& color = currentRegistry.get<Color>(entity);
                     GLint colorLocation = glGetUniformLocation(shaderProgramMap[customShader.shaderName], "uColor");
                     if (colorLocation != -1) {
                         glUniform4f(colorLocation, color.r, color.g, color.b, color.a);
@@ -1241,12 +1249,12 @@ void renderAll() {
             }
             
             // Render Color components (if any)
-            if(registry.all_of<Color>(entity)) {
-                auto color = registry.get<Color>(entity);
+            if(currentRegistry.all_of<Color>(entity)) {
+                auto color = currentRegistry.get<Color>(entity);
 
                 float angle = 0.0f;
-                if(registry.all_of<Rotation>(entity)) {
-                    angle = registry.get<Rotation>(entity).angle;
+                if(currentRegistry.all_of<Rotation>(entity)) {
+                    angle = currentRegistry.get<Rotation>(entity).angle;
                 }
 
                 float r = color.r;
@@ -1254,8 +1262,8 @@ void renderAll() {
                 float b = color.b;
 
                 // InteriorPortal color override
-                if (registry.all_of<InteriorPortal>(entity)) {
-                    const auto& portal = registry.get<InteriorPortal>(entity);
+                if (currentRegistry.all_of<InteriorPortal>(entity)) {
+                    const auto& portal = currentRegistry.get<InteriorPortal>(entity);
                     // Offset the original color toward green or red, preserving darkness/brightness
                     float maxComponent = std::max({r, g, b, 0.0001f});
                     float scale = (maxComponent > 0.0f) ? (1.0f / maxComponent) : 1.0f;
@@ -1282,12 +1290,12 @@ void renderAll() {
                     b *= intensity;
                 }
 
-                if(registry.all_of<Hovered>(entity)) {
+                if(currentRegistry.all_of<Hovered>(entity)) {
                     r = 0.0f;
                     g = 0.0f;
                     b = 1.0f;
                 }
-                if(registry.all_of<Interacted>(entity)) {
+                if(currentRegistry.all_of<Interacted>(entity)) {
                     r = 0.0f;
                     g = 1.0f;
                     b = 0.0f;
@@ -1303,17 +1311,18 @@ void renderAll() {
             }
             
             // Render text component if present (on top of other render types)
-            if(registry.all_of<Text>(entity)) {
-                Text text = registry.get<Text>(entity);
+            if(currentRegistry.all_of<Text>(entity)) {
+                Text text = currentRegistry.get<Text>(entity);
                 
                 float r = 1.0f, g = 1.0f, b = 1.0f, a = 1.0f;
-                if (registry.all_of<Color>(entity)) {
-                    auto color = registry.get<Color>(entity);
+                if (currentRegistry.all_of<Color>(entity)) {
+                    auto color = currentRegistry.get<Color>(entity);
                     r = color.r;
                     g = color.g;
                     b = color.b;
                     a = color.a;
                 }
+
                 a = text.hide ? 0.0f : a;
 
                 std::string textStr = text.text;
@@ -1336,18 +1345,39 @@ void renderAll() {
         if (!playerIsInside) {
             // When outside: render back walls last (so player walks under them) - translucent for visibility
             for(auto& entity : interiorEntities) {
-                auto position = registry.get<Position>(entity);
-                auto shape = registry.get<Shape>(entity);
+                auto position = currentRegistry.get<Position>(entity);
+                auto shape = currentRegistry.get<Shape>(entity);
                 
                 // Back wall (top of interior shape) - rendered last when outside, translucent
                 updateUniformsDebug(shaderProgramMap["debug_entity"],
-                    wallR, wallG, wallB, wallA, // More translucent when outside for player visibility
+                    wallR, wallG, wallB, 0.5, // Opaque when inside
                     position.sx + cameraShape.scaled_size.x,
-                    position.sy + cameraShape.scaled_size.y + shape.scaled_size.y + standardWallHeight/2,
-                    shape.scaled_size.x, standardWallHeight + standardWallHeight/2,
+                    position.sy + cameraShape.scaled_size.y + shape.scaled_size.y + (standardWallHeight + standardWallHeight*1.5),
+                    shape.scaled_size.x, standardWallHeight + standardWallHeight*1.5,
+                    0.0f);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+                // Front wall (bottom of interior shape) - rendered first when outside, opaque
+                updateUniformsDebug(shaderProgramMap["debug_entity"],
+                    wallR, wallG, wallB, wallA, // Opaque when outside
+                    position.sx + cameraShape.scaled_size.x,
+                    position.sy + cameraShape.scaled_size.y - shape.scaled_size.y + 2.5f * standardWallHeight,
+                    shape.scaled_size.x, standardWallHeight + standardWallHeight*1.5,
+                    0.0f);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+                
+                // Roof/Ceiling
+                updateUniformsDebug(shaderProgramMap["debug_entity"],
+                    1, 0, 0, 0.3, // Opaque when outside
+                    position.sx + cameraShape.scaled_size.x,
+                    position.sy + cameraShape.scaled_size.y + (standardWallHeight + standardWallHeight*1.5)*2,
+                    shape.scaled_size.x, shape.scaled_size.y,
                     0.0f);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
             }
+
+            
         }
 
     }
@@ -1355,21 +1385,21 @@ void renderAll() {
     // Render menu text from meta tags based on game state
     if (gameState.gameState <= 0 || gameState.gameState > 1) {
         // Get camera for UI scaling using priority-based selection
-        entt::entity cameraEntity = selectMainCamera(registry);
+        entt::entity cameraEntity = selectMainCamera(currentRegistry);
         if(cameraEntity != entt::null) {
-            auto& camera = registry.get<Camera>(cameraEntity);
+            auto& camera = currentRegistry.get<Camera>(cameraEntity);
             
             std::string menuText = "";
-            if (gameState.gameState == 0 && !metaData.pause_menu.empty()) {
+            if (gameState.gameState == 0 && !currentMetadata.pause_menu.empty()) {
                 // Pause menu
-                menuText = metaData.pause_menu;
-            } else if (gameState.gameState == -1 && !metaData.start_menu.empty()) {
+                menuText = currentMetadata.pause_menu;
+            } else if (gameState.gameState == -1 && !currentMetadata.start_menu.empty()) {
                 // Start menu
-                menuText = metaData.start_menu;
+                menuText = currentMetadata.start_menu;
             } else if (gameState.gameState > 1) {
-                // Check for custom scenes in metaData.scenes
-                auto sceneIt = metaData.scenes.find(gameState.gameState);
-                if (sceneIt != metaData.scenes.end()) {
+                // Check for custom scenes in currentMetadata.slides
+                auto sceneIt = currentMetadata.slides.find(gameState.gameState);
+                if (sceneIt != currentMetadata.slides.end()) {
                     menuText = sceneIt->second;
                 }
             }
@@ -1383,10 +1413,22 @@ void renderAll() {
                 float x = xScale;
                 float y = yScale;
                 float scale = 0.001f;
-                
-                float r = 0.0f, g = 0.0f, b = 0.0f, a = 1.0f;
-                
-                float rgb[3] = {0.0f, 0.0f, 0.0f};
+
+                // Compute complementary color of void_color for text
+                float r = 1.0f, g = 1.0f, b = 1.0f, a = 1.0f;
+                if (!currentMetadata.void_color.empty() && currentMetadata.void_color.size() >= 3) {
+                    // Complementary color: for RGB, it's (1-R, 1-G, 1-B)
+                    float vr = currentMetadata.terrain_color[0];
+                    float vg = currentMetadata.terrain_color[1];
+                    float vb = currentMetadata.terrain_color[2];
+
+                    // Find the max component to determine the hue, then rotate by 180 degrees in HSV
+                    // But for simplicity, use (1-R, 1-G, 1-B) as a basic complementary in RGB
+                    r = 1.0f - vr;
+                    g = 1.0f - vg;
+                    b = 1.0f - vb;
+                }
+                float bgrgb[3] = {0.0f, 0.0f, 0.0f};
                 updateUniforms(
                     shaderProgramMap["terrain"],
                     camera.gridSpacing, 
@@ -1394,7 +1436,8 @@ void renderAll() {
                     gameState.width, gameState.height, 
                     topleftArray,
                     generationSize,
-                    rgb
+                    currentRegistry,
+                    bgrgb
                 );
                 renderText(menuText, x, y, scale, r, g, b, a);
             }

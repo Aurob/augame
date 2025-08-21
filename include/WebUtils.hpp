@@ -3,9 +3,13 @@
 #include "lib/entt.hpp"
 #include "../include/structs.hpp"
 #include "../include/Systems/ViewSystems.hpp"
+#include "../include/SceneManager.hpp"
+#include "../include/EntityFactory.hpp"
+#include "lib/physics.hpp"
 #include <vector>
 #include <unordered_map>
 #include "lib/json.hpp"
+#include <GL/gl.h>
 
 using namespace std;
 
@@ -14,7 +18,8 @@ extern MetaData metaData;
 extern bool ready;
 extern bool first_start;
 extern entt::entity _player;
-extern entt::registry registry;
+extern SceneManager sceneManager;
+extern p2d::Physics physics;
 
 nlohmann::json str_to_json(string str)
 {
@@ -43,6 +48,11 @@ void safe_emplace(entt::registry& registry, entt::entity entity, Func func, cons
     }
 }
 
+// Function declarations
+void createShader(GLuint &shaderProgram, std::string program_name);
+
+void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& targetMetadata);
+
 extern "C"
 {
     EMSCRIPTEN_KEEPALIVE
@@ -60,6 +70,79 @@ extern "C"
 
     void load_json(char *str)
     {
+        load_json_to_registry(str, sceneManager.getCurrentRegistry(), sceneManager.getCurrentMetadata());
+    }
+
+    void createSceneFromJson(char *str)
+    {
+        MetaData sceneMetadata;
+        sceneManager.addScene(sceneMetadata);
+        int sceneIndex = sceneManager.getSceneCount() - 1;
+        sceneManager.switchToScene(sceneIndex);
+        load_json_to_registry(str, sceneManager.getCurrentRegistry(), sceneManager.getCurrentMetadata());
+        // Switch back to first scene after loading all scenes
+        if (sceneManager.getSceneCount() > 1) {
+            sceneManager.switchToScene(0);
+            auto& firstRegistry = sceneManager.getCurrentRegistry();
+            auto playerView = firstRegistry.view<Player>();
+            _player = playerView.empty() ? entt::null : playerView.front();
+            sceneManager.setCurrentPlayer(_player);
+        }
+    }
+
+    void switchToNextScene()
+    {
+        printf("Switching to next scene...\n");
+        sceneManager.switchToNextScene();
+        
+        // Update global player reference safely
+        auto& currentRegistry = sceneManager.getCurrentRegistry();
+        auto playerView = currentRegistry.view<Player>();
+        _player = playerView.empty() ? entt::null : playerView.front();
+        
+        // Ensure player has ALL required components
+        if (_player != entt::null) {
+            // Run makePlayer to ensure all components
+            makePlayer(currentRegistry);
+        }
+        
+        // Store the player entity in the scene manager for consistency
+        sceneManager.setCurrentPlayer(_player);
+        
+        // Reset to start menu for new scene
+        gameState.gameState = -1;
+        
+        printf("Switched to scene %d/%zu\n", sceneManager.getCurrentSceneIndex() + 1, sceneManager.getSceneCount());
+    }
+
+    void switchToPrevScene()
+    {
+        printf("Switching to prev scene...\n");
+        sceneManager.switchToPrevScene();
+        
+        // Update global player reference safely
+        auto& currentRegistry = sceneManager.getCurrentRegistry();
+        auto playerView = currentRegistry.view<Player>();
+        _player = playerView.empty() ? entt::null : playerView.front();
+        
+        // Ensure player has ALL required components
+        if (_player != entt::null) {
+            // Run makePlayer to ensure all components
+            makePlayer(currentRegistry);
+        }
+        
+        // Store the player entity in the scene manager for consistency
+        sceneManager.setCurrentPlayer(_player);
+        
+        // Reset to start menu for new scene
+        gameState.gameState = -1;
+        
+        printf("Switched to scene %d/%zu\n", sceneManager.getCurrentSceneIndex() + 1, sceneManager.getSceneCount());
+    }
+}
+
+void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& targetMetadata)
+{
         nlohmann::json js_json = str_to_json(str);
         if (js_json.contains("world"))
         {
@@ -68,9 +151,9 @@ extern "C"
             {
                 float zoom = js_json["world"]["zoom"];
                 // Find camera for zoom adjustments using priority-based selection
-                entt::entity cameraEntity = selectMainCamera(registry);
+                entt::entity cameraEntity = selectMainCamera(targetRegistry);
                 if(cameraEntity != entt::null) {
-                    auto& camera = registry.get<Camera>(cameraEntity);
+                    auto& camera = targetRegistry.get<Camera>(cameraEntity);
                     if (zoom == -1)
                     {
                         camera.gridSpacing /= 1.08f;
@@ -167,62 +250,62 @@ extern "C"
         if (js_json.contains("meta") && js_json["meta"].is_object())
         {
             auto meta = js_json["meta"];
-            if (meta.contains("world") && meta["world"].is_string()) {
-                metaData.world = meta["world"];
-                printf("Meta: World set to %s\n", metaData.world.c_str());
+            if (meta.contains("scene") && meta["scene"].is_string()) {
+                targetMetadata.scene = meta["scene"];
+                printf("Meta: Scene set to %s\n", targetMetadata.scene.c_str());
             }
             if (meta.contains("title") && meta["title"].is_string()) {
-                metaData.title = meta["title"];
+                targetMetadata.title = meta["title"];
             }
             if (meta.contains("description") && meta["description"].is_string()) {
-                metaData.description = meta["description"];
+                targetMetadata.description = meta["description"];
             }
             if (meta.contains("author") && meta["author"].is_string()) {
-                metaData.author = meta["author"];
+                targetMetadata.author = meta["author"];
             }
             if (meta.contains("font") && meta["font"].is_string()) {
-                metaData.font = meta["font"];
+                targetMetadata.font = meta["font"];
             }
             if (meta.contains("terrain")) {
                 if (meta["terrain"].is_string()) {
-                    metaData.terrain = meta["terrain"];
+                    targetMetadata.terrain = meta["terrain"];
                 } else if (meta["terrain"].is_array() && meta["terrain"].size() >= 3) {
                     // Color array [r, g, b] from JavaScript
-                    metaData.terrain_color[0] = meta["terrain"][0];
-                    metaData.terrain_color[1] = meta["terrain"][1];
-                    metaData.terrain_color[2] = meta["terrain"][2];
-                    metaData.terrain = "color"; // Mark as color instead of shader
+                    targetMetadata.terrain_color[0] = meta["terrain"][0];
+                    targetMetadata.terrain_color[1] = meta["terrain"][1];
+                    targetMetadata.terrain_color[2] = meta["terrain"][2];
+                    targetMetadata.terrain = "color"; // Mark as color instead of shader
                 }
             }
             if (meta.contains("void")) {
                 if (meta["void"].is_string()) {
-                    metaData.void_bg = meta["void"];
+                    targetMetadata.void_bg = meta["void"];
                 } else if (meta["void"].is_array() && meta["void"].size() >= 3) {
                     // Color array [r, g, b] from JavaScript  
-                    metaData.void_color[0] = meta["void"][0];
-                    metaData.void_color[1] = meta["void"][1];
-                    metaData.void_color[2] = meta["void"][2];
-                    metaData.void_bg = "color"; // Mark as color
+                    targetMetadata.void_color[0] = meta["void"][0];
+                    targetMetadata.void_color[1] = meta["void"][1];
+                    targetMetadata.void_color[2] = meta["void"][2];
+                    targetMetadata.void_bg = "color"; // Mark as color
                 }
             }
             if (meta.contains("start_menu") && meta["start_menu"].is_string()) {
-                metaData.start_menu = meta["start_menu"];
+                targetMetadata.start_menu = meta["start_menu"];
             }
             if (meta.contains("pause_menu") && meta["pause_menu"].is_string()) {
-                metaData.pause_menu = meta["pause_menu"];
+                targetMetadata.pause_menu = meta["pause_menu"];
             }
-            if (meta.contains("scenes") && meta["scenes"].is_object()) {
-                auto scenes = meta["scenes"];
-                metaData.scenes.clear(); // Clear existing scenes
-                for (auto it = scenes.begin(); it != scenes.end(); ++it) {
+            if (meta.contains("slides") && meta["slides"].is_object()) {
+                auto slides = meta["slides"];
+                targetMetadata.slides.clear(); // Clear existing slides
+                for (auto it = slides.begin(); it != slides.end(); ++it) {
                     try {
-                        int sceneId = std::stoi(it.key());
+                        int slideId = std::stoi(it.key());
                         if (it.value().is_string()) {
-                            metaData.scenes[sceneId] = it.value().get<std::string>();
-                            printf("Meta: Scene %d set to '%s'\n", sceneId, metaData.scenes[sceneId].c_str());
+                            targetMetadata.slides[slideId] = it.value().get<std::string>();
+                            printf("Meta: Slide %d set to '%s'\n", slideId, targetMetadata.slides[slideId].c_str());
                         }
                     } catch (const std::exception& e) {
-                        printf("Error parsing scene ID '%s': %s\n", it.key().c_str(), e.what());
+                        printf("Error parsing slide ID '%s': %s\n", it.key().c_str(), e.what());
                     }
                 }
             }
@@ -234,7 +317,7 @@ extern "C"
                 for (char c : str_seed) {
                     hash = hash * 31 + static_cast<unsigned char>(c);
                 }
-                metaData.seed = static_cast<int>(hash);
+                targetMetadata.seed = static_cast<int>(hash);
             }
         }
 
@@ -263,7 +346,7 @@ extern "C"
                                     if (act == "interact")
                                     {
                                         // Trigger interaction for player
-                                        auto &playerKeys = registry.get<Keys>(_player).keys;
+                                        auto &playerKeys = targetRegistry.get<Keys>(_player).keys;
                                         playerKeys[SDL_BUTTON_LEFT] = true;
                                     }
                                 }
@@ -283,7 +366,7 @@ extern "C"
                                 float y = position["y"];
                                 float z = position["z"];
 
-                                Position &playerPos = registry.get<Position>(_player);
+                                Position &playerPos = targetRegistry.get<Position>(_player);
                                 playerPos.x = x;
                                 playerPos.y = y;
                                 playerPos.z = z;
@@ -296,7 +379,7 @@ extern "C"
                             auto &mobileMovement = _el["MobileMovement"];
                             if (mobileMovement.contains("w") && mobileMovement["w"].is_number() && mobileMovement.contains("a") && mobileMovement["a"].is_number() && mobileMovement.contains("s") && mobileMovement["s"].is_number() && mobileMovement.contains("d") && mobileMovement["d"].is_number())
                             {
-                                auto &keys = registry.get<Keys>(_player).keys;
+                                auto &keys = targetRegistry.get<Keys>(_player).keys;
                                 keys[SDLK_a] = mobileMovement["a"];
                                 keys[SDLK_w] = mobileMovement["w"];
                                 keys[SDLK_s] = mobileMovement["s"];
@@ -308,16 +391,16 @@ extern "C"
                     else if (_el.contains("New") && _el["New"].is_boolean())
                     {
                         // Create a new entity
-                        entt::entity entity = registry.create();
+                        entt::entity entity = targetRegistry.create();
 
-                        registry.emplace<RenderPriority>(entity);
+                        targetRegistry.emplace<RenderPriority>(entity);
 
                         if (_el.contains("Components") && _el["Components"].is_object())
                         {
                             auto &components = _el["Components"];
 
                             // Id
-                            safe_emplace(registry, entity, [&]() {
+                            safe_emplace(targetRegistry, entity, [&]() {
                                 if (components.contains("Id") && components["Id"].is_object())
                                 {
                                     auto &idComponent = components["Id"];
@@ -326,71 +409,71 @@ extern "C"
                                     {
                                         int id = idComponent["id"];
                                         std::string name = idComponent["name"];
-                                        registry.emplace<Id>(entity, Id{id, name});
+                                        targetRegistry.emplace<Id>(entity, Id{id, name});
                                     }
                                 }
                             }, "Id");
 
                             // Player 
-                            safe_emplace(registry, entity, [&]() {
+                            safe_emplace(targetRegistry, entity, [&]() {
                                 if (components.contains("Player") && components["Player"].is_boolean())
                                 {
                                     // Check if there's already an entity with Player component
-                                    auto view = registry.view<Player>();
+                                    auto view = targetRegistry.view<Player>();
                                     if (view.empty()) {
-                                        registry.emplace<Player>(entity);
+                                        targetRegistry.emplace<Player>(entity);
                                     }
                                 }
                             }, "Player");
 
-                            safe_emplace(registry, entity, [&]() {
+                            safe_emplace(targetRegistry, entity, [&]() {
                                 if (components.contains("Position") && components["Position"].is_object())
                                 {
                                     auto &pos = components["Position"];
-                                    registry.emplace<Position>(entity, pos["x"], pos["y"], pos["z"]);
+                                    targetRegistry.emplace<Position>(entity, pos["x"], pos["y"], pos["z"]);
                                 }
                             }, "Position");
 
-                            safe_emplace(registry, entity, [&]() {
+                            safe_emplace(targetRegistry, entity, [&]() {
                                 if (components.contains("Shape") && components["Shape"].is_object())
                                 {
                                     auto &shape = components["Shape"];
-                                    registry.emplace<Shape>(entity, shape["size"][0], shape["size"][1], shape["size"][2]);
+                                    targetRegistry.emplace<Shape>(entity, shape["size"][0], shape["size"][1], shape["size"][2]);
                                 }
                             }, "Shape");
 
-                            safe_emplace(registry, entity, [&]() {
+                            safe_emplace(targetRegistry, entity, [&]() {
                                 if (components.contains("Color") && components["Color"].is_object())
                                 {
                                     auto &color = components["Color"];
-                                    registry.emplace<Color>(entity, color["r"], color["g"], color["b"], color["a"]);
+                                    targetRegistry.emplace<Color>(entity, color["r"], color["g"], color["b"], color["a"]);
                                 }
                             }, "Color");
 
-                            safe_emplace(registry, entity, [&]() {
+                            safe_emplace(targetRegistry, entity, [&]() {
                                 if (components.contains("RenderPriority") && components["RenderPriority"].is_object())
                                 {
                                     auto &renderPriority = components["RenderPriority"];
-                                    registry.emplace_or_replace<RenderPriority>(entity, renderPriority["priority"]);
+                                    targetRegistry.emplace_or_replace<RenderPriority>(entity, renderPriority["priority"]);
                                 }
                             }, "RenderPriority");
 
-                            safe_emplace(registry, entity, [&]() {
+                            safe_emplace(targetRegistry, entity, [&]() {
                                 if (components.contains("Collidable") && components["Collidable"].is_boolean())
                                 {
-                                    registry.emplace<Collidable>(entity);
+                                    targetRegistry.emplace<Collidable>(entity);
                                 }
                             }, "Collidable");
 
-                            safe_emplace(registry, entity, [&]() {
+                            safe_emplace(targetRegistry, entity, [&]() {
                                 if (components.contains("Interior") && components["Interior"].is_object())
                                 {
-                                    bool hideInside = components["Interior"]["hideInside"];
-                                    registry.emplace<Interior>(entity, Interior{hideInside});
+                                    bool showInside = components["Interior"]["showInside"];
+                                    targetRegistry.emplace<Interior>(entity, Interior{showInside});
                                 }
                             }, "Interior");
 
-                            safe_emplace(registry, entity, [&]() {
+                            safe_emplace(targetRegistry, entity, [&]() {
                                 if (components.contains("InteriorPortal") && components["InteriorPortal"].is_object())
                                 {
                                     auto &interiorPortal = components["InteriorPortal"];
@@ -399,7 +482,7 @@ extern "C"
                                     bool locked = interiorPortal["locked"].get<bool>();
                                     auto keyId = interiorPortal["key"].get<int>();
 
-                                    auto view = registry.view<Id>();
+                                    auto view = targetRegistry.view<Id>();
                                     entt::entity portalA = entt::null;
                                     entt::entity portalB = entt::null;
                                     entt::entity key = entt::null;
@@ -421,10 +504,10 @@ extern "C"
                                             break;
                                     }
 
-                                    registry.emplace<InteriorPortal>(entity, InteriorPortal{portalA, portalB, locked, key});
+                                    targetRegistry.emplace<InteriorPortal>(entity, InteriorPortal{portalA, portalB, locked, key});
                                 }
                             }, "InteriorPortal");
-                            safe_emplace(registry, entity, [&]() {
+                            safe_emplace(targetRegistry, entity, [&]() {
                                 if (components.contains("Inside") && components["Inside"].is_object())
                                 {
                                     auto &inside = components["Inside"];
@@ -432,7 +515,7 @@ extern "C"
                                     
                                     // Look up the entity with the matching Id component
                                     entt::entity interiorEntity = entt::null;
-                                    auto view = registry.view<Id>();
+                                    auto view = targetRegistry.view<Id>();
                                     for (auto e : view) {
                                         if (view.get<Id>(e).id == interiorEntityId) {
                                             interiorEntity = e;
@@ -447,18 +530,18 @@ extern "C"
                                 }
                             }, "Inside");
 
-                            safe_emplace(registry, entity, [&]() {
+                            safe_emplace(targetRegistry, entity, [&]() {
                                 if (components.contains("Moveable") && components["Moveable"].is_object())
                                 {
-                                    registry.emplace<Moveable>(entity);
+                                    targetRegistry.emplace<Moveable>(entity);
                                 }
                             }, "Moveable");
 
-                            safe_emplace(registry, entity, [&]() {
+                            safe_emplace(targetRegistry, entity, [&]() {
                                 if (components.contains("Movement") && components["Movement"].is_object())
                                 {
                                     auto &movement = components["Movement"];
-                                    registry.emplace<Movement>(entity, Movement{
+                                    targetRegistry.emplace<Movement>(entity, Movement{
                                         movement["speed"].get<float>(),
                                         movement["mass"].get<float>(),
                                         movement["restitution"].get<float>(),
@@ -467,16 +550,16 @@ extern "C"
                             }, "Movement");
 
                             // Hoverable
-                            safe_emplace(registry, entity, [&]() {
+                            safe_emplace(targetRegistry, entity, [&]() {
                                 if (components.contains("Hoverable") && components["Hoverable"].is_boolean())
                                 {
-                                    registry.emplace<Hoverable>(entity);
+                                    targetRegistry.emplace<Hoverable>(entity);
                                 }
                             }, "Hoverable");
 
 
                             // Interactable
-                            safe_emplace(registry, entity, [&]() {
+                            safe_emplace(targetRegistry, entity, [&]() {
                                 if (components.contains("Interactable"))
                                 {
                                     float radius = 0.5f;
@@ -491,12 +574,12 @@ extern "C"
                                             toggleState = interactable["toggleState"];
                                     }
                                     
-                                    registry.emplace<Interactable>(entity, 0, radius, toggleState);
+                                    targetRegistry.emplace<Interactable>(entity, 0, radius, toggleState);
                                 }
                             }, "Interactable");
 
                             // Texture
-                            safe_emplace(registry, entity, [&]() {
+                            safe_emplace(targetRegistry, entity, [&]() {
                                 if (components.contains("Texture") && components["Texture"].is_object())
                                 {
                                     auto &texture = components["Texture"];
@@ -507,22 +590,22 @@ extern "C"
                                     float y = texture.value("y", 0.0f);
                                     float w = texture.value("w", 1.0f);
                                     float h = texture.value("h", 1.0f);
-                                    registry.emplace<Texture>(entity, textureName, x, y, w, h, scalex, scaley);
+                                    targetRegistry.emplace<Texture>(entity, textureName, x, y, w, h, scalex, scaley);
                                 }
                             }, "Texture");
 
 
                             // Test
-                            safe_emplace(registry, entity, [&]() {
+                            safe_emplace(targetRegistry, entity, [&]() {
                                 if (components.contains("Test") && components["Test"].is_object())
                                 {
                                     auto &test = components["Test"];
-                                    registry.emplace<Test>(entity, test["value"]);
+                                    targetRegistry.emplace<Test>(entity, test["value"]);
                                 }
                             }, "Test");
 
                             // TextureGroupPart
-                            safe_emplace(registry, entity, [&]() {
+                            safe_emplace(targetRegistry, entity, [&]() {
                                 if (components.contains("TextureGroupPart") && components["TextureGroupPart"].is_object())
                                 {
                                     auto &textureGroupPart = components["TextureGroupPart"];
@@ -532,49 +615,49 @@ extern "C"
                                     int tiley = textureGroupPart.value("tiley", 0);
                                     if (textureGroupMap.find(groupName) != textureGroupMap.end() && textureGroupMap[groupName].find(partName) != textureGroupMap[groupName].end())
                                     {
-                                        registry.emplace<TextureGroupPart>(entity, TextureGroupPart{groupName, partName, {}, tilex, tiley});
+                                        targetRegistry.emplace<TextureGroupPart>(entity, TextureGroupPart{groupName, partName, {}, tilex, tiley});
                                     }
                                 }
                             }, "TextureGroupPart");
 
                             // Teleporter
-                            safe_emplace(registry, entity, [&]() {
+                            safe_emplace(targetRegistry, entity, [&]() {
                                 if (components.contains("Teleporter") && components["Teleporter"].is_object())
                                 {
                                     auto &teleporter = components["Teleporter"];
                                     Position destination{teleporter["destination"]["x"], teleporter["destination"]["y"], teleporter["destination"]["z"]};
-                                    registry.emplace<Teleport>(entity, Teleport{.destination = destination});
+                                    targetRegistry.emplace<Teleport>(entity, Teleport{.destination = destination});
                                 }
                             }, "Teleporter");
 
                             // Teleportable
-                            safe_emplace(registry, entity, [&]() {
+                            safe_emplace(targetRegistry, entity, [&]() {
                                 if (components.contains("Teleportable") && components["Teleportable"].is_boolean())
                                 {
-                                    registry.emplace<Teleportable>(entity);
+                                    targetRegistry.emplace<Teleportable>(entity);
                                 }
                             }, "Teleportable");
 
                             // Text
-                            safe_emplace(registry, entity, [&]() {
+                            safe_emplace(targetRegistry, entity, [&]() {
                                 if(components.contains("Text") && components["Text"].is_object()) {
                                     auto &text = components["Text"];
                                     bool hide = text["hide"] == 1 || text["hide"] == true;
                                     float offsetX = text.value("offsetX", 0.0f);
                                     float offsetY = text.value("offsetY", 0.0f);
-                                    registry.emplace<Text>(entity, text["text"], text["scale"], hide, offsetX, offsetY);
+                                    targetRegistry.emplace<Text>(entity, text["text"], text["scale"], hide, offsetX, offsetY);
                                 }
                             }, "Text");
 
 
                             // World
-                            safe_emplace(registry, entity, [&]() {
+                            safe_emplace(targetRegistry, entity, [&]() {
                                 if(components.contains("World") && components["World"].is_boolean()) {
                                 }
                             }, "World");
 
                             // Camera
-                            safe_emplace(registry, entity, [&]() {
+                            safe_emplace(targetRegistry, entity, [&]() {
                                 if(components.contains("Camera") && components["Camera"].is_object()) {
                                     auto &camera = components["Camera"];
                                     Camera cameraComponent;
@@ -593,12 +676,12 @@ extern "C"
                                     if (camera.contains("important") && camera["important"].is_boolean()) {
                                         cameraComponent.important = camera["important"];
                                     }
-                                    registry.emplace<Camera>(entity, cameraComponent);
+                                    targetRegistry.emplace<Camera>(entity, cameraComponent);
                                 }
                             }, "Camera");
 
                             // CustomShader
-                            safe_emplace(registry, entity, [&]() {
+                            safe_emplace(targetRegistry, entity, [&]() {
                                 if(components.contains("CustomShader") && components["CustomShader"].is_object()) {
                                     auto &customShader = components["CustomShader"];
                                     if (customShader.contains("shaderName") && customShader["shaderName"].is_string() &&
@@ -618,22 +701,22 @@ extern "C"
                                             }
                                         }
                                         
-                                        registry.emplace<CustomShader>(entity, shaderComponent);
+                                        targetRegistry.emplace<CustomShader>(entity, shaderComponent);
                                     }
                                 }
                             }, "CustomShader");
                         }
 
-                        if (registry.all_of<Position, Shape>(entity)) {
-                            registry.emplace<PhysicsBodyRect>(entity);
+                        if (targetRegistry.all_of<Position, Shape>(entity)) {
+                            targetRegistry.emplace<PhysicsBodyRect>(entity);
                         }
 
                         // Process entities that need to be placed inside other entities
                         for (const auto& [entity_to_place, interior_entity] : needsPlaceInside)
                         {
-                            if (registry.valid(entity_to_place) && registry.valid(interior_entity))
+                            if (targetRegistry.valid(entity_to_place) && targetRegistry.valid(interior_entity))
                             {
-                                registry.emplace_or_replace<Inside>(entity_to_place, Inside{interior_entity, false});
+                                targetRegistry.emplace_or_replace<Inside>(entity_to_place, Inside{interior_entity, false});
                             }
                         }
 
@@ -646,4 +729,4 @@ extern "C"
 
         }
     }
-}
+

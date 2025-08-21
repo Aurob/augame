@@ -1,145 +1,158 @@
-# Development Update Guide
+# Augame Development Framework
 
-If the current dir claude is running in has a .git
- - always make sure there is a unique branch for the current session
+**Game Engine**: C++ with Emscripten, SDL2, OpenGL, EnTT ECS
+**Build**: `./compile.sh` - Outputs to `build/main.js` and `build/main.wasm`
+**Web Interface**: `web/` directory with HTML/JS frontend
 
-## Component Configuration Updates
+## Architecture Overview
 
-When adding/modifying configurable components, update these files:
+### Core Systems
+- **ECS Framework**: EnTT registry-based entity component system
+- **Rendering**: OpenGL with custom shader pipeline (`include/GLUtils.hpp`)
+- **Physics**: Custom 2D physics system (`include/lib/physics.hpp`)
+- **Scene Management**: Multi-registry system for scene switching (`include/SceneManager.hpp`)
+- **Input Handling**: SDL2 events (`include/events.hpp`)
 
-1. **include/WebUtils.hpp** - Add parsing in `load_json` function `safe_emplace` block
-2. **web/scripts/ebuilder.js** - Update `componentParameterCounts` and `componentParsers`
-3. **web/econfigs/default.txt** - Add parameter with defaults to existing entities
-4. **web/tests/scenebuilderv2.html** - Update component schemas and export logic
+### Key Directories
+```
+include/                    # C++ headers
+├── Systems/               # ECS system implementations
+├── lib/                   # Third-party libraries (EnTT, physics)
+├── structs.hpp           # Component definitions
+├── GLUtils.hpp           # Rendering pipeline
+├── WebUtils.hpp          # JSON parsing, web interface
+└── SceneManager.hpp      # Multi-scene management
+
+src/main.cpp              # Main application entry
+web/                      # Frontend interface
+├── scripts/module.js     # Main JS logic
+├── scripts/ebuilder.js   # Entity configuration builder
+└── econfigs/            # Scene configuration files
+
+resources/                # Assets
+├── shaders/             # GLSL shader files
+├── textures/            # Image assets
+└── fonts/               # TTF font files
+```
+
+## Component System
+
+### Core Components (`include/structs.hpp`)
+- **Position**: `{x, y, z, sx, sy, sz}` - World and screen coordinates
+- **Shape**: `{size, scaled_size}` - Entity dimensions  
+- **Color**: `{r, g, b, a}` - Rendering color with defaults
+- **Text**: `{text, scale, hide, offsetX, offsetY}` - Text rendering
+- **Movement**: Speed, velocity, acceleration, physics properties
+- **Player**: Marks player entity
+- **Camera**: View control with grid spacing and priority
+- **Interactable/Hoverable**: User interaction components
+
+### Component Configuration Updates
+When adding new components:
+1. **include/structs.hpp** - Define component struct
+2. **include/WebUtils.hpp** - Add parsing in `load_json` function `safe_emplace` block  
+3. **web/scripts/ebuilder.js** - Update `componentParameterCounts` and `componentParsers`
+4. **web/econfigs/default.txt** - Add defaults to existing entities
+
+## Scene & Config System
+
+### Config File Format
+```
+-- Comments use double dash
+id <id> <name> position <x> <y> <z> shape <w> <h> <d> color <r> <g> <b> <a> [components...]
+
+meta <tag> <value>         # World-level metadata
+```
+
+### Meta Tags
+- `terrain "shader_name"` / `"#hex"` / `"r,g,b"` - Outside area rendering
+- `void "#hex"` / `"r,g,b"` - Inside area clear color  
+- `font "filename.ttf"` - Font file path
+- `start_menu "text"` / `"@file.txt"` - Start screen text
+- `pause_menu "text"` / `"@file.txt"` - Pause screen text
+- `seed "value"` - World generation seed
+
+### Multi-Scene System
+```cpp
+// Scene switching: Shift+< (prev), Shift+> (next)
+meta scene "@web/econfigs/scene1.txt"  // File reference
+meta scene "inline_scene_name"         // Inline definition
+```
+
+**Exported Functions**: `_createSceneFromJson`, `_switchToNextScene`, `_switchToPrevScene`
 
 ## Shader System
 
-### Static Shaders (Compiled in C++)
-Core shaders are defined directly in C++ code in `include/GLUtils.hpp`:
-- `font` - Text rendering
-- `terrain` - Procedural terrain generation  
-- `debug_entity` - Colored rectangles (test_rgb)
+### Static Shaders (Embedded in C++)
+- `font` - Text rendering with color uniforms
+- `terrain` - Procedural generation
+- `debug_entity` - Colored rectangles  
 - `ui_layer` - UI texture rendering
-- `texture` - General texture rendering (vert_tex + frag_tex)
+- `texture` - General texture rendering
 
-These are embedded in the binary and cannot be modified at runtime.
+### Dynamic Custom Shaders
+1. Create `resources/cshaders/<name>_v.glsl` and `<name>_f.glsl`
+2. Add to `web/scripts/config.js`
+3. Use with `cshader <name>` in entity configs
 
-### Dynamic Custom Shaders (cshaders)
-Runtime-loadable shaders for live editing without recompilation:
+**Requirements**: Vertex shaders use `attribute vec2 position`, `uniform vec2 instancePosition`, `uniform vec2 entityScale`
 
-#### Required Steps:
-1. **Create shader files** in `resources/cshaders/`:
-   - `<name>_v.glsl` (vertex shader)
-   - `<name>_f.glsl` (fragment shader)
+## Interaction System
 
-2. **Add to config** in `web/scripts/config.js`:
-   ```js
-   {
-       "name": "shadername",
-       "vertex": "resources/cshaders/shadername_v.glsl", 
-       "fragment": "resources/cshaders/shadername_f.glsl"
-   }
-   ```
+### Mouse/Touch Handling (`include/Systems/ActionSystems.hpp`)
+- **Hoverable**: Blue highlight on mouse over
+- **Interactable**: Green on click, drag when `cursor.downtime > 2`
+- **Coordinate System**: Normalized device coordinates with camera-aware positioning
 
-3. **Use in entities** with `cshader <name>` in econfig files
+### Input Events (`include/events.hpp`)
+- Mouse/keyboard state in `Keys` component
+- Cursor position tracking in `Cursor` component
+- Game state transitions (start menu, pause, gameplay)
 
-#### Shader Requirements:
-- Vertex: Use `attribute vec2 position`, `uniform vec2 instancePosition`, `uniform vec2 entityScale`
-- Fragment: Use `varying vec2 vPosition` for position-based effects
-- Dynamic shaders are loaded from `/cshaders` and fetched at runtime
-- Static shaders are compiled inline in C++ and embedded in binary
+## Rendering Pipeline (`include/GLUtils.hpp`)
 
-## Meta Tags System
+### Render Passes
+1. **Background**: Terrain shader or solid color based on player context
+2. **Entities**: Components rendered by priority (textures, colors, custom shaders)
+3. **Text**: Font rendering with proper color handling
+4. **Walls**: Interior wall rendering (context-dependent)
 
-Meta tags provide world-level configuration and metadata in econfig files.
+### Text Rendering
+- Uses SDL_ttf with OpenGL texture generation
+- Font shader handles coloring via `uTextColor` uniform
+- SDL_ttf renders white, shader applies final color
 
-### Adding New Meta Tags
+## Build & Development
 
-To add a new meta tag like those in `web/econfigs/default.txt`:
-
-1. **Update MetaData struct** in `include/structs.hpp`:
-   ```cpp
-   struct MetaData {
-       // existing fields...
-       std::string newField = "default_value";
-   };
-   ```
-
-2. **Add parsing logic** in `include/WebUtils.hpp` in the `load_json` function:
-   ```cpp
-   if (meta.contains("newField") && meta["newField"].is_string()) {
-       metaData.newField = meta["newField"];
-   }
-   ```
-
-3. **Update ebuilder.js** in `web/scripts/ebuilder.js`:
-   - Add to `componentParameterCounts`: `meta: 3` (parameter count includes tag name + value)
-   - Meta parser already handles arbitrary tags, no changes needed
-
-4. **Use in econfig files**:
-   ```
-   meta newField "value"
-   ```
-
-### Existing Meta Tags:
-- `world` - World identifier
-- `title` - Display title 
-- `description` - World description
-- `author` - Author name
-- `font` - Font file path
-- `terrain` - Outside area rendering (when player is not Inside):
-  - `"terrain"` - Default terrain shader (default)
-  - `"water1"` - Water shader
-  - `"#rrggbb"` - Hex color format (e.g., `"#ff0000"` for red)
-  - `"r,g,b"` - RGB format (e.g., `"255,0,0"` for red)
-- `void` - Inside area clear color (when player is Inside):
-  - `"#rrggbb"` - Hex color format (e.g., `"#000000"` for black)
-  - `"r,g,b"` - RGB format (e.g., `"0,0,0"` for black)
-  - Default: black if not specified
-- `start_menu` - Text displayed on start screen (gameState -1):
-  - `"text content"` - Direct text content
-  - `"@path/to/file.txt"` - Load text from file (like text component)
-- `pause_menu` - Text displayed on pause screen (gameState 0):
-  - `"text content"` - Direct text content
-  - `"@path/to/file.txt"` - Load text from file (like text component)
-- `seed` - World generation seed
-
-Meta tags are parsed at world load time and stored in the global `metaData` object.
-
-### Meta Tag Examples:
-```
-meta terrain "terrain"           // Default terrain shader when outside
-meta terrain "water1"            // Water shader when outside  
-meta terrain "#336699"           // Blue color when outside
-meta terrain "40,121,22"         // RGB dark green when outside
-
-meta void "#000000"              // Black void when inside
-meta void "80,40,10"             // Brown void when inside
-
-meta start_menu "Press any key to start"              // Direct text for start screen
-meta start_menu "@resources/text/start.txt"           // Load text from file
-meta pause_menu "Game Paused - Press ESC to resume"   // Direct text for pause screen
-meta pause_menu "@resources/text/pause.txt"           // Load text from file
+### Compilation
+```bash
+./compile.sh               # Full build to WebAssembly
 ```
 
-**Meta Tag Behavior:**
-- `terrain` controls rendering when the player is outside Interior entities
-- `void` controls the clear color when the player is Inside Interior entities
-- `start_menu` displays text when gameState is -1 (start screen)
-- `pause_menu` displays text when gameState is 0 (pause screen)
-- Color parsing is handled in JavaScript and passed to C++ as normalized [r,g,b] arrays
-- Shader names (like "terrain", "water1") render the corresponding shader programs
-- File references with `@` prefix are loaded asynchronously in JavaScript (same as text component)
-- Invalid color formats fall back to black
+### Testing
+- **Scene Builder**: `web/tests/scenebuilderv2.html`
+- **Entity Configs**: Test configurations in `web/econfigs/`
 
-## Config File Syntax
+### Git Workflow
+- Always create unique branch for each session
+- Don't compile or run Python server manually
 
-Comments in econfig files use `--` (double dash), NOT `//`:
-```
--- This is a comment
-id 100 entity position 1 2 0 shape 1 1 0 color 1 0 0 1
-```
+## Quick Reference
 
-## Development Notes
+### Finding Components
+- **Component definitions**: `include/structs.hpp`
+- **Rendering logic**: `include/GLUtils.hpp`
+- **Interaction system**: `include/Systems/ActionSystems.hpp`
+- **Input handling**: `include/events.hpp`
 
-- don't compile or try to run the python server, I'll do that
+### Adding Features
+- **New components**: Follow Component Configuration Updates process
+- **New shaders**: Use Dynamic Custom Shaders workflow
+- **New scenes**: Create econfig file with meta tags
+- **New interactions**: Modify ActionSystems.hpp and add component types
+
+### Common Patterns
+- **Entity creation**: Use `safe_emplace` in WebUtils.hpp
+- **Shader uniforms**: Follow existing patterns in GLUtils.hpp
+- **Event handling**: Maintain mouse button state consistency
+- **Text rendering**: Always render white in SDL_ttf, apply color in shader
