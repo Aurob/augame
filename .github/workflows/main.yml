@@ -1,24 +1,66 @@
-name: Build and Upload to itch.io
+name: Build, Release, and Upload
 
 on:
   push:
     branches:
+      - main
       - itch
-  workflow_dispatch:    # Allow manual trigger
+  workflow_dispatch:
 
 jobs:
-  build-and-upload:
+  # ===== MAIN BRANCH RELEASE =====
+  build-and-release:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Download redbean with fallbacks
+      run: |
+        set -e
+        urls=(
+          "https://cdn.dump.garden/redbean-3.0.0.com"
+          "https://s3.us-east-1.wasabisys.com/rau-cdn/redbean-3.0.0.com"
+          "https://redbean.dev/redbean-latest.com"
+        )
+        for u in "${urls[@]}"; do
+          echo "Trying $u..."
+          if curl -fL "$u" -o augame.com; then
+            echo "Downloaded from $u"
+            exit 0
+          fi
+        done
+        echo "All download attempts failed."
+        exit 1
+
+    - name: Package zip
+      run: |
+        zip -r augame.com resources web build index.html README LICENSE
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ github.sha }}
+        name: Release ${{ github.sha }}
+        files: augame.com
+      env:
+        GITHUB_TOKEN: ${{ secrets.TOKEN }}
+
+  # ===== ITCH.IO DEPLOY =====
+  build-and-upload-itch:
+    if: github.ref == 'refs/heads/itch'
+    runs-on: ubuntu-latest
+
     steps:
     - uses: actions/checkout@v2
       with:
-        fetch-depth: 0  # Fetch all history for all branches and tags
-    
+        fetch-depth: 0
+
     - name: Zip Repository
       run: |
         zip -r augame.zip .
-    
+
     - name: Upload to itch.io
       env:
         BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
