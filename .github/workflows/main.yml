@@ -36,7 +36,7 @@ jobs:
 
     - name: Package zip
       run: |
-        zip -r .init.lua augame.com resources web build index.html README LICENSE
+        zip -r augame.com .init.lua resources web build index.html README LICENSE
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
