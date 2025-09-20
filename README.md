@@ -15,6 +15,32 @@
 - Physics simulation
 - Configurable world generation
 
+## Architecture
+
+- **Core**: `src/main.cpp` - Main game loop
+- **Rendering**: `include/GLUtils.hpp` - OpenGL pipeline
+- **Systems**: `include/Systems/` - ECS system implementations  
+- **Physics**: `include/lib/physics.hpp` - 2D physics engine (based on [Physics2D](https://github.com/SifuF/physics-2d))
+- **Config**: `web/econfigs/` - Scene definitions
+- **Assets**: `resources/` - Shaders, textures, fonts
+
+## Controls
+
+- **WASD** - Player movement
+- **Mouse** - Entity interaction (hover, click, drag)
+- **ESC** - Pause/unpause
+- **C** - Toggle camera mode
+- **Shift+</>** - Scene navigation
+
+## Notes
+
+This project has evolved over the past ~5 years as a casual hobby project. I've done many rewrites using different languages (JS, C, C++) and frameworks (Vanilla HTML/JS Canvas, SFML, Raylib, SDL2), before settling on the current setup.
+
+In the past 1-2 years I've slowly begun integrating coding models and tools into my development process, to great success in my opinion. My favorite of these, that has been genuinely helpful/useful, is [Claude Code](https://claude.com/product/claude-code). I've used it extensively for some of the more complex aspects of this engine.
+
+See `CLAUDE.md` for detailed development documentation from a number of sessions I've had using it.
+
+
 ## Build
 
 ### Install Emscripten
@@ -97,31 +123,6 @@ zip -0 augame.com web/resources web/build/main.wasm web/build/main.js
 chmod +x augame.com
 ./augame.com
 ```
-
-## Architecture
-
-- **Core**: `src/main.cpp` - Main game loop
-- **Rendering**: `include/GLUtils.hpp` - OpenGL pipeline
-- **Systems**: `include/Systems/` - ECS system implementations  
-- **Physics**: `include/lib/physics.hpp` - 2D physics engine (based on [Physics2D](https://github.com/SifuF/physics-2d))
-- **Config**: `web/econfigs/` - Scene definitions
-- **Assets**: `resources/` - Shaders, textures, fonts
-
-## Controls
-
-- **WASD** - Player movement
-- **Mouse** - Entity interaction (hover, click, drag)
-- **ESC** - Pause/unpause
-- **C** - Toggle camera mode
-- **Shift+</>** - Scene navigation
-
-## Notes
-
-This project has evolved over the past ~5 years as a casual hobby project. I've done many rewrites using different languages (JS, C, C++) and frameworks (Vanilla HTML/JS Canvas, SFML, Raylib, SDL2), before settling on the current setup.
-
-In the past 1-2 years I've slowly begun integrating coding models and tools into my development process, to great success in my opinion. My favorite of these, that has been genuinely helpful/useful, is [Claude Code](https://claude.com/product/claude-code). I've used it extensively for some of the more complex aspects of this engine.
-
-See `CLAUDE.md` for detailed development documentation from a number of sessions I've had using it.
 
 ## License
 
