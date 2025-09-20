@@ -196,6 +196,7 @@ struct InteriorPortal {
 };
 struct OnInteriorPortal {
     entt::entity portal;
+    int timeout;
 };
 
 struct RenderPriority {
