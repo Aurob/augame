@@ -98,7 +98,7 @@ void processCollisionInfo(p2d::CollisionInfo& info, entt::registry& registry)
                     }
                 }
 
-                registry.emplace<OnInteriorPortal>(nonPortalEntity, OnInteriorPortal { door });
+                registry.emplace<OnInteriorPortal>(nonPortalEntity, OnInteriorPortal { door, 0 });
             }
         }
     }
@@ -264,6 +264,8 @@ void updatePhysics(entt::registry& registry)
     auto portalView = registry.view<OnInteriorPortal>();
     for (auto entity : portalView) {
         bool collidesWithPortal = false;
+        auto &oip = registry.get<OnInteriorPortal>(entity);
+        oip.timeout += 1;
         auto it = entityCollisions.find(entity);
         if (it != entityCollisions.end()) {
             for (auto other : it->second) {
@@ -275,7 +277,9 @@ void updatePhysics(entt::registry& registry)
         }
         // If not colliding with any InteriorPortal, remove OnInteriorPortal
         if (!collidesWithPortal) {
-            registry.remove<OnInteriorPortal>(entity);
+            if(oip.timeout > 10) {
+                registry.remove<OnInteriorPortal>(entity);
+            }
         }
     }
 }

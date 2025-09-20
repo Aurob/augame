@@ -7,18 +7,19 @@ chmod +x compile.sh
 ./compile.sh
 
 # Zip only the necessary files
-# Note: resources don't need to be included since they're compiled with the .wasm binary
 zip -r augame.com \
    .init.lua \
+   index.html \
    web/index.html \
    web/econfigs \
    web/tests \
    web/scripts \
+   web/resources/page \
    README.md \
    LICENSE
 
 # Zip these with no compression (-0) to avoid issues with fetching from the client
-zip -0 augame.com web/resources web/build/main.wasm web/build/main.js
+zip -0 augame.com web/build/main.wasm web/build/main.js
 
 # Run the augame redbean server
 chmod +x augame.com

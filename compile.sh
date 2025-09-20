@@ -9,6 +9,7 @@ start_time=$(date +%s)
   --embed-file web/resources/audio\
   --embed-file web/resources/fonts\
   --embed-file web/resources/shaders\
+  --embed-file web/resources/cshaders\
   --embed-file web/resources/text\
   --embed-file web/resources/textures\
   -sNO_DISABLE_EXCEPTION_CATCHING\
@@ -16,7 +17,7 @@ start_time=$(date +%s)
   -s SDL2_IMAGE_FORMATS='["png", "jpg"]'\
   -s EXPORTED_FUNCTIONS="['_main', '_load_json', '_isready','_reload', '_createSceneFromJson', '_switchToNextScene', '_switchToPrevScene', _malloc, _free, UTF8ToString, stringToUTF8]"\
   -o web/build/main.js\
-  -O0
+  -O1
   
 end_time=$(date +%s)
 echo "compile finished at:" $(date)
