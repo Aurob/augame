@@ -1,2 +1,7 @@
 .github
 .vscode
+.DS_Store
+*.com
+*_complex.sh
+build.log
+*_simple.sh

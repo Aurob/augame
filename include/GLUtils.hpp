@@ -43,7 +43,6 @@ SDL_Window* loadSDL() {
 
     return mpWindow;
 }
-
 SDL_GLContext loadGl(SDL_Window *mpWindow)
 {
     // Create OpenGLES 2 context on SDL window
@@ -616,39 +615,39 @@ void loadTextures() {
     
     // Font shader
     shaderGLSLMap["font"] = {
-        readShaderFile("resources/shaders/font_v.glsl"),
-        readShaderFile("resources/shaders/font_f.glsl")
+        readShaderFile("/web/resources/shaders/font_v.glsl"),
+        readShaderFile("/web/resources/shaders/font_f.glsl")
     };
     
     // Terrain shader
     shaderGLSLMap["terrain"] = {
-        readShaderFile("resources/shaders/terrain_v.glsl"),
-        readShaderFile("resources/shaders/terrain_simple.glsl")
+        readShaderFile("/web/resources/shaders/terrain_v.glsl"),
+        readShaderFile("/web/resources/shaders/terrain_simple.glsl")
     };
 
     // Terrain shader
     shaderGLSLMap["water"] = {
-        readShaderFile("resources/shaders/terrain_v.glsl"),
-        readShaderFile("resources/shaders/ocean.glsl")
+        readShaderFile("/web/resources/shaders/terrain_v.glsl"),
+        readShaderFile("/web/resources/shaders/ocean.glsl")
     };
     
     
     // Debug entity shader (test_rgb)
     shaderGLSLMap["debug_entity"] = {
-        readShaderFile("resources/shaders/test_rgb_v.glsl"),
-        readShaderFile("resources/shaders/test_rgb_f.glsl")
+        readShaderFile("/web/resources/shaders/test_rgb_v.glsl"),
+        readShaderFile("/web/resources/shaders/test_rgb_f.glsl")
     };
     
     // UI Layer shader
     shaderGLSLMap["ui_layer"] = {
-        readShaderFile("resources/shaders/ui_layer_v.glsl"),
-        readShaderFile("resources/shaders/ui_layer_f.glsl")
+        readShaderFile("/web/resources/shaders/ui_layer_v.glsl"),
+        readShaderFile("/web/resources/shaders/ui_layer_f.glsl")
     };
     
     // Texture shader (vert_tex + frag_tex)
     shaderGLSLMap["texture"] = {
-        readShaderFile("resources/shaders/vert_tex.glsl"),
-        readShaderFile("resources/shaders/frag_tex.glsl")
+        readShaderFile("/web/resources/shaders/vert_tex.glsl"),
+        readShaderFile("/web/resources/shaders/frag_tex.glsl")
     };
     
     // Create static shader programs
@@ -782,11 +781,11 @@ void renderText(const std::string& text, float x, float y, float scale, float r,
     SDL_Color color = {255, 255, 255, 255}; // Always render white, let shader handle coloring
 
     // Build the full font path and validate
-    std::string fontPath = "resources/fonts/" + sceneManager.getCurrentMetadata().font;
+    std::string fontPath = "web/resources/fonts/" + sceneManager.getCurrentMetadata().font;
     
     // Validate the font exists, otherwise use default
     if (!isValidFont(fontPath)) {
-        fontPath = "resources/fonts/HomeVideo-Regular.ttf";
+        fontPath = "web/resources/fonts/HomeVideo-Regular.ttf";
     }
 
     TTF_Font* font = TTF_OpenFont(fontPath.c_str(), 64);
