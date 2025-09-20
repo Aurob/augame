@@ -379,7 +379,7 @@ var Module = {
       // Check URL parameters for config file
       const urlParams = new URLSearchParams(window.location.search);
       const configParam = urlParams.get('world');
-      const configFile = configParam ? `web/econfigs/${configParam}.txt` : 'web/econfigs/default.txt';
+      const configFile = configParam ? `/web/econfigs/${configParam}.txt` : '/web/econfigs/default.txt';
 
       fetch(`${configFile}?` + Math.random())
         .then(res => res.text())
@@ -390,7 +390,7 @@ var Module = {
           console.error(`Failed to load config file: ${configFile}`, error);
           // Fallback to demo.txt if specified config fails
           if (configParam) {
-            fetch('web/econfigs/default.txt?' + Math.random())
+            fetch('/web/econfigs/default.txt?' + Math.random())
               .then(res => res.text())
               .then(data => {
                 this.processConfigText(data);

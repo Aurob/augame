@@ -208,7 +208,10 @@ void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& 
                 {
                     if (texture.contains("path") && texture["path"].is_string())
                     {
-                        textureMap[texture["name"]] = texture["path"];
+                        std::string texName = texture["name"];
+                        std::string texPath = texture["path"];
+                        textureMap[texName] = texPath;
+                        printf("Texture loaded: Name='%s', Path='%s'\n", texName.c_str(), texPath.c_str());
                     }
                 }
             }

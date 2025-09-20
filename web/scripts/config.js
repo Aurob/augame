@@ -2,33 +2,33 @@ var CONFIG = {
     "shaders": [
         {
             "name": "grid",
-            "vertex": "resources/cshaders/grid_v.glsl",
-            "fragment": "resources/cshaders/grid_f.glsl"
+            "vertex": "/web/resources/cshaders/grid_v.glsl",
+            "fragment": "/web/resources/cshaders/grid_f.glsl"
         },
         {
             "name": "colorquads",
-            "vertex": "resources/cshaders/colorquads_v.glsl",
-            "fragment": "resources/cshaders/colorquads_f.glsl"
+            "vertex": "/web/resources/cshaders/colorquads_v.glsl",
+            "fragment": "/web/resources/cshaders/colorquads_f.glsl"
         },
         {
             "name": "terrainmap",
-            "vertex": "resources/cshaders/terrain_v.glsl",
-            "fragment": "resources/cshaders/terrain_f.glsl"
+            "vertex": "/web/resources/cshaders/terrain_v.glsl",
+            "fragment": "/web/resources/cshaders/terrain_f.glsl"
         },
         {
             "name": "water1",
-            "vertex": "resources/cshaders/water1_v.glsl",
-            "fragment": "resources/cshaders/water1_f.glsl"
+            "vertex": "/web/resources/cshaders/water1_v.glsl",
+            "fragment": "/web/resources/cshaders/water1_f.glsl"
         },
         {
             "name": "bookshelf",
-            "vertex": "resources/cshaders/bookshelf_v.glsl",
-            "fragment": "resources/cshaders/bookshelf_f.glsl"
+            "vertex": "/web/resources/cshaders/bookshelf_v.glsl",
+            "fragment": "/web/resources/cshaders/bookshelf_f.glsl"
         },
         {
             "name": "carpet",
-            "vertex": "resources/cshaders/carpet_v.glsl",
-            "fragment": "resources/cshaders/carpet_f.glsl"
+            "vertex": "/web/resources/cshaders/carpet_v.glsl",
+            "fragment": "/web/resources/cshaders/carpet_f.glsl"
         }
     ],
     "textures": [],
@@ -39,7 +39,7 @@ var CONFIG = {
 function createBasicTexture(name, path) {
     return {
         "name": name,
-        "path": `resources/textures/${path}`
+        "path": `web/resources/textures/${path}`
     };
 }
 
