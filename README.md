@@ -1,5 +1,7 @@
 # AuGame
 
+[DEMO](https://aurob.github.io/augame/)
+
 **2D game engine** - C++ with WebAssembly, SDL2, OpenGL  
 **ECS Architecture** - EnTT-based entity component system  
 **Web-Native** - Runs directly in browsers via WebAssembly
