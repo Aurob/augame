@@ -79,7 +79,45 @@ meta scene "@web/econfigs/scene1.txt"  // File reference
 meta scene "inline_scene_name"         // Inline definition
 ```
 
-**Exported Functions**: `_createSceneFromJson`, `_switchToNextScene`, `_switchToPrevScene`
+**Exported Functions**: `_createSceneFromJson`, `_switchToNextScene`, `_switchToPrevScene`, `_addEntityToScene`
+
+### Runtime Entity Addition
+Add, update, or recreate entities at runtime using JavaScript:
+
+**Create New Entity:**
+```javascript
+Module.add_entity(0, {
+    "Entities": [{
+        "New": true, // Creates new entity (removes existing with same ID)
+        "Components": {
+            "Id": {"id": 123, "name": "RuntimeEntity"},
+            "Position": {"x": 2, "y": 3, "z": 0},
+            "Shape": {"size": [1, 1, 1]},
+            "Color": {"r": 1, "g": 0, "b": 0, "a": 1}
+        }
+    }]
+});
+```
+
+**Update Existing Entity:**
+```javascript
+Module.add_entity(0, {
+    "Entities": [{
+        "New": false, // Updates existing entity by ID
+        "Components": {
+            "Id": {"id": 123, "name": "RuntimeEntity"}, // Required for updates
+            "Position": {"x": 5, "y": 5, "z": 0}, // Only specified components updated
+            "Color": {"r": 0, "g": 1, "b": 0, "a": 1}
+        }
+    }]
+});
+```
+
+- Uses same JSON format as econfig files
+- Scene indices are zero-based (0, 1, 2, etc.)
+- `New: true` removes existing entity with same ID, then creates new
+- `New: false` updates existing entity components by ID
+- All standard components supported
 
 ## Shader System
 
