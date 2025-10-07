@@ -17,16 +17,7 @@ const float amplitude = 0.70;
 
 vec3 simple_tile_color(vec2 _coord, float n) {
     vec3 color;
-    if (n < 0.1) {
-        // Water - slightly lighter ocean
-        float depth = 0.1 - n;  // Deeper water is darker
-        float depthFactor = depth / 0.1;  // Normalize to 0-1 range
-        color = vec3(
-            mix(0.12, 0.08, depthFactor),
-            mix(0.16, 0.12, depthFactor),
-            mix(0.24, 0.20, depthFactor)
-        );
-    } else if (n < 0.3) {
+    if (n < 0.3) {
         // Sand - more pale with exaggerated gradient
         float sandFactor = (n - 0.1) / 0.2;  // Normalize to 0-1 range
         // Apply a power function to exaggerate the gradient

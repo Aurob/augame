@@ -251,3 +251,114 @@ class EntityBuilder {
         };
     }
 }
+
+// Export ComponentSchemas and MetaSchemas for use in editor
+export const ComponentSchemas = [
+    { type: 'Position', configKey: 'position', fields: [
+        { name: 'x', type: 'number', default: 0 },
+        { name: 'y', type: 'number', default: 0 },
+        { name: 'z', type: 'number', default: 0 }
+    ]},
+    { type: 'Shape', configKey: 'shape', fields: [
+        { name: 'w', type: 'number', default: 1 },
+        { name: 'h', type: 'number', default: 1 },
+        { name: 'd', type: 'number', default: 0 }
+    ]},
+    { type: 'Color', configKey: 'color', fields: [
+        { name: 'r', type: 'number', default: 255 },
+        { name: 'g', type: 'number', default: 255 },
+        { name: 'b', type: 'number', default: 255 },
+        { name: 'a', type: 'number', default: 1 }
+    ]},
+    { type: 'RenderPriority', configKey: 'renderPriority', fields: [
+        { name: 'z', type: 'number', default: 0 }
+    ]},
+    { type: 'Player', configKey: 'player', fields: [] },
+    { type: 'Collidable', configKey: 'collidable', fields: [] },
+    { type: 'Moveable', configKey: 'moveable', fields: [] },
+    { type: 'Hoverable', configKey: 'hoverable', fields: [] },
+    { type: 'World', configKey: 'world', fields: [] },
+    { type: 'Terrain', configKey: 'terrain', fields: [] },
+    { type: 'Interior', configKey: 'interior', fields: [
+        { name: 'showInside', type: 'boolean', default: true }
+    ]},
+    { type: 'Inside', configKey: 'inside', fields: [
+        { name: 'insideId', type: 'number', default: 0 }
+    ]},
+    { type: 'Text', configKey: 'text', fields: [
+        { name: 'text', type: 'string', default: '' },
+        { name: 'scale', type: 'number', default: 1 },
+        { name: 'hidden', type: 'boolean', default: false },
+        { name: 'offsetX', type: 'number', default: 0 },
+        { name: 'offsetY', type: 'number', default: 0 }
+    ]},
+    { type: 'Movement', configKey: 'movement', fields: [
+        { name: 'speed', type: 'number', default: 0 },
+        { name: 'mass', type: 'number', default: 1 },
+        { name: 'restitution', type: 'number', default: 0 },
+        { name: 'friction', type: 'number', default: 0 }
+    ]},
+    { type: 'InteriorPortal', configKey: 'interiorPortal', fields: [
+        { name: 'A', type: 'number', default: 0 },
+        { name: 'B', type: 'number', default: 0 },
+        { name: 'locked', type: 'boolean', default: false },
+        { name: 'key', type: 'number', default: -1 }
+    ]},
+    { type: 'Camera', configKey: 'camera', fields: [
+        { name: 'gridSpacing', type: 'number', default: 1024 },
+        { name: 'defaultGSV', type: 'number', default: 16 },
+        { name: 'priority', type: 'number', default: 0 },
+        { name: 'radius', type: 'number', default: 0 },
+        { name: 'important', type: 'boolean', default: false }
+    ]},
+    { type: 'Texture', configKey: 'texture', fields: [
+        { name: 'name', type: 'string', default: '' },
+        { name: 'scalex', type: 'number', default: 1 },
+        { name: 'scaley', type: 'number', default: 1 },
+        { name: 'x', type: 'number', default: 0 },
+        { name: 'y', type: 'number', default: 0 },
+        { name: 'w', type: 'number', default: 1 },
+        { name: 'h', type: 'number', default: 1 }
+    ]},
+    { type: 'TextureGroupPart', configKey: 'textureGroupPart', fields: [
+        { name: 'groupName', type: 'string', default: '' },
+        { name: 'partName', type: 'string', default: '' },
+        { name: 'tilex', type: 'number', default: 0 },
+        { name: 'tiley', type: 'number', default: 0 }
+    ]},
+    { type: 'Interactable', configKey: 'interactable', fields: [
+        { name: 'radius', type: 'number', default: 0.5 },
+        { name: 'toggleState', type: 'boolean', default: false }
+    ]},
+    { type: 'Teleporter', configKey: 'teleporter', fields: [
+        { name: 'destX', type: 'number', default: 0 },
+        { name: 'destY', type: 'number', default: 0 },
+        { name: 'destZ', type: 'number', default: 0 },
+        { name: 'interiorEntity', type: 'number', default: 0 }
+    ]},
+    { type: 'Teleportable', configKey: 'teleportable', fields: [] },
+    { type: 'Draggable', configKey: 'draggable', fields: [
+        { name: 'radius', type: 'number', default: 1 }
+    ]},
+    { type: 'CustomShader', configKey: 'cshader', fields: [
+        { name: 'shaderName', type: 'string', default: '' },
+        { name: 'centerX', type: 'number', default: 0 },
+        { name: 'centerY', type: 'number', default: 0 },
+        { name: 'seed', type: 'number', default: 0 }
+    ]}
+];
+
+export const MetaSchemas = {
+    scene: { type: 'string', displayName: 'Scene Name', default: '' },
+    title: { type: 'string', displayName: 'Title', default: '' },
+    description: { type: 'string', displayName: 'Description', default: '' },
+    seed: { type: 'string', displayName: 'Seed', default: '' },
+    author: { type: 'string', displayName: 'Author', default: '' },
+    font: { type: 'string', displayName: 'Font', default: '' },
+    terrain: { type: 'string', displayName: 'Terrain', default: '' },
+    void: { type: 'string', displayName: 'Void Color', default: '#000000' },
+    slides: { type: 'object', displayName: 'Slides', default: {} }
+};
+
+// Export EntityBuilder as default
+export default EntityBuilder;
