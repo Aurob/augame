@@ -248,6 +248,13 @@ void updateUniforms(GLuint &shaderProgram,
     GLint cursorPosLocation = glGetUniformLocation(shaderProgram, "cursorPos");
     glUniform2f(cursorPosLocation, cursor.position.x, cursor.position.y);
 
+    // playerPos uniform
+    GLint playerPosLocation = glGetUniformLocation(shaderProgram, "playerPos");
+    if (playerPosLocation != -1) {
+        auto &playerPos = registry.get<Position>(_player);
+        glUniform2f(playerPosLocation, playerPos.x, playerPos.y);
+    }
+
     // time
     float timeValue = SDL_GetTicks() / 10000.0f;
     GLint timeLocation = glGetUniformLocation(shaderProgram, "time");
@@ -260,6 +267,14 @@ void updateUniforms(GLuint &shaderProgram,
     // seed
     GLint seedLocation = glGetUniformLocation(shaderProgram, "seed");
     glUniform1f(seedLocation, gameState.seed);
+
+    // Bind terrain texture for terrain shader
+    GLint terrainTextureLocation = glGetUniformLocation(shaderProgram, "uTerrainTexture");
+    if (terrainTextureLocation != -1 && textureIDMap.find("terrain_tileset") != textureIDMap.end()) {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureIDMap["terrain_tileset"]);
+        glUniform1i(terrainTextureLocation, 0);
+    }
 
     // rgb uniform (optional)
     if (rgb != nullptr) {
@@ -612,51 +627,65 @@ GLuint loadGLTexture(GLuint &shaderProgram, std::string textureSrc, int &width, 
 
 void loadTextures() {
     // Load static shaders from embedded files
-    
+
     // Font shader
     shaderGLSLMap["font"] = {
         readShaderFile("/web/resources/shaders/font_v.glsl"),
         readShaderFile("/web/resources/shaders/font_f.glsl")
     };
-    
-    // Terrain shader
+
+    // Terrain shaders (gradient and tileset versions)
     shaderGLSLMap["terrain"] = {
+        readShaderFile("/web/resources/shaders/terrain_v.glsl"),
+        readShaderFile("/web/resources/shaders/terrain_gradient.glsl")
+    };
+
+    // uses texture tileset for terrain
+    shaderGLSLMap["tiles"] = {
         readShaderFile("/web/resources/shaders/terrain_v.glsl"),
         readShaderFile("/web/resources/shaders/terrain_simple.glsl")
     };
 
-    // Terrain shader
+    // all water terrain shader
     shaderGLSLMap["water"] = {
         readShaderFile("/web/resources/shaders/terrain_v.glsl"),
         readShaderFile("/web/resources/shaders/ocean.glsl")
     };
-    
-    
+
+
     // Debug entity shader (test_rgb)
     shaderGLSLMap["debug_entity"] = {
         readShaderFile("/web/resources/shaders/test_rgb_v.glsl"),
         readShaderFile("/web/resources/shaders/test_rgb_f.glsl")
     };
-    
+
     // UI Layer shader
     shaderGLSLMap["ui_layer"] = {
         readShaderFile("/web/resources/shaders/ui_layer_v.glsl"),
         readShaderFile("/web/resources/shaders/ui_layer_f.glsl")
     };
-    
+
     // Texture shader (vert_tex + frag_tex)
     shaderGLSLMap["texture"] = {
         readShaderFile("/web/resources/shaders/vert_tex.glsl"),
         readShaderFile("/web/resources/shaders/frag_tex.glsl")
     };
-    
+
     // Create static shader programs
     createShader(shaderProgramMap["terrain"], "terrain");
+    createShader(shaderProgramMap["tiles"], "tiles");
     createShader(shaderProgramMap["water"], "water");
     createShader(shaderProgramMap["ui_layer"], "ui_layer");
     createShader(shaderProgramMap["texture"], "texture");
     createShader(shaderProgramMap["debug_entity"], "debug_entity");
     createShader(shaderProgramMap["font"], "font");
+
+    // Load terrain tileset texture
+    GLuint terrainTextureID;
+    loadImageAndCreateTexture("/web/resources/textures/terrain_s.png", terrainTextureID);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    textureIDMap["terrain_tileset"] = terrainTextureID;
 
     // Load textures from textureMap
     for(auto& [name, src] : textureMap) {
@@ -961,17 +990,17 @@ void renderAll() {
 
         // Render terrain shader if player is outside and terrain is a shader,
         // or if player is inside and the void background is set to "terrain"
-        bool shouldRenderTerrainShader = 
-            (!playerIsInside && (currentMetadata.terrain == "terrain" || currentMetadata.terrain == "water")) ||
-            (playerIsInside && (currentMetadata.void_bg == "terrain" || currentMetadata.void_bg == "water"));
+        bool shouldRenderTerrainShader =
+            (!playerIsInside && (currentMetadata.terrain == "terrain" || currentMetadata.terrain == "tiles" || currentMetadata.terrain == "water")) ||
+            (playerIsInside && (currentMetadata.void_bg == "terrain" || currentMetadata.void_bg == "tiles" || currentMetadata.void_bg == "water"));
 
         if (shouldRenderTerrainShader) {
             // Determine which shader to use
             std::string shaderName;
             if (!playerIsInside) {
-                shaderName = (currentMetadata.terrain == "water") ? "water" : currentMetadata.terrain;
+                shaderName = currentMetadata.terrain;
             } else {
-                shaderName = (currentMetadata.void_bg == "water") ? "water" : currentMetadata.void_bg;
+                shaderName = currentMetadata.void_bg;
             }
 
             float rgb[3];
