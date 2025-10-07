@@ -46,85 +46,25 @@ vec2 getTileUV(int tileIndex, vec2 localCoord) {
 }
 
 // Get biome type from noise value
-int getBiome(float n) {
-    if (n < 0.1) return 1;      // Water
+int getBiome(float n, vec2 coord) {
+    if (n < 0.1) {
+        // Water: use light (1) near sand, dark (3) deeper
+        float waterDepth = n / 0.1; // 0=deep, 1=shallow
+        return waterDepth > 0.5 ? 1 : 3;
+    }
     else if (n < 0.3) return 4; // Sand
-    else if (n < 0.6) return 0; // Grass
+    else if (n < 0.6) {
+        // Grass: randomly choose between types 0 and 2
+        float grassRandom = fract(sin(dot(floor(coord * tileScale), vec2(12.9898, 78.233)) + seed) * 43758.5453);
+        return grassRandom > 0.5 ? 0 : 2;
+    }
     else if (n < 0.8) return 6; // Dirt
-    else return 5;              // Stone
+    else if (n < 0.95) return 5; // Stone
+    else return 7;              // Snow
 }
 
 vec3 simple_tile_color(vec2 _coord, float n) {
-    int centerBiome = getBiome(n);
-
-    // Sample neighbors for edge/corner detection
-    float sampleDist = 0.05; // Distance to sample neighbors
-    int top = getBiome(calculate_n(_coord + vec2(0.0, sampleDist)));
-    int bottom = getBiome(calculate_n(_coord + vec2(0.0, -sampleDist)));
-    int left = getBiome(calculate_n(_coord + vec2(-sampleDist, 0.0)));
-    int right = getBiome(calculate_n(_coord + vec2(sampleDist, 0.0)));
-
-    // Diagonal neighbors for corner detection
-    int topLeft = getBiome(calculate_n(_coord + vec2(-sampleDist, sampleDist)));
-    int topRight = getBiome(calculate_n(_coord + vec2(sampleDist, sampleDist)));
-    int bottomLeft = getBiome(calculate_n(_coord + vec2(-sampleDist, -sampleDist)));
-    int bottomRight = getBiome(calculate_n(_coord + vec2(sampleDist, -sampleDist)));
-
-    // Count how many neighbors are different
-    int diffCount = 0;
-    if (top != centerBiome) diffCount++;
-    if (bottom != centerBiome) diffCount++;
-    if (left != centerBiome) diffCount++;
-    if (right != centerBiome) diffCount++;
-
-    // Corner detection: if we have exactly 2 adjacent edges that differ
-    // Top-left corner (top and left differ, but right and bottom match)
-    if (top != centerBiome && left != centerBiome && right == centerBiome && bottom == centerBiome && topLeft != centerBiome) {
-        return vec3(1.0, 0.0, 0.0); // Red for top-left corner
-    }
-    // Top-right corner
-    if (top != centerBiome && right != centerBiome && left == centerBiome && bottom == centerBiome && topRight != centerBiome) {
-        return vec3(1.0, 1.0, 0.0); // Yellow for top-right corner
-    }
-    // Bottom-left corner
-    if (bottom != centerBiome && left != centerBiome && right == centerBiome && top == centerBiome && bottomLeft != centerBiome) {
-        return vec3(1.0, 0.0, 1.0); // Magenta for bottom-left corner
-    }
-    // Bottom-right corner
-    if (bottom != centerBiome && right != centerBiome && left == centerBiome && top == centerBiome && bottomRight != centerBiome) {
-        return vec3(0.0, 1.0, 1.0); // Cyan for bottom-right corner
-    }
-
-    // Edge detection: if exactly one cardinal direction differs
-    if (diffCount == 1) {
-        if (top != centerBiome) {
-            return vec3(1.0, 0.5, 0.0); // Orange for top edge
-        } else if (bottom != centerBiome) {
-            return vec3(0.5, 0.0, 1.0); // Purple for bottom edge
-        } else if (left != centerBiome) {
-            return vec3(0.0, 1.0, 0.5); // Teal for left edge
-        } else if (right != centerBiome) {
-            return vec3(1.0, 1.0, 0.5); // Light yellow for right edge
-        }
-    }
-
-    // Inner corners (concave): when 3 neighbors match but one diagonal doesn't
-    // Top-left inner corner
-    if (top == centerBiome && left == centerBiome && topLeft != centerBiome && right == centerBiome && bottom == centerBiome) {
-        return vec3(0.5, 0.0, 0.0); // Dark red for top-left inner corner
-    }
-    // Top-right inner corner
-    if (top == centerBiome && right == centerBiome && topRight != centerBiome && left == centerBiome && bottom == centerBiome) {
-        return vec3(0.5, 0.5, 0.0); // Dark yellow for top-right inner corner
-    }
-    // Bottom-left inner corner
-    if (bottom == centerBiome && left == centerBiome && bottomLeft != centerBiome && right == centerBiome && top == centerBiome) {
-        return vec3(0.5, 0.0, 0.5); // Dark magenta for bottom-left inner corner
-    }
-    // Bottom-right inner corner
-    if (bottom == centerBiome && right == centerBiome && bottomRight != centerBiome && left == centerBiome && top == centerBiome) {
-        return vec3(0.0, 0.5, 0.5); // Dark cyan for bottom-right inner corner
-    }
+    int centerBiome = getBiome(n, _coord);
 
     // Default: render base tile
     vec2 uv = getTileUV(centerBiome, _coord * tileScale);
