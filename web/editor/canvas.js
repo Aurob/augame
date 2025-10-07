@@ -369,6 +369,7 @@ export class CanvasRenderer {
 
     onMouseUp(evt) {
         const mouse = this.getMousePos(evt);
+        const world = this.canvasToWorld(mouse.x, mouse.y);
 
         // End multi-select
         if (this.isSelecting) {
