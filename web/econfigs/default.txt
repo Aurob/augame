@@ -4,7 +4,7 @@ meta description "This is the default world configuration file for the game."
 meta seed "Hello World"
 meta author "rau"
 meta font "HomeVideo-Regular.ttf"
-meta terrain terrain
+meta terrain tiles
 meta void "#000000"
 meta start_menu "Demo
 meta pause_menu "Paused"
