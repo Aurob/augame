@@ -5,3 +5,5 @@
 *_complex.sh
 build.log
 *_simple.sh
+emsdk/
+.claude
