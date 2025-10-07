@@ -53,6 +53,11 @@ void createShader(GLuint &shaderProgram, std::string program_name);
 
 void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& targetMetadata);
 
+// Helper functions for entity management
+entt::entity findEntityById(entt::registry& registry, int id);
+void removeEntityById(entt::registry& registry, int id);
+void updateEntityComponents(entt::registry& registry, entt::entity entity, const nlohmann::json& components);
+
 extern "C"
 {
     EMSCRIPTEN_KEEPALIVE
@@ -119,25 +124,47 @@ extern "C"
     {
         printf("Switching to prev scene...\n");
         sceneManager.switchToPrevScene();
-        
+
         // Update global player reference safely
         auto& currentRegistry = sceneManager.getCurrentRegistry();
         auto playerView = currentRegistry.view<Player>();
         _player = playerView.empty() ? entt::null : playerView.front();
-        
+
         // Ensure player has ALL required components
         if (_player != entt::null) {
             // Run makePlayer to ensure all components
             makePlayer(currentRegistry);
         }
-        
+
         // Store the player entity in the scene manager for consistency
         sceneManager.setCurrentPlayer(_player);
-        
+
         // Reset to start menu for new scene
         gameState.gameState = -1;
-        
+
         printf("Switched to scene %d/%zu\n", sceneManager.getCurrentSceneIndex() + 1, sceneManager.getSceneCount());
+    }
+
+    void addEntityToScene(int sceneIndex, char* entityConfigStr)
+    {
+        if (sceneIndex < 0 || sceneIndex >= static_cast<int>(sceneManager.getSceneCount())) {
+            printf("Error: Invalid scene index %d (valid range: 0-%zu)\n", sceneIndex, sceneManager.getSceneCount() - 1);
+            return;
+        }
+
+        // Store current scene index
+        int originalSceneIndex = sceneManager.getCurrentSceneIndex();
+
+        // Switch to target scene temporarily
+        sceneManager.switchToScene(sceneIndex);
+
+        // Load the single entity config into the target scene
+        load_json_to_registry(entityConfigStr, sceneManager.getCurrentRegistry(), sceneManager.getCurrentMetadata());
+
+        printf("Added entity to scene %d\n", sceneIndex);
+
+        // Switch back to original scene
+        sceneManager.switchToScene(originalSceneIndex);
     }
 }
 
@@ -393,8 +420,45 @@ void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& 
 
                     else if (_el.contains("New") && _el["New"].is_boolean())
                     {
-                        // Create a new entity
-                        entt::entity entity = targetRegistry.create();
+                        bool isNew = _el["New"].get<bool>();
+                        entt::entity entity = entt::null;
+
+                        // Get entity ID if provided
+                        int entityId = -1;
+                        if (_el.contains("Components") && _el["Components"].is_object() &&
+                            _el["Components"].contains("Id") && _el["Components"]["Id"].is_object() &&
+                            _el["Components"]["Id"].contains("id") && _el["Components"]["Id"]["id"].is_number()) {
+                            entityId = _el["Components"]["Id"]["id"];
+                        }
+
+                        if (isNew) {
+                            // New: true - Remove existing entity with same ID, then create new
+                            if (entityId != -1) {
+                                removeEntityById(targetRegistry, entityId);
+                            }
+                            entity = targetRegistry.create();
+                            printf("Created new entity with id %d\n", entityId);
+                        } else {
+                            // New: false - Update existing entity
+                            if (entityId != -1) {
+                                entity = findEntityById(targetRegistry, entityId);
+                                if (entity != entt::null) {
+                                    printf("Updating existing entity with id %d\n", entityId);
+                                    // Update components using helper function
+                                    if (_el.contains("Components") && _el["Components"].is_object()) {
+                                        updateEntityComponents(targetRegistry, entity, _el["Components"]);
+                                    }
+                                    // Skip to next entity
+                                    goto next_entity;
+                                } else {
+                                    printf("Entity with id %d not found, creating new one\n", entityId);
+                                    entity = targetRegistry.create();
+                                }
+                            } else {
+                                printf("No ID provided for update, creating new entity\n");
+                                entity = targetRegistry.create();
+                            }
+                        }
 
                         targetRegistry.emplace<RenderPriority>(entity);
 
@@ -723,6 +787,7 @@ void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& 
                             }
                         }
 
+                        next_entity:; // Label for goto
                     }
                 }
             }
@@ -732,4 +797,129 @@ void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& 
 
         }
     }
+
+// Helper function implementations
+entt::entity findEntityById(entt::registry& registry, int id)
+{
+    auto view = registry.view<Id>();
+    for (auto entity : view) {
+        if (view.get<Id>(entity).id == id) {
+            return entity;
+        }
+    }
+    return entt::null;
+}
+
+void removeEntityById(entt::registry& registry, int id)
+{
+    entt::entity entity = findEntityById(registry, id);
+    if (entity != entt::null) {
+        registry.destroy(entity);
+        printf("Removed entity with id %d\n", id);
+    }
+}
+
+void updateEntityComponents(entt::registry& registry, entt::entity entity, const nlohmann::json& components)
+{
+    // Position
+    safe_emplace(registry, entity, [&]() {
+        if (components.contains("Position") && components["Position"].is_object())
+        {
+            auto &pos = components["Position"];
+            if (registry.all_of<Position>(entity)) {
+                auto& position = registry.get<Position>(entity);
+                position.x = pos["x"];
+                position.y = pos["y"];
+                position.z = pos["z"];
+            } else {
+                registry.emplace<Position>(entity, pos["x"], pos["y"], pos["z"]);
+            }
+        }
+    }, "Position");
+
+    // Shape
+    safe_emplace(registry, entity, [&]() {
+        if (components.contains("Shape") && components["Shape"].is_object())
+        {
+            auto &shape = components["Shape"];
+            if (registry.all_of<Shape>(entity)) {
+                auto& shapeComp = registry.get<Shape>(entity);
+                shapeComp.size.x = shape["size"][0];
+                shapeComp.size.y = shape["size"][1];
+                shapeComp.size.z = shape["size"][2];
+            } else {
+                registry.emplace<Shape>(entity, shape["size"][0], shape["size"][1], shape["size"][2]);
+            }
+        }
+    }, "Shape");
+
+    // Color
+    safe_emplace(registry, entity, [&]() {
+        if (components.contains("Color") && components["Color"].is_object())
+        {
+            auto &color = components["Color"];
+            if (registry.all_of<Color>(entity)) {
+                auto& colorComp = registry.get<Color>(entity);
+                colorComp.r = color["r"];
+                colorComp.g = color["g"];
+                colorComp.b = color["b"];
+                colorComp.a = color["a"];
+            } else {
+                registry.emplace<Color>(entity, color["r"], color["g"], color["b"], color["a"]);
+            }
+        }
+    }, "Color");
+
+    // Text
+    safe_emplace(registry, entity, [&]() {
+        if (components.contains("Text") && components["Text"].is_object()) {
+            auto &text = components["Text"];
+            bool hide = text["hide"] == 1 || text["hide"] == true;
+            float offsetX = text.value("offsetX", 0.0f);
+            float offsetY = text.value("offsetY", 0.0f);
+
+            if (registry.all_of<Text>(entity)) {
+                auto& textComp = registry.get<Text>(entity);
+                textComp.text = text["text"];
+                textComp.scale = text["scale"];
+                textComp.hide = hide;
+                textComp.offsetX = offsetX;
+                textComp.offsetY = offsetY;
+            } else {
+                registry.emplace<Text>(entity, text["text"], text["scale"], hide, offsetX, offsetY);
+            }
+        }
+    }, "Text");
+
+    // Movement
+    safe_emplace(registry, entity, [&]() {
+        if (components.contains("Movement") && components["Movement"].is_object())
+        {
+            auto &movement = components["Movement"];
+            if (registry.all_of<Movement>(entity)) {
+                auto& movementComp = registry.get<Movement>(entity);
+                movementComp.speed = movement["speed"].get<float>();
+                movementComp.mass = movement["mass"].get<float>();
+                movementComp.restitution = movement["restitution"].get<float>();
+                movementComp.friction = movement["friction"].get<float>();
+            } else {
+                registry.emplace<Movement>(entity, Movement{
+                    movement["speed"].get<float>(),
+                    movement["mass"].get<float>(),
+                    movement["restitution"].get<float>(),
+                    movement["friction"].get<float>()});
+            }
+        }
+    }, "Movement");
+
+    // Add other components as needed - focusing on most commonly updated ones
+    // Can extend this with more components as needed
+
+    // Ensure physics body is updated if Position and Shape exist
+    if (registry.all_of<Position, Shape>(entity)) {
+        if (!registry.all_of<PhysicsBodyRect>(entity)) {
+            registry.emplace<PhysicsBodyRect>(entity);
+        }
+    }
+}
 

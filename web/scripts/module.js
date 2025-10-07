@@ -586,6 +586,16 @@ var Module = {
     this._createSceneFromJson(strPtr);
     this._free(strPtr);
   },
+
+  add_entity(sceneIndex, entityConfig) {
+    if (typeof entityConfig === 'object') {
+      entityConfig = JSON.stringify(entityConfig);
+    }
+    const strPtr = this._malloc(entityConfig.length + 1);
+    this.stringToUTF8(entityConfig, strPtr, entityConfig.length + 1);
+    this._addEntityToScene(sceneIndex, strPtr);
+    this._free(strPtr);
+  },
   
   start() {
     console.log("Starting...");

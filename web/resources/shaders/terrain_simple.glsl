@@ -11,65 +11,124 @@ uniform vec2 generationSize;
 uniform float scale;
 uniform float seed;
 uniform float time;
+uniform sampler2D uTerrainTexture;
 
 const float frequency = 9.5;
 const float amplitude = 0.70;
+const float tileScale = 8.0; // Higher = smaller tiles
 
 // Hardcoded drawgrid variable
 const bool drawgrid = false;
 
-// Planet curvature parameters
-const float PLANET_TRANSITION_START = 0.8; // When curvature starts to appear
-const float PLANET_FULL_VIEW = 0.2;        // When full planet view is active
-const float PLANET_RADIUS = 0.45;          // Normalized radius in screen space (0.5 = half screen)
-const float ATMOSPHERE_FADE = 0.15;        // How much atmosphere fading at edges
+// Forward declarations
+float calculate_n(vec2 _coord);
+
+// Get UV coordinates for tile in 4x2 tileset
+vec2 getTileUV(int tileIndex, vec2 localCoord) {
+    // Tileset layout: 4 tiles wide, 2 tiles tall
+    // Top row (y=0): 0=grass, 1=water, 2=light_grass, 3=dark_water
+    // Bottom row (y=1): 4=sand, 5=stone, 6=dirt, 7=snow
+
+    vec2 tileOffset;
+
+    // Manual division and modulo for GLSL ES 1.0
+    int row = tileIndex / 4;
+    int col = tileIndex - (row * 4);
+
+    tileOffset.x = float(col) * 0.25;
+    tileOffset.y = float(row) * 0.5;
+
+    // Wrap local coordinates to [0,1] range for tiling
+    vec2 wrappedCoord = fract(localCoord);
+
+    // Scale to tile size and add offset
+    return tileOffset + vec2(wrappedCoord.x * 0.25, wrappedCoord.y * 0.5);
+}
+
+// Get biome type from noise value
+int getBiome(float n) {
+    if (n < 0.1) return 1;      // Water
+    else if (n < 0.3) return 4; // Sand
+    else if (n < 0.6) return 0; // Grass
+    else if (n < 0.8) return 6; // Dirt
+    else return 5;              // Stone
+}
 
 vec3 simple_tile_color(vec2 _coord, float n) {
-    vec3 color;
-    if (n < 0.1) {
-        // Water - slightly lighter ocean
-        float depth = 0.1 - n;
-        float depthFactor = depth / 0.1;
-        color = vec3(
-            mix(0.12, 0.08, depthFactor),
-            mix(0.16, 0.12, depthFactor),
-            mix(0.24, 0.20, depthFactor)
-        );
-    } else if (n < 0.3) {
-        // Sand
-        float sandFactor = (n - 0.1) / 0.2;
-        sandFactor = pow(sandFactor, 2.5);
-        color = vec3(
-            mix(0.96, 0.82, sandFactor),
-            mix(0.94, 0.76, sandFactor),
-            mix(0.82, 0.62, sandFactor)
-        );
-    } else if (n < 0.6) {
-        // Grass
-        float grassFactor = (n - 0.3) / 0.3;
-        color = vec3(
-            mix(0.2, 0.15, grassFactor),
-            mix(0.6, 0.5, grassFactor),
-            mix(0.3, 0.2, grassFactor)
-        );
-    } else if (n < 0.8) {
-        // Transition zone
-        float transitionFactor = (n - 0.6) / 0.2;
-        color = vec3(
-            mix(0.4, 0.35, transitionFactor),
-            mix(0.4, 0.35, transitionFactor),
-            mix(0.3, 0.25, transitionFactor)
-        );
-    } else {
-        // Stone/mountain
-        float stoneFactor = (n - 0.8) / 0.2;
-        color = vec3(
-            mix(0.5, 0.4, stoneFactor),
-            mix(0.5, 0.4, stoneFactor),
-            mix(0.5, 0.45, stoneFactor)
-        );
+    int centerBiome = getBiome(n);
+
+    // Sample neighbors for edge/corner detection
+    float sampleDist = 0.05; // Distance to sample neighbors
+    int top = getBiome(calculate_n(_coord + vec2(0.0, sampleDist)));
+    int bottom = getBiome(calculate_n(_coord + vec2(0.0, -sampleDist)));
+    int left = getBiome(calculate_n(_coord + vec2(-sampleDist, 0.0)));
+    int right = getBiome(calculate_n(_coord + vec2(sampleDist, 0.0)));
+
+    // Diagonal neighbors for corner detection
+    int topLeft = getBiome(calculate_n(_coord + vec2(-sampleDist, sampleDist)));
+    int topRight = getBiome(calculate_n(_coord + vec2(sampleDist, sampleDist)));
+    int bottomLeft = getBiome(calculate_n(_coord + vec2(-sampleDist, -sampleDist)));
+    int bottomRight = getBiome(calculate_n(_coord + vec2(sampleDist, -sampleDist)));
+
+    // Count how many neighbors are different
+    int diffCount = 0;
+    if (top != centerBiome) diffCount++;
+    if (bottom != centerBiome) diffCount++;
+    if (left != centerBiome) diffCount++;
+    if (right != centerBiome) diffCount++;
+
+    // Corner detection: if we have exactly 2 adjacent edges that differ
+    // Top-left corner (top and left differ, but right and bottom match)
+    if (top != centerBiome && left != centerBiome && right == centerBiome && bottom == centerBiome && topLeft != centerBiome) {
+        return vec3(1.0, 0.0, 0.0); // Red for top-left corner
     }
-    return color;
+    // Top-right corner
+    if (top != centerBiome && right != centerBiome && left == centerBiome && bottom == centerBiome && topRight != centerBiome) {
+        return vec3(1.0, 1.0, 0.0); // Yellow for top-right corner
+    }
+    // Bottom-left corner
+    if (bottom != centerBiome && left != centerBiome && right == centerBiome && top == centerBiome && bottomLeft != centerBiome) {
+        return vec3(1.0, 0.0, 1.0); // Magenta for bottom-left corner
+    }
+    // Bottom-right corner
+    if (bottom != centerBiome && right != centerBiome && left == centerBiome && top == centerBiome && bottomRight != centerBiome) {
+        return vec3(0.0, 1.0, 1.0); // Cyan for bottom-right corner
+    }
+
+    // Edge detection: if exactly one cardinal direction differs
+    if (diffCount == 1) {
+        if (top != centerBiome) {
+            return vec3(1.0, 0.5, 0.0); // Orange for top edge
+        } else if (bottom != centerBiome) {
+            return vec3(0.5, 0.0, 1.0); // Purple for bottom edge
+        } else if (left != centerBiome) {
+            return vec3(0.0, 1.0, 0.5); // Teal for left edge
+        } else if (right != centerBiome) {
+            return vec3(1.0, 1.0, 0.5); // Light yellow for right edge
+        }
+    }
+
+    // Inner corners (concave): when 3 neighbors match but one diagonal doesn't
+    // Top-left inner corner
+    if (top == centerBiome && left == centerBiome && topLeft != centerBiome && right == centerBiome && bottom == centerBiome) {
+        return vec3(0.5, 0.0, 0.0); // Dark red for top-left inner corner
+    }
+    // Top-right inner corner
+    if (top == centerBiome && right == centerBiome && topRight != centerBiome && left == centerBiome && bottom == centerBiome) {
+        return vec3(0.5, 0.5, 0.0); // Dark yellow for top-right inner corner
+    }
+    // Bottom-left inner corner
+    if (bottom == centerBiome && left == centerBiome && bottomLeft != centerBiome && right == centerBiome && top == centerBiome) {
+        return vec3(0.5, 0.0, 0.5); // Dark magenta for bottom-left inner corner
+    }
+    // Bottom-right inner corner
+    if (bottom == centerBiome && right == centerBiome && bottomRight != centerBiome && left == centerBiome && top == centerBiome) {
+        return vec3(0.0, 0.5, 0.5); // Dark cyan for bottom-right inner corner
+    }
+
+    // Default: render base tile
+    vec2 uv = getTileUV(centerBiome, _coord * tileScale);
+    return texture2D(uTerrainTexture, uv).rgb;
 }
 
 vec3 hash(vec3 p) {
@@ -137,113 +196,29 @@ float calculate_n(vec2 _coord) {
     return n;
 }
 
-// --- New helpers for sphere mapping ---
-
-vec3 screenToSphereNormal(vec2 screenPos, float planetRadiusNorm, out bool onSphere, out float r01) {
-    // screenPos in [0,1]; planetRadiusNorm = PLANET_RADIUS
-    vec2 centered = (screenPos - 0.5) / planetRadiusNorm;  // edge at length=1
-    float r2 = dot(centered, centered);
-    onSphere = (r2 <= 1.0);
-    r01 = sqrt(max(r2, 0.0));
-    if (!onSphere) return vec3(0.0);
-    float z = sqrt(max(1.0 - r2, 0.0));
-    return normalize(vec3(centered.x, centered.y, z));
-}
-
-// Convert unit normal to lon/lat (radians)
-vec2 normalToLonLat(vec3 n) {
-    float lon = atan(n.x, n.z); // [-pi, pi]
-    float lat = asin(clamp(n.y, -1.0, 1.0)); // [-pi/2, pi/2]
-    return vec2(lon, lat);
-}
-
-// Add simple atmosphere/edge effect
-vec3 addAtmosphere(vec3 color, vec2 screenPos, float planetness) {
-    vec2 centered = (screenPos - 0.5) * 2.0;
-    float dist = length(centered);
-    float edge = smoothstep(PLANET_RADIUS * 0.95, PLANET_RADIUS, dist);
-    float atmosphere = pow(edge, 1.5) * planetness;
-    vec3 atmosphereColor = vec3(0.4, 0.6, 1.0) * atmosphere * 0.3;
-    return mix(color, color + atmosphereColor, atmosphere);
-}
-
 void main() {
     vec2 coord = gl_FragCoord.xy;
     coord.y = resolution.y - coord.y;
 
-    float planetness = 0.0;
-    if (grid_spacing < PLANET_TRANSITION_START) {
-        planetness = smoothstep(PLANET_TRANSITION_START, PLANET_FULL_VIEW, grid_spacing);
-    }
-
-    vec2 screenPos = coord / resolution;
-
-    // Background + planet mask
-    if (planetness > 0.01) {
-        vec2 centered = (screenPos - 0.5) * 2.0;
-        float dist = length(centered);
-        float planetEdge = PLANET_RADIUS * (1.0 + planetness * 0.2);
-        if (dist > planetEdge) {
-            vec3 spaceColor = vec3(0.02, 0.02, 0.05);
-            float starNoise = smoothNoise(coord * 0.01);
-            if (starNoise > 0.98) spaceColor += vec3(0.8);
-            gl_FragColor = vec4(spaceColor, 1.0);
-            return;
-        }
-    }
-
-    // Planar world coords (what you had)
+    // Simple planar world coords
     vec2 generationOffset = vec2(generationSize.x / 2.0, generationSize.y / 2.0);
-    vec2 planarCoord = (coord / grid_spacing) + toplefttile + (offset / grid_spacing) + generationOffset;
-
-    // Sphere world coords (new) – sample world on a sphere, anchored at playerPos
-    vec2 sphereCoord = planarCoord; // fallback
-    if (planetness > 0.01) {
-        bool onSphere; float r01;
-        vec3 n = screenToSphereNormal(screenPos, PLANET_RADIUS, onSphere, r01);
-
-        // Freeze world-per-radian when planet mode starts so the pattern stays static as you zoom out
-        float pxRadius = PLANET_RADIUS * min(resolution.x, resolution.y);
-        float worldPerRad = pxRadius / PLANET_TRANSITION_START; // tiles (or world units) per radian
-
-        // Center of the sphere in world space: anchor to player
-        // Make sure playerPos is in the same units as your noise/world (tile coords).
-        vec2 worldCenter = playerPos;
-
-        vec2 lonlat = normalToLonLat(n); // radians
-        sphereCoord = worldCenter + lonlat * worldPerRad;
-    }
-
-    // Blend during transition (keeps your nice “curvature reveal” but fixes the lensing)
-    vec2 sampleCoord = mix(planarCoord, sphereCoord, clamp(planetness, 0.0, 1.0));
+    vec2 sampleCoord = (coord / grid_spacing) + toplefttile + (offset / grid_spacing) + generationOffset;
 
     // Terrain
     float n = calculate_n(sampleCoord);
     vec3 terrainColor = simple_tile_color(sampleCoord, n);
 
-    // Atmosphere/lighting still based on screen-space distance
-    if (planetness > 0.01) {
-        terrainColor = addAtmosphere(terrainColor, screenPos, planetness);
-        vec2 centered = (screenPos - 0.5) * 2.0;
-        float dist = length(centered);
-        float edgeDarkening = 1.0 - (dist * dist * planetness * 0.4);
-        terrainColor *= edgeDarkening;
-        vec2 lightDir2D = normalize(vec2(-0.5, -0.5));
-        float lighting = max(0.0, dot(normalize(centered), lightDir2D));
-        terrainColor += vec3(0.1) * lighting * planetness;
-    }
-
     vec3 finalColor = terrainColor;
 
-    // Optional grid (still off in planet view)
-    if (drawgrid && planetness < 0.5) {
-        vec2 worldGridPos = mod(sampleCoord, 1.0);
+    // Optional grid
+    if (drawgrid) {
+        vec2 worldGridPos = fract(sampleCoord);
         float worldGridThickness = 1.0 / grid_spacing;
         float lineX = step(worldGridPos.x, worldGridThickness) + step(1.0 - worldGridPos.x, worldGridThickness);
         float lineY = step(worldGridPos.y, worldGridThickness) + step(1.0 - worldGridPos.y, worldGridThickness);
         float gridLine = clamp(lineX + lineY, 0.0, 1.0);
         vec3 gridColor = vec3(0.85);
-        finalColor = mix(finalColor, gridColor, gridLine * 0.7 * (1.0 - planetness));
+        finalColor = mix(finalColor, gridColor, gridLine * 0.7);
     }
 
     gl_FragColor = vec4(finalColor, 1.0);
