@@ -171,27 +171,6 @@ extern "C"
 void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& targetMetadata)
 {
         nlohmann::json js_json = str_to_json(str);
-        if (js_json.contains("world"))
-        {
-            // zoom
-            if (js_json["world"].contains("zoom") && js_json["world"]["zoom"].is_number())
-            {
-                float zoom = js_json["world"]["zoom"];
-                // Find camera for zoom adjustments using priority-based selection
-                entt::entity cameraEntity = selectMainCamera(targetRegistry);
-                if(cameraEntity != entt::null) {
-                    auto& camera = targetRegistry.get<Camera>(cameraEntity);
-                    if (zoom == -1)
-                    {
-                        camera.gridSpacing /= 1.08f;
-                    }
-                    else if (zoom == 1)
-                    {
-                        camera.gridSpacing *= 1.08f;
-                    }
-                }
-            }
-        }
         if (js_json.contains("shader") && js_json["shader"].is_object())
         {
             // should contain "name", "vertex", "fragment"
@@ -296,14 +275,14 @@ void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& 
             if (meta.contains("font") && meta["font"].is_string()) {
                 targetMetadata.font = meta["font"];
             }
-            if (meta.contains("terrain")) {
-                if (meta["terrain"].is_string()) {
-                    targetMetadata.terrain = meta["terrain"];
-                } else if (meta["terrain"].is_array() && meta["terrain"].size() >= 3) {
+            if (meta.contains("world")) {
+                if (meta["world"].is_string()) {
+                    targetMetadata.terrain = meta["world"];
+                } else if (meta["world"].is_array() && meta["world"].size() >= 3) {
                     // Color array [r, g, b] from JavaScript
-                    targetMetadata.terrain_color[0] = meta["terrain"][0];
-                    targetMetadata.terrain_color[1] = meta["terrain"][1];
-                    targetMetadata.terrain_color[2] = meta["terrain"][2];
+                    targetMetadata.terrain_color[0] = meta["world"][0];
+                    targetMetadata.terrain_color[1] = meta["world"][1];
+                    targetMetadata.terrain_color[2] = meta["world"][2];
                     targetMetadata.terrain = "color"; // Mark as color instead of shader
                 }
             }
@@ -311,11 +290,31 @@ void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& 
                 if (meta["void"].is_string()) {
                     targetMetadata.void_bg = meta["void"];
                 } else if (meta["void"].is_array() && meta["void"].size() >= 3) {
-                    // Color array [r, g, b] from JavaScript  
+                    // Color array [r, g, b] from JavaScript
                     targetMetadata.void_color[0] = meta["void"][0];
                     targetMetadata.void_color[1] = meta["void"][1];
                     targetMetadata.void_color[2] = meta["void"][2];
                     targetMetadata.void_bg = "color"; // Mark as color
+                }
+            }
+            if (meta.contains("terrain_bounds") && meta["terrain_bounds"].is_string()) {
+                std::string boundsStr = meta["terrain_bounds"];
+                if (!boundsStr.empty()) {
+                    std::vector<float> bounds;
+                    std::stringstream ss(boundsStr);
+                    std::string token;
+                    while (std::getline(ss, token, ',')) {
+                        try {
+                            bounds.push_back(std::stof(token));
+                        } catch (...) {
+                            printf("Warning: Failed to parse terrain_bounds value: %s\n", token.c_str());
+                        }
+                    }
+                    if (bounds.size() == 4) {
+                        targetMetadata.terrain_bounds = bounds;
+                        printf("Meta: Terrain bounds set to [%.1f, %.1f, %.1f, %.1f]\n",
+                               bounds[0], bounds[1], bounds[2], bounds[3]);
+                    }
                 }
             }
             if (meta.contains("start_menu") && meta["start_menu"].is_string()) {

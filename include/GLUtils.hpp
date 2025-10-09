@@ -268,6 +268,21 @@ void updateUniforms(GLuint &shaderProgram,
     GLint seedLocation = glGetUniformLocation(shaderProgram, "seed");
     glUniform1f(seedLocation, gameState.seed);
 
+    // terrain_bounds uniform
+    GLint terrainBoundsLocation = glGetUniformLocation(shaderProgram, "terrain_bounds");
+    if (terrainBoundsLocation != -1) {
+        if (currentMetadata.terrain_bounds.size() == 4) {
+            glUniform4f(terrainBoundsLocation,
+                       currentMetadata.terrain_bounds[0],
+                       currentMetadata.terrain_bounds[1],
+                       currentMetadata.terrain_bounds[2],
+                       currentMetadata.terrain_bounds[3]);
+        } else {
+            // No bounds set, pass zeros
+            glUniform4f(terrainBoundsLocation, 0.0f, 0.0f, 0.0f, 0.0f);
+        }
+    }
+
     // Bind terrain texture for terrain shader
     GLint terrainTextureLocation = glGetUniformLocation(shaderProgram, "uTerrainTexture");
     if (terrainTextureLocation != -1 && textureIDMap.find("terrain_tileset") != textureIDMap.end()) {

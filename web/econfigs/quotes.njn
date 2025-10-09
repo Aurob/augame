@@ -3,7 +3,7 @@ meta title "Testing"
 meta description "Testing this"
 meta author "rau"
 meta font "HomeVideo-Regular.ttf"
-meta terrain 0,0,0
+meta world 0,0,0
 meta void 25,25,25
 meta seed "Hello World"
 meta start_menu "Testing"

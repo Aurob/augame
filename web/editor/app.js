@@ -6,10 +6,73 @@ import { CanvasRenderer } from './canvas.js';
 import { Exporter } from './exporter.js';
 import { BlueprintManager } from './blueprints.js';
 
+// Undo/Redo Manager
+class UndoManager {
+    constructor(maxHistory = 100) {
+        this.history = [];
+        this.currentIndex = -1;
+        this.maxHistory = maxHistory;
+    }
+
+    pushState(state) {
+        // Truncate forward history if we're not at the end
+        this.history = this.history.slice(0, this.currentIndex + 1);
+
+        // Add new state as JSON string
+        this.history.push(JSON.stringify(state));
+        this.currentIndex++;
+
+        // Limit history size - pop oldest when exceeded
+        if (this.history.length > this.maxHistory) {
+            this.history.shift();
+            this.currentIndex--;
+        }
+    }
+
+    canUndo() {
+        return this.currentIndex > 0;
+    }
+
+    canRedo() {
+        return this.currentIndex < this.history.length - 1;
+    }
+
+    undo() {
+        if (this.canUndo()) {
+            this.currentIndex--;
+            return JSON.parse(this.history[this.currentIndex]);
+        }
+        return null;
+    }
+
+    redo() {
+        if (this.canRedo()) {
+            this.currentIndex++;
+            return JSON.parse(this.history[this.currentIndex]);
+        }
+        return null;
+    }
+
+    clear() {
+        this.history = [];
+        this.currentIndex = -1;
+    }
+
+    getHistoryInfo() {
+        return {
+            total: this.history.length,
+            current: this.currentIndex + 1,
+            canUndo: this.canUndo(),
+            canRedo: this.canRedo()
+        };
+    }
+}
+
 class SceneEditor {
     constructor() {
         this.sceneManager = new SceneManager();
         this.blueprintManager = new BlueprintManager();
+        this.undoManager = new UndoManager(100); // 100 action history limit
         this.canvas = document.getElementById('canvas');
 
         // Initialize renderer with first scene's entity manager
@@ -23,10 +86,24 @@ class SceneEditor {
         this.loadAutosave();
         this.updateSceneTabs();
         this.setupMetaPanel();
-        this.updateBlueprintList();
+
+        // Wait for default blueprints to load before updating list
+        this.initializeBlueprintList();
+
+        // Save initial state for undo
+        this.saveStateForUndo();
+
+        // Initialize play link
+        this.updatePlayLink();
 
         // Auto-save every 10 seconds
         setInterval(() => this.autosave(), 10000);
+    }
+
+    async initializeBlueprintList() {
+        // Wait for default blueprints to load
+        await this.blueprintManager.defaultBlueprintsLoaded;
+        this.updateBlueprintList();
     }
 
     setupUI() {
@@ -48,6 +125,8 @@ class SceneEditor {
             deleteBtn: document.getElementById('deleteBtn'),
             duplicateBtn: document.getElementById('duplicateBtn'),
             clearBtn: document.getElementById('clearBtn'),
+            undoBtn: document.getElementById('undoBtn'),
+            redoBtn: document.getElementById('redoBtn'),
 
             // Export/Import
             exportText: document.getElementById('exportText'),
@@ -56,6 +135,8 @@ class SceneEditor {
             importBtn: document.getElementById('importBtn'),
             exportMultiScene: document.getElementById('exportMultiScene'),
             includeEmptyMeta: document.getElementById('includeEmptyMeta'),
+            playInEngineLink: document.getElementById('playInEngineLink'),
+            reuseTabCheckbox: document.getElementById('reuseTabCheckbox'),
 
             // Storage
             sceneName: document.getElementById('sceneName'),
@@ -133,11 +214,30 @@ class SceneEditor {
         this.elements.deleteBtn.addEventListener('click', () => this.deleteSelected());
         this.elements.duplicateBtn.addEventListener('click', () => this.duplicateSelected());
         this.elements.clearBtn.addEventListener('click', () => this.clearAll());
+        this.elements.undoBtn.addEventListener('click', () => this.undo());
+        this.elements.redoBtn.addEventListener('click', () => this.redo());
 
         // Export/Import
         this.elements.exportBtn.addEventListener('click', () => this.export());
         this.elements.copyBtn.addEventListener('click', () => this.copyToClipboard());
         this.elements.importBtn.addEventListener('click', () => this.showImportModal());
+
+        // Play in Engine link
+        this.elements.playInEngineLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            const url = this.elements.playInEngineLink.href;
+            const reuseTab = this.elements.reuseTabCheckbox.checked;
+
+            if (reuseTab) {
+                // Open in a named window (reuses same window each time)
+                const currentScene = this.sceneManager.getCurrentScene();
+                const sceneName = currentScene.meta.scene || currentScene.name;
+                window.open(url, `augame_${sceneName}`);
+            } else {
+                // Open in new tab each time
+                window.open(url, '_blank');
+            }
+        });
 
         // Storage
         this.elements.saveBtn.addEventListener('click', () => this.saveProject());
@@ -152,6 +252,8 @@ class SceneEditor {
         this.renderer.onChange = () => {
             this.updateEntityList();
             this.updateNextValues();
+            this.saveStateForUndo();
+            this.updatePlayLink();
             this.autosave();
         };
 
@@ -188,6 +290,19 @@ class SceneEditor {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
                 this.saveProject();
+            }
+            // Undo/Redo
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    this.redo();
+                } else {
+                    this.undo();
+                }
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+                e.preventDefault();
+                this.redo();
             }
             // Scene switching with shift + < or >
             if (e.shiftKey) {
@@ -262,7 +377,13 @@ class SceneEditor {
                     this.sceneManager.updateMeta(key, slides);
                 } else {
                     this.sceneManager.updateMeta(key, input.value);
+                    // If scene name changed, update the tab
+                    if (key === 'scene') {
+                        this.sceneManager.getCurrentScene().name = input.value;
+                        this.updateSceneTabs();
+                    }
                 }
+                this.saveStateForUndo();
                 this.autosave();
             };
 
@@ -294,7 +415,8 @@ class SceneEditor {
 
             // Create tab content with name and close button
             const nameSpan = document.createElement('span');
-            nameSpan.textContent = scene.name;
+            nameSpan.textContent = scene.meta.scene || scene.name;
+            nameSpan.className = 'tab-name';
             tab.appendChild(nameSpan);
 
             // Add close button if there's more than one scene
@@ -311,10 +433,35 @@ class SceneEditor {
 
             tab.onclick = () => this.switchToScene(index);
 
+            // Double-click to rename
+            tab.ondblclick = (e) => {
+                e.stopPropagation();
+                this.renameSceneTab(index);
+            };
+
             this.elements.sceneTabs.appendChild(tab);
         });
 
         this.elements.sceneTabs.appendChild(addBtn);
+    }
+
+    renameSceneTab(index) {
+        const scene = this.sceneManager.scenes[index];
+        const currentName = scene.meta.scene || scene.name;
+        const newName = prompt('Enter new scene name:', currentName);
+
+        if (newName && newName.trim() && newName !== currentName) {
+            // Update both the scene meta and the scene name
+            this.sceneManager.updateMeta('scene', newName.trim());
+            scene.name = newName.trim();
+
+            // Update UI
+            this.updateSceneTabs();
+            this.setupMetaPanel(); // Refresh meta panel to show updated name
+            this.saveStateForUndo();
+            this.autosave();
+            this.showStatus(`Scene renamed to "${newName.trim()}"`);
+        }
     }
 
     addScene() {
@@ -381,6 +528,7 @@ class SceneEditor {
             this.updateButtons();
             this.updateNextValues();
             this.setupMetaPanel();
+            this.updatePlayLink();
             this.renderer.render();
             this.hideComponentPanel();
         }
@@ -461,6 +609,7 @@ class SceneEditor {
         this.updateButtons();
         this.renderer.render();
         this.hideComponentPanel();
+        this.saveStateForUndo();
         this.autosave();
     }
 
@@ -473,6 +622,7 @@ class SceneEditor {
             this.updateEntityList();
             this.updateButtons();
             this.renderer.render();
+            this.saveStateForUndo();
             this.autosave();
         }
     }
@@ -480,7 +630,7 @@ class SceneEditor {
     clearAll() {
         const entityManager = this.sceneManager.getCurrentEntityManager();
         if (entityManager.entities.length > 0 &&
-            !confirm('Clear all entities? This cannot be undone.')) {
+            !confirm('Clear all entities?')) {
             return;
         }
         entityManager.clear();
@@ -489,6 +639,7 @@ class SceneEditor {
         this.updateNextValues();
         this.renderer.render();
         this.hideComponentPanel();
+        this.saveStateForUndo();
         this.autosave();
     }
 
@@ -503,8 +654,9 @@ class SceneEditor {
             );
         } else {
             // Export current scene only
+            const currentScene = this.sceneManager.getCurrentScene();
             text = Exporter.exportScene(
-                this.sceneManager.getCurrentScene(),
+                currentScene,
                 this.elements.includeEmptyMeta.checked
             );
         }
@@ -726,16 +878,21 @@ class SceneEditor {
         document.getElementById('entityIdInput').onchange = (e) => {
             entity.id = parseInt(e.target.value);
             this.updateEntityList();
+            this.saveStateForUndo();
+            this.updatePlayLink();
             this.autosave();
         };
         document.getElementById('entityNameInput').onchange = (e) => {
             entity.name = e.target.value;
             this.updateEntityList();
+            this.saveStateForUndo();
+            this.updatePlayLink();
             this.autosave();
         };
 
-        // Add component editors for each schema
-        COMPONENT_SCHEMAS.forEach(schema => {
+        // Add component editors for each schema (sorted alphabetically)
+        const sortedSchemas = [...COMPONENT_SCHEMAS].sort((a, b) => a.type.localeCompare(b.type));
+        sortedSchemas.forEach(schema => {
             const comp = getComponent(entity, schema.type);
             const item = document.createElement('div');
             item.className = 'component-item';
@@ -761,6 +918,8 @@ class SceneEditor {
                     }
                     this.showComponentPanel();
                     this.renderer.render();
+                    this.saveStateForUndo();
+                    this.updatePlayLink();
                     this.autosave();
                 };
                 header.appendChild(toggle);
@@ -775,6 +934,8 @@ class SceneEditor {
                     removeComponent(entity, schema.type);
                     this.showComponentPanel();
                     this.renderer.render();
+                    this.saveStateForUndo();
+                    this.updatePlayLink();
                     this.autosave();
                 };
                 header.appendChild(removeBtn);
@@ -789,6 +950,8 @@ class SceneEditor {
                     ensureComponent(entity, schema.type);
                     this.showComponentPanel();
                     this.renderer.render();
+                    this.saveStateForUndo();
+                    this.updatePlayLink();
                     this.autosave();
                 };
                 header.appendChild(addBtn);
@@ -811,22 +974,26 @@ class SceneEditor {
                     row.appendChild(label);
 
                     let input;
-                    if (param.type === 'checkbox') {
+                    if (param.type === 'checkbox' || param.type === 'boolean') {
                         input = document.createElement('input');
                         input.type = 'checkbox';
                         input.checked = !!comp[param.name];
                         input.onchange = () => {
                             comp[param.name] = input.checked;
                             this.renderer.render();
+                            this.saveStateForUndo();
+                            this.updatePlayLink();
                             this.autosave();
                         };
-                    } else if (param.type === 'text') {
+                    } else if (param.type === 'text' || param.type === 'string') {
                         input = document.createElement('input');
                         input.type = 'text';
                         input.value = comp[param.name] || '';
                         input.onchange = () => {
                             comp[param.name] = input.value;
                             this.renderer.render();
+                            this.saveStateForUndo();
+                            this.updatePlayLink();
                             this.autosave();
                         };
                     } else {
@@ -840,6 +1007,8 @@ class SceneEditor {
                             comp[param.name] = parseFloat(input.value);
                             this.renderer.render();
                             this.updateEntityList();
+                            this.saveStateForUndo();
+                            this.updatePlayLink();
                             this.autosave();
                         };
                     }
@@ -870,8 +1039,16 @@ class SceneEditor {
         const data = JSON.stringify(this.sceneManager.getState());
         localStorage.setItem(key, data);
 
+        // Also save individual scenes to be accessible via ?world= parameter
+        this.sceneManager.scenes.forEach(scene => {
+            const sceneName = scene.meta.scene || scene.name;
+            const sceneKey = `augame_scene_${sceneName}`;
+            const sceneConfig = Exporter.exportScene(scene, false);
+            localStorage.setItem(sceneKey, sceneConfig);
+        });
+
         this.updateSceneList();
-        this.showStatus(`Project "${name}" saved`);
+        this.showStatus(`Project "${name}" saved (${this.sceneManager.scenes.length} scene(s))`);
     }
 
     loadProject(name) {
@@ -1109,6 +1286,79 @@ class SceneEditor {
         } else {
             alert('Failed to import blueprints');
         }
+    }
+
+    saveStateForUndo() {
+        const state = this.sceneManager.getState();
+        this.undoManager.pushState(state);
+        this.updateUndoButtons();
+    }
+
+    undo() {
+        const state = this.undoManager.undo();
+        if (state) {
+            this.restoreState(state);
+            this.showStatus('Undo');
+        }
+    }
+
+    redo() {
+        const state = this.undoManager.redo();
+        if (state) {
+            this.restoreState(state);
+            this.showStatus('Redo');
+        }
+    }
+
+    restoreState(state) {
+        this.sceneManager.setState(state);
+
+        // Update renderer reference
+        this.renderer.entityManager = this.sceneManager.getCurrentEntityManager();
+
+        // Update UI
+        this.updateSceneTabs();
+        this.updateEntityList();
+        this.updateButtons();
+        this.updateNextValues();
+        this.setupMetaPanel();
+        this.renderer.render();
+        this.hideComponentPanel();
+        this.updateUndoButtons();
+    }
+
+    updateUndoButtons() {
+        this.elements.undoBtn.disabled = !this.undoManager.canUndo();
+        this.elements.redoBtn.disabled = !this.undoManager.canRedo();
+    }
+
+    updatePlayLink() {
+        const currentScene = this.sceneManager.getCurrentScene();
+        const sceneName = currentScene.meta.scene || currentScene.name;
+
+        // Save current scene to localStorage
+        const sceneKey = `augame_scene_${sceneName}`;
+        const sceneConfig = Exporter.exportScene(currentScene, false);
+        localStorage.setItem(sceneKey, sceneConfig);
+
+        // Update link URL
+        const playUrl = `../?world=${encodeURIComponent(sceneName)}`;
+        this.elements.playInEngineLink.href = playUrl;
+
+        // Show toast notification
+        this.showToast(`Scene "${sceneName}" saved and ready to play!`);
+    }
+
+    showToast(message, duration = 2000) {
+        const toast = document.getElementById('toast');
+        if (!toast) return;
+
+        toast.textContent = message;
+        toast.classList.add('show');
+
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, duration);
     }
 
     autosave() {
