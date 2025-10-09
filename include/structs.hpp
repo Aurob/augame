@@ -287,6 +287,7 @@ struct MetaData {
     std::string font = "HomeVideo-Regular.ttf";
     std::string terrain = "terrain"; // shader name or color for outside rendering
     std::vector<float> terrain_color = {0.0f, 0.0f, 0.0f}; // parsed color if terrain is color
+    std::vector<float> terrain_bounds = {}; // terrain bounds: {minX, minY, maxX, maxY}. Empty = infinite
     std::string void_bg = ""; // color for inside rendering (empty = black)
     std::vector<float> void_color = {0.0f, 0.0f, 0.0f}; // parsed void color
     std::string start_menu = "Start"; // path to start menu text file
@@ -294,7 +295,7 @@ struct MetaData {
     std::string str_seed = ""; // original seed as string (can be words, sentences, etc.)
     int seed = 0;              // numeric seed, converted from str_seed
     std::unordered_map<int, std::string> slides; // gameState -> text content mapping
-    
+
 
 };
 
