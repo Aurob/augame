@@ -387,6 +387,44 @@
         .toggle-btn:hover {
             background: #4a8be5;
         }
+
+        #toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2d6a2d;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        #toast.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #debugTooltip {
+            position: fixed;
+            background: rgba(0, 0, 0, 0.9);
+            color: #7ec7ff;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+            white-space: pre;
+            border: 1px solid #444;
+        }
     </style>
 </head>
 <body>
@@ -429,6 +467,10 @@
                         <button id="deleteBtn" class="btn-danger" disabled>Delete</button>
                         <button id="duplicateBtn" disabled>Duplicate</button>
                         <button id="clearBtn" class="btn-danger">Clear All</button>
+                    </div>
+                    <div class="toolbar" style="margin-top: 8px;">
+                        <button id="undoBtn" disabled title="Undo (Ctrl+Z)">↶ Undo</button>
+                        <button id="redoBtn" disabled title="Redo (Ctrl+Shift+Z)">↷ Redo</button>
                     </div>
                 </div>
 
@@ -475,6 +517,15 @@
         </div>
 
         <div class="canvas-area">
+            <div style="position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; align-items: center; gap: 12px;">
+                <a id="playInEngineLink" href="#" style="display: inline-block; padding: 10px 20px; background: #3a7bd5; color: #fff; text-decoration: none; border-radius: 4px; font-size: 14px; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.3); transition: all 0.2s;">
+                    ▶ Play in Engine
+                </a>
+                <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #aaa; cursor: pointer; user-select: none;">
+                    <input type="checkbox" id="reuseTabCheckbox" style="cursor: pointer;">
+                    Reuse tab
+                </label>
+            </div>
             <canvas id="canvas" width="800" height="600"></canvas>
             <div class="toggle-panel">
                 <button class="toggle-btn" id="toggleMetaBtn">Meta Tags</button>
@@ -491,6 +542,9 @@
     </div>
 
     <div id="status"></div>
+
+    <!-- Debug tooltip for Ctrl+hover -->
+    <div id="debugTooltip" style="display: none; position: fixed; background: rgba(0, 0, 0, 0.9); color: #fff; padding: 8px 12px; border-radius: 4px; font-family: monospace; font-size: 11px; pointer-events: none; z-index: 1000; max-width: 300px; border: 1px solid #3a7bd5;"></div>
 
     <!-- Import Modal -->
     <div id="importModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000;">
@@ -538,6 +592,9 @@
             </div>
         </div>
     </div>
+
+    <div id="toast"></div>
+    <div id="debugTooltip"></div>
 
     <script type="module" src="app.js"></script>
 </body>

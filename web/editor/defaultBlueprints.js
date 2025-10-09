@@ -10,10 +10,10 @@ export const defaultBlueprints = [
             components: [
                 { type: "Position", x: 0, y: 0, z: 0 },
                 { type: "Shape", w: 2, h: 2, d: 0 },
-                { type: "Color", r: 0, g: 255, b: 0, a: 1 },
                 { type: "Player" },
                 { type: "Moveable" },
-                { type: "Movement", speed: 10, mass: 1, restitution: 0, friction: 0.1 }
+                { type: "Movement", speed: 1000, mass: 1, restitution: 0, friction: 0.1 },
+                { type: "Collidable" }
             ]
         }],
         created: "2024-01-01T00:00:00.000Z"
@@ -116,36 +116,6 @@ export const defaultBlueprints = [
                 ]
             }
         ],
-        created: "2024-01-01T00:00:00.000Z"
-    },
-    {
-        name: "npc",
-        entities: [{
-            id: 0,
-            name: "npc",
-            components: [
-                { type: "Position", x: 0, y: 0, z: 0 },
-                { type: "Shape", w: 2, h: 2, d: 0 },
-                { type: "Color", r: 255, g: 0, b: 255, a: 1 },
-                { type: "Text", text: "Hello!", scale: 1, hidden: false, offsetX: 0, offsetY: -2 },
-                { type: "Hoverable" },
-                { type: "Interactable", radius: 3.0, toggleState: false }
-            ]
-        }],
-        created: "2024-01-01T00:00:00.000Z"
-    },
-    {
-        name: "trigger_zone",
-        entities: [{
-            id: 0,
-            name: "trigger",
-            components: [
-                { type: "Position", x: 0, y: 0, z: 0 },
-                { type: "Shape", w: 5, h: 5, d: 0 },
-                { type: "Color", r: 255, g: 255, b: 0, a: 0.3 },
-                { type: "Interactable", radius: 5.0, toggleState: false }
-            ]
-        }],
         created: "2024-01-01T00:00:00.000Z"
     }
 ];

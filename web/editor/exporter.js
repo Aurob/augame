@@ -6,14 +6,23 @@ export class Exporter {
     static exportMeta(meta, includeDefaults = false) {
         const lines = [];
 
-        Object.entries(meta).forEach(([key, value]) => {
-            // Skip if empty and not including defaults
-            if (!includeDefaults && (!value || value === MetaSchemas[key]?.default)) {
+        // Always include all MetaSchemas keys with their defaults if not set
+        const allKeys = new Set([...Object.keys(MetaSchemas), ...Object.keys(meta)]);
+
+        allKeys.forEach(key => {
+            // Get value from meta, or use default from schema
+            let value = meta[key];
+            if (value === '' || value === undefined || value === null) {
+                value = MetaSchemas[key]?.default;
+            }
+
+            // Skip if still empty after applying defaults
+            if (value === '' || value === undefined || value === null) {
                 return;
             }
 
-            // Skip empty values even with includeDefaults
-            if (value === '' || value === undefined || value === null) {
+            // Skip slides if it's an empty object
+            if (key === 'slides' && typeof value === 'object' && Object.keys(value).length === 0) {
                 return;
             }
 
@@ -196,7 +205,7 @@ export class Exporter {
 
             case "Text":
                 const hidden = comp.hidden ? 1 : 0;
-                const text = (comp.text || "").replace(/"/g, '\\"');
+                const text = String(comp.text || "").replace(/"/g, '\\"');
                 return `text "${text}" ${comp.scale || 1} ${hidden} ${comp.offsetX || 0} ${comp.offsetY || 0}`;
 
             case "Movement":

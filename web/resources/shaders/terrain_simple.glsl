@@ -12,6 +12,7 @@ uniform float scale;
 uniform float seed;
 uniform float time;
 uniform sampler2D uTerrainTexture;
+uniform vec4 terrain_bounds; // minX, minY, maxX, maxY (0,0,0,0 = no bounds)
 
 const float frequency = 9.5;
 const float amplitude = 0.70;
@@ -144,9 +145,24 @@ void main() {
     vec2 generationOffset = vec2(generationSize.x / 2.0, generationSize.y / 2.0);
     vec2 sampleCoord = (coord / grid_spacing) + toplefttile + (offset / grid_spacing) + generationOffset;
 
-    // Terrain
-    float n = calculate_n(sampleCoord);
-    vec3 terrainColor = simple_tile_color(sampleCoord, n);
+    // Check if we have bounds and if we're outside them
+    bool hasBounds = (terrain_bounds.x != 0.0 || terrain_bounds.y != 0.0 || terrain_bounds.z != 0.0 || terrain_bounds.w != 0.0);
+    bool outOfBounds = hasBounds && (
+        sampleCoord.x < terrain_bounds.x ||
+        sampleCoord.x > terrain_bounds.z ||
+        sampleCoord.y < terrain_bounds.y ||
+        sampleCoord.y > terrain_bounds.w
+    );
+
+    vec3 terrainColor;
+    if (outOfBounds) {
+        // Outside bounds - render black/void
+        terrainColor = vec3(0.0, 0.0, 0.0);
+    } else {
+        // Inside bounds or no bounds - render terrain
+        float n = calculate_n(sampleCoord);
+        terrainColor = simple_tile_color(sampleCoord, n);
+    }
 
     vec3 finalColor = terrainColor;
 

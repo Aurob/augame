@@ -379,24 +379,77 @@ var Module = {
       // Check URL parameters for config file
       const urlParams = new URLSearchParams(window.location.search);
       const configParam = urlParams.get('world');
-      const configFile = configParam ? `/web/econfigs/${configParam}.txt` : '/web/econfigs/default.txt';
 
-      fetch(`${configFile}?` + Math.random())
-        .then(res => res.text())
-        .then(data => {
-          this.processConfigText(data);
-        })
-        .catch(error => {
-          console.error(`Failed to load config file: ${configFile}`, error);
-          // Fallback to demo.txt if specified config fails
-          if (configParam) {
+      // Try loading from localStorage first if config param is provided
+      if (configParam) {
+        const sceneKey = `augame_scene_${configParam}`;
+        const storedConfig = localStorage.getItem(sceneKey);
+
+        if (storedConfig) {
+          // Load from localStorage
+          console.log(`Loading scene "${configParam}" from localStorage`);
+          this.processConfigText(storedConfig);
+        } else {
+          // Fall back to file system
+          // Check if extension is already provided, default to .njn
+          const hasExtension = configParam.includes('.');
+          const configFile = hasExtension
+            ? `/web/econfigs/${configParam}`
+            : `/web/econfigs/${configParam}.njn`;
+
+          fetch(`${configFile}?` + Math.random())
+            .then(res => res.text())
+            .then(data => {
+              this.processConfigText(data);
+            })
+            .catch(error => {
+              console.error(`Failed to load config file: ${configFile}`, error);
+              // Try .txt extension if .njn failed and no extension was specified
+              if (!hasExtension) {
+                const txtFile = `/web/econfigs/${configParam}.txt`;
+                fetch(`${txtFile}?` + Math.random())
+                  .then(res => res.text())
+                  .then(data => {
+                    this.processConfigText(data);
+                  })
+                  .catch(() => {
+                    // Final fallback to default
+                    fetch('/web/econfigs/default.njn?' + Math.random())
+                      .then(res => res.text())
+                      .then(data => {
+                        this.processConfigText(data);
+                      });
+                  });
+              } else {
+                // Extension was provided, just fall back to default
+                fetch('/web/econfigs/default.njn?' + Math.random())
+                  .then(res => res.text())
+                  .then(data => {
+                    this.processConfigText(data);
+                  });
+              }
+            });
+        }
+      } else {
+        // No config param, load default
+        fetch('/web/econfigs/default.njn?' + Math.random())
+          .then(res => res.text())
+          .then(data => {
+            this.processConfigText(data);
+          })
+          .catch(error => {
+            console.error('Failed to load default.njn, trying default.txt', error);
+            // Fallback to .txt if .njn doesn't exist
             fetch('/web/econfigs/default.txt?' + Math.random())
               .then(res => res.text())
               .then(data => {
                 this.processConfigText(data);
+              })
+              .catch(err => {
+                console.error('Failed to load any default config', err);
               });
-          }
-        });
+          });
+      }
     })
   },
 
