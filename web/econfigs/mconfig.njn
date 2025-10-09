@@ -3,7 +3,7 @@
 -- # The entities for each scene will be loaded into the game engine.
 
 meta scene "test1"
-meta terrain water
+meta world water
 meta void 0,0,0
 meta start_menu "Long Hallway"
 
@@ -20,7 +20,7 @@ id 11 a position -5.0000 3.0000 0 shape 5 5 0 color 1.00 1.00 0.00 0.001 renderP
 
 
 meta scene "test2"
-meta terrain water
+meta world water
 meta void water
 meta start_menu "@/resources/text/new1_intro.txt"
 id 20 room position 0.0000 0.0000 0 shape 20.0000 20.0000 0 color 0.87 0.87 0.87 1 renderPriority 0 collidable interior

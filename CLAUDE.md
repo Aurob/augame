@@ -65,7 +65,7 @@ meta <tag> <value>         # World-level metadata
 ```
 
 ### Meta Tags
-- `terrain "shader_name"` / `"#hex"` / `"r,g,b"` - Outside area rendering
+- `world "shader_name"` / `"#hex"` / `"r,g,b"` - Outside area rendering (terrain/tiles/color)
 - `void "#hex"` / `"r,g,b"` - Inside area clear color  
 - `font "filename.ttf"` - Font file path
 - `start_menu "text"` / `"@file.txt"` - Start screen text
@@ -123,8 +123,8 @@ Module.add_entity(0, {
 
 ### Static Shaders (Embedded in C++)
 - `font` - Text rendering with color uniforms
-- `terrain` - Procedural generation
-- `debug_entity` - Colored rectangles  
+- `terrain` - Procedural RGB terrain generation (used via `meta world terrain`)
+- `debug_entity` - Colored rectangles
 - `ui_layer` - UI texture rendering
 - `texture` - General texture rendering
 

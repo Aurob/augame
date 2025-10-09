@@ -9,7 +9,8 @@ export class BlueprintManager {
         this.blueprints = new Map();
         this.defaultBlueprints = [];
         this.loadBlueprints();
-        this.loadDefaultBlueprints();
+        // Create a promise that resolves when default blueprints are loaded
+        this.defaultBlueprintsLoaded = this.loadDefaultBlueprints();
     }
 
     // Load blueprints from localStorage

@@ -41,6 +41,10 @@ export class CanvasRenderer {
         this.panStart = { x: 0, y: 0 };
         this.panStartViewport = { x: 0, y: 0 };
 
+        // Debug mode
+        this.debugMode = false;
+        this.debugTooltip = document.getElementById('debugTooltip');
+
         this.setupEvents();
     }
 
@@ -50,7 +54,7 @@ export class CanvasRenderer {
         this.canvas.addEventListener('mouseup', e => this.onMouseUp(e));
         this.canvas.addEventListener('wheel', e => this.onWheel(e));
 
-        // Keyboard events for multi-select and panning
+        // Keyboard events for multi-select, panning, and debug mode
         document.addEventListener('keydown', e => {
             if (e.key === 'Shift' && !e.repeat) {
                 this.multiSelectMode = true;
@@ -58,6 +62,8 @@ export class CanvasRenderer {
             } else if (e.key === 'Alt' && !e.repeat) {
                 this.canvas.style.cursor = 'move';
                 e.preventDefault(); // Prevent browser menu
+            } else if (e.key === 'Control' && !e.repeat) {
+                this.debugMode = true;
             }
         });
         document.addEventListener('keyup', e => {
@@ -69,6 +75,11 @@ export class CanvasRenderer {
             } else if (e.key === 'Alt') {
                 this.canvas.style.cursor = this.mode === 'draw' ? 'crosshair' : 'default';
                 this.isPanning = false;
+            } else if (e.key === 'Control') {
+                this.debugMode = false;
+                if (this.debugTooltip) {
+                    this.debugTooltip.style.display = 'none';
+                }
             }
         });
     }
@@ -157,9 +168,13 @@ export class CanvasRenderer {
         return Array.from(this.selectedEntities).map(idx => this.entityManager.entities[idx]);
     }
 
-    // Find entity at world coordinates
-    findEntityAt(worldX, worldY) {
-        for (let i = this.entityManager.entities.length - 1; i >= 0; i--) {
+    // Find all entities at world coordinates
+    // Returns array of {entity, index, priority, area} sorted by selection priority
+    findAllEntitiesAt(worldX, worldY) {
+        const candidates = [];
+
+        // Find all entities that contain the point
+        for (let i = 0; i < this.entityManager.entities.length; i++) {
             const e = this.entityManager.entities[i];
             const pos = e.components.find(c => c.type === "Position");
             const shape = e.components.find(c => c.type === "Shape");
@@ -167,11 +182,31 @@ export class CanvasRenderer {
             if (pos && shape) {
                 if (worldX >= pos.x && worldX <= pos.x + shape.w &&
                     worldY >= pos.y && worldY <= pos.y + shape.h) {
-                    return i;
+                    const renderPriority = e.components.find(c => c.type === "RenderPriority");
+                    const priority = renderPriority ? renderPriority.z : 0;
+                    const area = shape.w * shape.h;
+
+                    candidates.push({ entity: e, index: i, priority, area });
                 }
             }
         }
-        return -1;
+
+        // Sort by priority (highest first), then by area (smallest first)
+        candidates.sort((a, b) => {
+            if (a.priority !== b.priority) {
+                return b.priority - a.priority; // Higher priority first
+            }
+            return a.area - b.area; // Smaller area first
+        });
+
+        return candidates;
+    }
+
+    // Find entity at world coordinates
+    // Prioritizes smaller entities and entities with higher render priority
+    findEntityAt(worldX, worldY) {
+        const candidates = this.findAllEntitiesAt(worldX, worldY);
+        return candidates.length > 0 ? candidates[0].index : -1;
     }
 
     // Clear multi-selection
@@ -359,11 +394,40 @@ export class CanvasRenderer {
             }
 
             this.render();
-            if (this.onChange) this.onChange();
+            // Don't call onChange during drag - only on mouseup
         } else if (this.mode === 'edit' && this.entityManager.selectedIdx !== null) {
             const entity = this.entityManager.entities[this.entityManager.selectedIdx];
             const handle = this.getResizeHandle(entity, mouse.x, mouse.y);
             this.canvas.style.cursor = handle ? 'nwse-resize' : 'move';
+        }
+
+        // Show debug tooltip when Ctrl is held
+        if (this.debugMode && this.debugTooltip) {
+            const entitiesAtCursor = this.findAllEntitiesAt(world.x, world.y);
+
+            if (entitiesAtCursor.length > 0) {
+                let tooltipHTML = '<div style="font-weight: bold; margin-bottom: 4px; color: #7ec7ff;">Entities at cursor:</div>';
+                entitiesAtCursor.forEach(({entity, index}) => {
+                    const pos = entity.components.find(c => c.type === "Position");
+                    const shape = entity.components.find(c => c.type === "Shape");
+                    const renderPriority = entity.components.find(c => c.type === "RenderPriority");
+                    const priority = renderPriority ? renderPriority.z : 0;
+                    const area = shape ? (shape.w * shape.h).toFixed(1) : '?';
+
+                    tooltipHTML += `<div style="margin: 4px 0; padding: 4px; background: rgba(255,255,255,0.1); border-radius: 2px;">`;
+                    tooltipHTML += `<div><span style="color: #7ec7ff;">ID:</span> ${entity.id}</div>`;
+                    tooltipHTML += `<div><span style="color: #7ec7ff;">Name:</span> ${entity.name}</div>`;
+                    tooltipHTML += `<div><span style="color: #7ec7ff;">Priority:</span> ${priority} <span style="color: #666;">|</span> <span style="color: #7ec7ff;">Area:</span> ${area}</div>`;
+                    tooltipHTML += `</div>`;
+                });
+
+                this.debugTooltip.innerHTML = tooltipHTML;
+                this.debugTooltip.style.display = 'block';
+                this.debugTooltip.style.left = (evt.clientX + 15) + 'px';
+                this.debugTooltip.style.top = (evt.clientY + 15) + 'px';
+            } else {
+                this.debugTooltip.style.display = 'none';
+            }
         }
     }
 
@@ -454,20 +518,46 @@ export class CanvasRenderer {
             this.ctx.strokeStyle = isSelected ? '#3a7bd5' : '#444';
             this.ctx.strokeRect(canvasPos.x, canvasPos.y, canvasW, canvasH);
 
-            // Draw label
-            this.ctx.font = 'bold 13px sans-serif';
-            this.ctx.fillStyle = '#fff';
-            this.ctx.textBaseline = 'top';
-            this.ctx.fillText(`${entity.id}:${entity.name}`,
-                            canvasPos.x + 4, canvasPos.y + 2);
+            // Check if entity has Text component
+            const textComp = entity.components.find(c => c.type === "Text");
+            if (textComp && textComp.text && !textComp.hidden) {
+                // Draw text component content at center
+                const fontSize = Math.max(12, Math.min(32, textComp.scale * 16));
+                this.ctx.font = `${fontSize}px sans-serif`;
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                const textX = canvasPos.x + canvasW / 2 + (textComp.offsetX || 0) * this.scale;
+                const textY = canvasPos.y + canvasH / 2 + (textComp.offsetY || 0) * this.scale;
+                this.ctx.fillText(String(textComp.text), textX, textY);
+            } else {
+                // Draw entity ID at center (if no text component)
+                this.ctx.font = 'bold 16px sans-serif';
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText(`${entity.id}`,
+                                canvasPos.x + canvasW / 2, canvasPos.y + canvasH / 2);
+            }
 
-            // Draw z-order
+            // Draw name label at top-left (only if entity is large enough)
+            if (canvasW > 40 && canvasH > 20) {
+                this.ctx.font = '11px sans-serif';
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                this.ctx.textAlign = 'left';
+                this.ctx.textBaseline = 'top';
+                this.ctx.fillText(entity.name, canvasPos.x + 4, canvasPos.y + 2);
+            }
+
+            // Draw z-order at bottom-left (only if entity is large enough)
             const renderPriority = entity.components.find(c => c.type === "RenderPriority");
-            if (renderPriority) {
+            if (renderPriority && canvasW > 40 && canvasH > 40) {
                 this.ctx.font = '10px monospace';
                 this.ctx.fillStyle = '#7ec7ff';
+                this.ctx.textAlign = 'left';
+                this.ctx.textBaseline = 'bottom';
                 this.ctx.fillText(`z:${renderPriority.z}`,
-                                canvasPos.x + 4, canvasPos.y + 18);
+                                canvasPos.x + 4, canvasPos.y + canvasH - 2);
             }
         }
 
