@@ -58,9 +58,7 @@ jobs:
     - name: Publish VS Code Extension
       env:
         VSCE_PAT: ${{ secrets.VSCE_PAT }}
-      run: |
-        vsce login rau-dev --pat $VSCE_PAT
-        vsce publish
+      run: vsce publish
 
   # ===== ITCH.IO DEPLOY =====
   build-and-upload-itch:
