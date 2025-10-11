@@ -59,7 +59,7 @@ jobs:
       env:
         VSCE_PAT: ${{ secrets.VSCE_PAT }}
       run: |
-        vsce login your-publisher-name --pat $VSCE_PAT
+        vsce login rau-dev --pat $VSCE_PAT
         vsce publish
 
   # ===== ITCH.IO DEPLOY =====
