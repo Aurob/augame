@@ -16,6 +16,22 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Setup Emscripten
+      uses: mymindstorm/setup-emsdk@v14
+      with:
+        version: 'latest'
+        actions-cache-folder: 'emsdk-cache'
+
+    - name: Verify Emscripten installation
+      run: |
+        emcc --version
+        em++ --version
+
+    - name: Compile with Emscripten
+      run: |
+        chmod +x compile.sh
+        ./compile.sh
+
     - name: Download redbean with fallbacks
       run: |
         set -e
