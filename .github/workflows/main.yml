@@ -62,21 +62,6 @@ jobs:
         files: augame.com
       env:
         GITHUB_TOKEN: ${{ secrets.TOKEN }}
-        
-    - name: Install Node & vsce
-      uses: actions/setup-node@v3
-      with:
-        node-version: '20'
-
-    - name: Install vsce
-      run: npm install -g vsce
-
-    - name: Publish VS Code Extension
-      env:
-        VSCE_PAT: ${{ secrets.VSCE_PAT }}
-      run: |
-        cd .vscode-extension
-        vsce publish
 
   # ===== ITCH.IO DEPLOY =====
   build-and-upload-itch:
