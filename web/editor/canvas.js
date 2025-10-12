@@ -23,6 +23,7 @@ export class CanvasRenderer {
         // Moving state
         this.isMoving = false;
         this.moveOffset = { x: 0, y: 0 };
+        this.multiMoveOffsets = []; // Store offsets for each selected entity in multi-move
 
         // Resizing state
         this.isResizing = false;
@@ -215,7 +216,7 @@ export class CanvasRenderer {
         this.render();
     }
 
-    // Update multi-selection based on selection box
+    // Update multi-selection based on selection box (in world coordinates)
     updateMultiSelection(selBox) {
         this.selectedEntities.clear();
 
@@ -225,12 +226,12 @@ export class CanvasRenderer {
 
             if (!pos || !shape) return;
 
-            // Check if entity is within selection box
+            // Check if entity is within selection box (both in world coordinates)
             const entityBox = {
-                x: pos.x * this.scale,
-                y: pos.y * this.scale,
-                w: shape.w * this.scale,
-                h: shape.h * this.scale
+                x: pos.x,
+                y: pos.y,
+                w: shape.w,
+                h: shape.h
             };
 
             if (this.boxesIntersect(selBox, entityBox)) {
@@ -294,32 +295,58 @@ export class CanvasRenderer {
         } else {
             const idx = this.findEntityAt(world.x, world.y);
             if (idx >= 0) {
-                this.entityManager.select(idx);
-                const entity = this.entityManager.entities[idx];
-                const pos = entity.components.find(c => c.type === "Position");
-                const shape = entity.components.find(c => c.type === "Shape");
+                // Check if clicked entity is in multi-selection
+                const isInMultiSelection = this.selectedEntities.has(idx);
 
-                if (this.mode === 'edit') {
-                    const handle = this.getResizeHandle(entity, mouse.x, mouse.y);
-                    if (handle) {
-                        this.isResizing = true;
-                        this.resizeDir = handle;
-                        this.resizeStart = mouse;
-                        this.origRect = { x: pos.x, y: pos.y, w: shape.w, h: shape.h };
-                    } else {
-                        this.isMoving = true;
-                        this.moveOffset.x = mouse.x - pos.x * this.scale;
-                        this.moveOffset.y = mouse.y - pos.y * this.scale;
-                    }
-                } else if (this.mode === 'move') {
+                if (isInMultiSelection && this.selectedEntities.size > 0) {
+                    // Start multi-entity move
                     this.isMoving = true;
-                    this.moveOffset.x = mouse.x - pos.x * this.scale;
-                    this.moveOffset.y = mouse.y - pos.y * this.scale;
-                }
+                    this.multiMoveOffsets = [];
 
-                if (this.onSelectionChange) this.onSelectionChange();
+                    // Store offset for each selected entity
+                    this.selectedEntities.forEach(entityIdx => {
+                        const e = this.entityManager.entities[entityIdx];
+                        const p = e.components.find(c => c.type === "Position");
+                        if (p) {
+                            this.multiMoveOffsets.push({
+                                idx: entityIdx,
+                                offsetX: world.x - p.x,
+                                offsetY: world.y - p.y
+                            });
+                        }
+                    });
+                } else {
+                    // Single entity selection and move
+                    this.entityManager.select(idx);
+                    const entity = this.entityManager.entities[idx];
+                    const pos = entity.components.find(c => c.type === "Position");
+                    const shape = entity.components.find(c => c.type === "Shape");
+
+                    if (this.mode === 'edit') {
+                        const handle = this.getResizeHandle(entity, mouse.x, mouse.y);
+                        if (handle) {
+                            this.isResizing = true;
+                            this.resizeDir = handle;
+                            this.resizeStart = mouse;
+                            this.origRect = { x: pos.x, y: pos.y, w: shape.w, h: shape.h };
+                        } else {
+                            this.isMoving = true;
+                            // Store offset in world coordinates
+                            this.moveOffset.x = world.x - pos.x;
+                            this.moveOffset.y = world.y - pos.y;
+                        }
+                    } else if (this.mode === 'move') {
+                        this.isMoving = true;
+                        // Store offset in world coordinates
+                        this.moveOffset.x = world.x - pos.x;
+                        this.moveOffset.y = world.y - pos.y;
+                    }
+
+                    if (this.onSelectionChange) this.onSelectionChange();
+                }
             } else {
                 this.entityManager.select(null);
+                this.clearMultiSelection();
                 if (this.onSelectionChange) this.onSelectionChange();
             }
         }
@@ -363,14 +390,28 @@ export class CanvasRenderer {
 
             this.ctx.strokeRect(x, y, w, h);
             this.ctx.restore();
+        } else if (this.isMoving && this.multiMoveOffsets.length > 0) {
+            // Multi-entity move
+            this.multiMoveOffsets.forEach(({ idx, offsetX, offsetY }) => {
+                const entity = this.entityManager.entities[idx];
+                const pos = entity.components.find(c => c.type === "Position");
+                if (pos) {
+                    pos.x = this.snap(world.x - offsetX);
+                    pos.y = this.snap(world.y - offsetY);
+                }
+            });
+
+            this.render();
+            // Don't call onChange during drag - only on mouseup
         } else if ((this.isMoving || this.isResizing) && this.entityManager.selectedIdx !== null) {
             const entity = this.entityManager.entities[this.entityManager.selectedIdx];
             const pos = entity.components.find(c => c.type === "Position");
             const shape = entity.components.find(c => c.type === "Shape");
 
             if (this.isResizing) {
-                const dx = (mouse.x - this.resizeStart.x) / this.scale;
-                const dy = (mouse.y - this.resizeStart.y) / this.scale;
+                const effectiveScale = this.scale * this.viewport.zoom;
+                const dx = (mouse.x - this.resizeStart.x) / effectiveScale;
+                const dy = (mouse.y - this.resizeStart.y) / effectiveScale;
                 let x = this.origRect.x, y = this.origRect.y;
                 let w = this.origRect.w, h = this.origRect.h;
 
@@ -384,13 +425,14 @@ export class CanvasRenderer {
                     w += dx; h += dy;
                 }
 
-                pos.x = this.snap(Math.max(0, x));
-                pos.y = this.snap(Math.max(0, y));
+                pos.x = this.snap(x);
+                pos.y = this.snap(y);
                 shape.w = this.snap(Math.max(0.5, w));
                 shape.h = this.snap(Math.max(0.5, h));
             } else if (this.isMoving) {
-                pos.x = this.snap(Math.max(0, (mouse.x - this.moveOffset.x) / this.scale));
-                pos.y = this.snap(Math.max(0, (mouse.y - this.moveOffset.y) / this.scale));
+                // Use world coordinates for accurate movement
+                pos.x = this.snap(world.x - this.moveOffset.x);
+                pos.y = this.snap(world.y - this.moveOffset.y);
             }
 
             this.render();
@@ -468,9 +510,13 @@ export class CanvasRenderer {
         } else if (this.isMoving || this.isResizing) {
             this.isMoving = false;
             this.isResizing = false;
+            this.multiMoveOffsets = []; // Clear multi-move state
             this.render();
             if (this.onChange) this.onChange();
         }
+
+        // End panning
+        this.isPanning = false;
     }
 
     render() {
@@ -504,14 +550,52 @@ export class CanvasRenderer {
                 continue;
             }
 
-            // Draw entity rectangle
-            if (color) {
-                const a = color.a !== undefined ? color.a : 1.0;
-                this.ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${a})`;
+            // Check if entity has Texture component
+            const textureComp = entity.components.find(c => c.type === "Texture");
+
+            if (textureComp && textureComp.name) {
+                // Try to load and draw texture
+                const texturePath = `../resources/textures/${textureComp.name}.png`;
+                if (!this.textureCache) this.textureCache = {};
+
+                if (this.textureCache[textureComp.name] === undefined) {
+                    // Start loading the texture
+                    const img = new Image();
+                    img.onload = () => {
+                        this.textureCache[textureComp.name] = img;
+                        this.render(); // Re-render when texture loads
+                    };
+                    img.onerror = () => {
+                        this.textureCache[textureComp.name] = null; // Mark as failed
+                    };
+                    img.src = texturePath;
+                    this.textureCache[textureComp.name] = 'loading';
+                }
+
+                // Draw the texture if loaded
+                if (this.textureCache[textureComp.name] && this.textureCache[textureComp.name] !== 'loading') {
+                    const img = this.textureCache[textureComp.name];
+                    this.ctx.drawImage(img, canvasPos.x, canvasPos.y, canvasW, canvasH);
+                } else {
+                    // Show placeholder while loading or if failed
+                    if (color) {
+                        const a = color.a !== undefined ? color.a : 1.0;
+                        this.ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${a})`;
+                    } else {
+                        this.ctx.fillStyle = 'rgba(136, 238, 255, 1.0)';
+                    }
+                    this.ctx.fillRect(canvasPos.x, canvasPos.y, canvasW, canvasH);
+                }
             } else {
-                this.ctx.fillStyle = 'rgba(136, 238, 255, 1.0)';
+                // Draw entity rectangle
+                if (color) {
+                    const a = color.a !== undefined ? color.a : 1.0;
+                    this.ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${a})`;
+                } else {
+                    this.ctx.fillStyle = 'rgba(136, 238, 255, 1.0)';
+                }
+                this.ctx.fillRect(canvasPos.x, canvasPos.y, canvasW, canvasH);
             }
-            this.ctx.fillRect(canvasPos.x, canvasPos.y, canvasW, canvasH);
 
             // Draw border
             this.ctx.lineWidth = isSelected ? 3 : 1.5;
@@ -522,7 +606,9 @@ export class CanvasRenderer {
             const textComp = entity.components.find(c => c.type === "Text");
             if (textComp && textComp.text && !textComp.hidden) {
                 // Draw text component content at center
-                const fontSize = Math.max(12, Math.min(32, textComp.scale * 16));
+                // Scale is stored as 0.01-1.0, display as if 100x larger
+                const displayScale = (textComp.scale || 0.01) * 100;
+                const fontSize = Math.max(12, Math.min(32, displayScale * 16));
                 this.ctx.font = `${fontSize}px sans-serif`;
                 this.ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
                 this.ctx.textAlign = 'center';
@@ -530,8 +616,8 @@ export class CanvasRenderer {
                 const textX = canvasPos.x + canvasW / 2 + (textComp.offsetX || 0) * this.scale;
                 const textY = canvasPos.y + canvasH / 2 + (textComp.offsetY || 0) * this.scale;
                 this.ctx.fillText(String(textComp.text), textX, textY);
-            } else {
-                // Draw entity ID at center (if no text component)
+            } else if (!textureComp) {
+                // Draw entity ID at center (if no text component and no texture)
                 this.ctx.font = 'bold 16px sans-serif';
                 this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
                 this.ctx.textAlign = 'center';
@@ -563,26 +649,32 @@ export class CanvasRenderer {
 
         // Draw selection box
         if (this.isSelecting && this.selectStart) {
-            const mouse = this.getMousePos(event);
+            // Get current mouse position in canvas coordinates
+            const mouseEvent = window.event || { clientX: 0, clientY: 0 };
+            const mouse = this.getMousePos(mouseEvent);
+            const mouseWorld = this.canvasToWorld(mouse.x, mouse.y);
+
+            // Convert selection start (world) to canvas
+            const startCanvas = this.worldToCanvas(this.selectStart.x, this.selectStart.y);
 
             this.ctx.strokeStyle = 'rgba(58, 123, 213, 0.8)';
             this.ctx.lineWidth = 2;
             this.ctx.fillStyle = 'rgba(58, 123, 213, 0.1)';
 
-            const sx = Math.min(this.selectStart.x, mouse.x);
-            const sy = Math.min(this.selectStart.y, mouse.y);
-            const sw = Math.abs(mouse.x - this.selectStart.x);
-            const sh = Math.abs(mouse.y - this.selectStart.y);
+            const sx = Math.min(startCanvas.x, mouse.x);
+            const sy = Math.min(startCanvas.y, mouse.y);
+            const sw = Math.abs(mouse.x - startCanvas.x);
+            const sh = Math.abs(mouse.y - startCanvas.y);
 
             this.ctx.fillRect(sx, sy, sw, sh);
             this.ctx.strokeRect(sx, sy, sw, sh);
 
             // Update selected entities based on box in world coordinates
             const worldBox = {
-                x: Math.min(this.selectStart.x, this.canvasToWorld(mouse.x, mouse.y).x),
-                y: Math.min(this.selectStart.y, this.canvasToWorld(mouse.x, mouse.y).y),
-                w: Math.abs(this.canvasToWorld(mouse.x, mouse.y).x - this.selectStart.x),
-                h: Math.abs(this.canvasToWorld(mouse.x, mouse.y).y - this.selectStart.y)
+                x: Math.min(this.selectStart.x, mouseWorld.x),
+                y: Math.min(this.selectStart.y, mouseWorld.y),
+                w: Math.abs(mouseWorld.x - this.selectStart.x),
+                h: Math.abs(mouseWorld.y - this.selectStart.y)
             };
             this.updateMultiSelection(worldBox);
         }
@@ -596,33 +688,82 @@ export class CanvasRenderer {
         const effectiveScale = this.scale * this.viewport.zoom;
         const gridSize = this.snapSize * effectiveScale;
 
-        if (gridSize < 4) return; // Don't draw grid if too small
-
-        this.ctx.strokeStyle = '#2a2a2a';
-        this.ctx.lineWidth = 0.5;
-
-        // Calculate visible grid range
-        const startX = Math.floor(this.viewport.x / this.snapSize) * this.snapSize;
-        const startY = Math.floor(this.viewport.y / this.snapSize) * this.snapSize;
-        const endX = this.viewport.x + this.canvas.width / effectiveScale;
-        const endY = this.viewport.y + this.canvas.height / effectiveScale;
-
-        // Draw vertical lines
-        for (let x = startX; x <= endX; x += this.snapSize) {
-            const canvasX = (x - this.viewport.x) * effectiveScale;
-            this.ctx.beginPath();
-            this.ctx.moveTo(canvasX, 0);
-            this.ctx.lineTo(canvasX, this.canvas.height);
-            this.ctx.stroke();
+        // Get terrain bounds from scene metadata if available
+        let terrainBounds = null;
+        if (this.getTerrainBounds) {
+            terrainBounds = this.getTerrainBounds();
         }
 
-        // Draw horizontal lines
-        for (let y = startY; y <= endY; y += this.snapSize) {
-            const canvasY = (y - this.viewport.y) * effectiveScale;
-            this.ctx.beginPath();
-            this.ctx.moveTo(0, canvasY);
-            this.ctx.lineTo(this.canvas.width, canvasY);
-            this.ctx.stroke();
+        // Draw grid lines only if large enough
+        if (gridSize >= 4) {
+            // Calculate visible grid range
+            const startX = Math.floor(this.viewport.x / this.snapSize) * this.snapSize;
+            const startY = Math.floor(this.viewport.y / this.snapSize) * this.snapSize;
+            const endX = this.viewport.x + this.canvas.width / effectiveScale;
+            const endY = this.viewport.y + this.canvas.height / effectiveScale;
+
+            // Draw vertical lines
+            for (let x = startX; x <= endX; x += this.snapSize) {
+                const canvasX = (x - this.viewport.x) * effectiveScale;
+
+                // Check if this line is outside terrain bounds
+                let outsideBounds = false;
+                if (terrainBounds && terrainBounds.length === 4) {
+                    const [minX, minY, maxX, maxY] = terrainBounds;
+                    outsideBounds = (x < minX || x > maxX);
+                }
+
+                this.ctx.strokeStyle = outsideBounds ? '#1a1a1a' : '#2a2a2a';
+                this.ctx.lineWidth = 0.5;
+                this.ctx.beginPath();
+                this.ctx.moveTo(canvasX, 0);
+                this.ctx.lineTo(canvasX, this.canvas.height);
+                this.ctx.stroke();
+            }
+
+            // Draw horizontal lines
+            for (let y = startY; y <= endY; y += this.snapSize) {
+                const canvasY = (y - this.viewport.y) * effectiveScale;
+
+                // Check if this line is outside terrain bounds
+                let outsideBounds = false;
+                if (terrainBounds && terrainBounds.length === 4) {
+                    const [minX, minY, maxX, maxY] = terrainBounds;
+                    outsideBounds = (y < minY || y > maxY);
+                }
+
+                this.ctx.strokeStyle = outsideBounds ? '#1a1a1a' : '#2a2a2a';
+                this.ctx.lineWidth = 0.5;
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, canvasY);
+                this.ctx.lineTo(this.canvas.width, canvasY);
+                this.ctx.stroke();
+            }
+        }
+
+        // Always draw terrain bounds rectangle regardless of zoom
+        if (terrainBounds && terrainBounds.length === 4) {
+            const [minX, minY, maxX, maxY] = terrainBounds;
+            const boundsStart = this.worldToCanvas(minX, minY);
+            const boundsEnd = this.worldToCanvas(maxX, maxY);
+
+            this.ctx.strokeStyle = '#ff6b6b';
+            this.ctx.lineWidth = 2;
+            this.ctx.setLineDash([8, 4]);
+            this.ctx.strokeRect(
+                boundsStart.x,
+                boundsStart.y,
+                boundsEnd.x - boundsStart.x,
+                boundsEnd.y - boundsStart.y
+            );
+            this.ctx.setLineDash([]);
+
+            // Draw label
+            this.ctx.fillStyle = '#ff6b6b';
+            this.ctx.font = 'bold 12px monospace';
+            this.ctx.textAlign = 'left';
+            this.ctx.textBaseline = 'top';
+            this.ctx.fillText('Terrain Bounds', boundsStart.x + 4, boundsStart.y + 4);
         }
 
         // Draw origin axes

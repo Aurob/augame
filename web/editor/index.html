@@ -176,6 +176,15 @@
             justify-content: space-between;
             align-items: center;
             transition: background 0.2s;
+            user-select: none;
+        }
+
+        .entity-item[draggable="true"] {
+            cursor: grab;
+        }
+
+        .entity-item[draggable="true"]:active {
+            cursor: grabbing;
         }
 
         .entity-item:hover {
