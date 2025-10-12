@@ -51,6 +51,7 @@ void safe_emplace(entt::registry& registry, entt::entity entity, Func func, cons
 // Function declarations
 void createShader(GLuint &shaderProgram, std::string program_name);
 
+void load_json_to_registry(const nlohmann::json& str, entt::registry& targetRegistry, MetaData& targetMetadata);
 void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& targetMetadata);
 
 // Helper functions for entity management
@@ -166,6 +167,12 @@ extern "C"
         // Switch back to original scene
         sceneManager.switchToScene(originalSceneIndex);
     }
+}
+
+void load_json_to_registry(const nlohmann::json& js_json, entt::registry& targetRegistry, MetaData& targetMetadata)
+{
+    std::string str = js_json.dump();
+    load_json_to_registry(const_cast<char*>(str.c_str()), targetRegistry, targetMetadata);
 }
 
 void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& targetMetadata)
@@ -297,24 +304,18 @@ void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& 
                     targetMetadata.void_bg = "color"; // Mark as color
                 }
             }
-            if (meta.contains("terrain_bounds") && meta["terrain_bounds"].is_string()) {
-                std::string boundsStr = meta["terrain_bounds"];
-                if (!boundsStr.empty()) {
-                    std::vector<float> bounds;
-                    std::stringstream ss(boundsStr);
-                    std::string token;
-                    while (std::getline(ss, token, ',')) {
-                        try {
-                            bounds.push_back(std::stof(token));
-                        } catch (...) {
-                            printf("Warning: Failed to parse terrain_bounds value: %s\n", token.c_str());
-                        }
-                    }
-                    if (bounds.size() == 4) {
-                        targetMetadata.terrain_bounds = bounds;
-                        printf("Meta: Terrain bounds set to [%.1f, %.1f, %.1f, %.1f]\n",
-                               bounds[0], bounds[1], bounds[2], bounds[3]);
-                    }
+            if (meta.contains("terrain_bounds") && meta["terrain_bounds"].is_array()) {
+                // Parsing is now done client-side, expect array directly
+                if (meta["terrain_bounds"].size() == 4) {
+                    targetMetadata.terrain_bounds = {
+                        meta["terrain_bounds"][0].get<float>(),
+                        meta["terrain_bounds"][1].get<float>(),
+                        meta["terrain_bounds"][2].get<float>(),
+                        meta["terrain_bounds"][3].get<float>()
+                    };
+                    printf("Meta: Terrain bounds set to [%.1f, %.1f, %.1f, %.1f]\n",
+                           targetMetadata.terrain_bounds[0], targetMetadata.terrain_bounds[1],
+                           targetMetadata.terrain_bounds[2], targetMetadata.terrain_bounds[3]);
                 }
             }
             if (meta.contains("start_menu") && meta["start_menu"].is_string()) {
@@ -354,6 +355,8 @@ void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& 
         {
 
             std::unordered_map<entt::entity, entt::entity> needsPlaceInside{};
+            // Store portals that need key assignment after all entities are loaded
+            std::vector<std::tuple<entt::entity, int, int, int, bool>> pendingPortalKeys{};
             for (const auto &_el : js_json["Entities"])
             {
                 if (_el.is_object())
@@ -553,24 +556,28 @@ void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& 
                                     entt::entity portalB = entt::null;
                                     entt::entity key = entt::null;
 
-                                    for (auto entity : view)
+                                    // Try to find A and B immediately
+                                    for (auto e : view)
                                     {
-                                        int entity_id = view.get<Id>(entity).id;
+                                        int entity_id = view.get<Id>(e).id;
 
                                         if (entity_id == portalAId)
-                                            portalA = entity;
+                                            portalA = e;
                                         else if (entity_id == portalBId)
-                                            portalB = entity;
-                                        else if (entity_id == keyId)
-                                            key = entity;
+                                            portalB = e;
 
-                                        if ((portalA != entt::null || portalAId == -1) && 
-                                            (portalB != entt::null || portalBId == -1) &&
-                                            (key != entt::null || keyId == -1))
+                                        if ((portalA != entt::null || portalAId == -1) &&
+                                            (portalB != entt::null || portalBId == -1))
                                             break;
                                     }
 
-                                    targetRegistry.emplace<InteriorPortal>(entity, InteriorPortal{portalA, portalB, locked, key});
+                                    // Create the portal component now (without key)
+                                    targetRegistry.emplace<InteriorPortal>(entity, InteriorPortal{portalA, portalB, locked, entt::null});
+
+                                    // Defer key lookup if needed
+                                    if (keyId != -1) {
+                                        pendingPortalKeys.push_back(std::make_tuple(entity, portalAId, portalBId, keyId, locked));
+                                    }
                                 }
                             }, "InteriorPortal");
                             safe_emplace(targetRegistry, entity, [&]() {
@@ -777,16 +784,51 @@ void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& 
                             targetRegistry.emplace<PhysicsBodyRect>(entity);
                         }
 
-                        // Process entities that need to be placed inside other entities
-                        for (const auto& [entity_to_place, interior_entity] : needsPlaceInside)
-                        {
-                            if (targetRegistry.valid(entity_to_place) && targetRegistry.valid(interior_entity))
-                            {
-                                targetRegistry.emplace_or_replace<Inside>(entity_to_place, Inside{interior_entity, false});
-                            }
-                        }
-
                         next_entity:; // Label for goto
+                    }
+                }
+            }
+
+            // Process entities that need to be placed inside other entities
+            for (const auto& [entity_to_place, interior_entity] : needsPlaceInside)
+            {
+                if (targetRegistry.valid(entity_to_place) && targetRegistry.valid(interior_entity))
+                {
+                    targetRegistry.emplace_or_replace<Inside>(entity_to_place, Inside{interior_entity, false});
+                }
+            }
+
+            // Process deferred InteriorPortal key assignments
+            // Now that all entities are loaded, we can look up keys by ID
+            for (const auto& [portalEntity, portalAId, portalBId, keyId, locked] : pendingPortalKeys)
+            {
+                if (!targetRegistry.valid(portalEntity)) continue;
+
+                // Find the key entity by ID
+                entt::entity keyEntity = entt::null;
+                auto idView = targetRegistry.view<Id>();
+                for (auto e : idView)
+                {
+                    if (idView.get<Id>(e).id == keyId)
+                    {
+                        keyEntity = e;
+                        break;
+                    }
+                }
+
+                // Update the InteriorPortal component with the key
+                if (targetRegistry.all_of<InteriorPortal>(portalEntity))
+                {
+                    auto& portal = targetRegistry.get<InteriorPortal>(portalEntity);
+                    portal.key = keyEntity;
+
+                    if (keyEntity == entt::null && keyId != -1)
+                    {
+                        printf("Warning: InteriorPortal could not find key entity with ID %d\n", keyId);
+                    }
+                    else if (keyEntity != entt::null)
+                    {
+                        printf("InteriorPortal assigned key entity ID %d\n", keyId);
                     }
                 }
             }

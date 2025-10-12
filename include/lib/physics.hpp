@@ -726,5 +726,13 @@ struct PhysicsBodyRect {
     // p2d::CircleBody *body;
     bool added;
     bool ignore;
+
+	// Add destructor
+    // ~PhysicsBodyRect() {
+    //     if (body != nullptr) {
+    //         delete body;
+    //         body = nullptr;
+    //     }
+    // }
 };
 #endif // PHYSICS_H

@@ -162,6 +162,15 @@ class EntityBuilder {
                     }
                 }
             }
+            // Handle terrain_bounds parsing (minX,minY,maxX,maxY)
+            else if (type === 'terrain_bounds' && value) {
+                if (value.includes(',')) {
+                    const boundsParts = value.split(',').map(s => s.trim());
+                    if (boundsParts.length === 4) {
+                        value = boundsParts.map(v => parseFloat(v));
+                    }
+                }
+            }
             
             return {
                 _meta: {
