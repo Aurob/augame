@@ -112,6 +112,27 @@ export class EntityManager {
         if (name !== undefined && name.trim()) entity.name = name.trim();
     }
 
+    // Reorder entities by moving entity from oldIdx to newIdx
+    reorder(oldIdx, newIdx) {
+        if (oldIdx < 0 || oldIdx >= this.entities.length) return false;
+        if (newIdx < 0 || newIdx >= this.entities.length) return false;
+        if (oldIdx === newIdx) return false;
+
+        const [entity] = this.entities.splice(oldIdx, 1);
+        this.entities.splice(newIdx, 0, entity);
+
+        // Update selection index if needed
+        if (this.selectedIdx === oldIdx) {
+            this.selectedIdx = newIdx;
+        } else if (oldIdx < this.selectedIdx && newIdx >= this.selectedIdx) {
+            this.selectedIdx--;
+        } else if (oldIdx > this.selectedIdx && newIdx <= this.selectedIdx) {
+            this.selectedIdx++;
+        }
+
+        return true;
+    }
+
     // Load/save state
     getState() {
         return {

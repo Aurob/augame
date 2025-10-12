@@ -9,7 +9,7 @@ export const defaultBlueprints = [
             name: "player",
             components: [
                 { type: "Position", x: 0, y: 0, z: 0 },
-                { type: "Shape", w: 2, h: 2, d: 0 },
+                { type: "Shape", w: 1, h: 1, d: 0 },
                 { type: "Player" },
                 { type: "Moveable" },
                 { type: "Movement", speed: 1000, mass: 1, restitution: 0, friction: 0.1 },
@@ -19,103 +19,245 @@ export const defaultBlueprints = [
         created: "2024-01-01T00:00:00.000Z"
     },
     {
-        name: "wall_horizontal",
-        entities: [{
-            id: 0,
-            name: "wall",
-            components: [
-                { type: "Position", x: 0, y: 0, z: 0 },
-                { type: "Shape", w: 10, h: 1, d: 0 },
-                { type: "Color", r: 128, g: 128, b: 128, a: 1 },
-                { type: "Collidable" }
-            ]
-        }],
-        created: "2024-01-01T00:00:00.000Z"
-    },
-    {
-        name: "wall_vertical",
-        entities: [{
-            id: 0,
-            name: "wall",
-            components: [
-                { type: "Position", x: 0, y: 0, z: 0 },
-                { type: "Shape", w: 1, h: 10, d: 0 },
-                { type: "Color", r: 128, g: 128, b: 128, a: 1 },
-                { type: "Collidable" }
-            ]
-        }],
-        created: "2024-01-01T00:00:00.000Z"
-    },
-    {
-        name: "door",
-        entities: [{
-            id: 0,
-            name: "door",
-            components: [
-                { type: "Position", x: 0, y: 0, z: 0 },
-                { type: "Shape", w: 2, h: 3, d: 0 },
-                { type: "Color", r: 139, g: 69, b: 19, a: 1 },
-                { type: "Interactable", radius: 2.0, toggleState: false },
-                { type: "Hoverable" },
-                { type: "InteriorPortal", A: 1, B: 2, locked: false, key: -1 }
-            ]
-        }],
-        created: "2024-01-01T00:00:00.000Z"
-    },
-    {
-        name: "room_basic",
-        entities: [
+        "name": "locked_room",
+        "entities": [
             {
-                id: 1,
-                name: "floor",
-                components: [
-                    { type: "Position", x: 0, y: 0, z: 0 },
-                    { type: "Shape", w: 20, h: 20, d: 0 },
-                    { type: "Color", r: 100, g: 80, b: 60, a: 1 },
-                    { type: "RenderPriority", z: -1 }
+                "id": 20,
+                "name": "entity20",
+                "components": [
+                    {
+                        "type": "Position",
+                        "x": 20,
+                        "y": 13.5,
+                        "z": 0
+                    },
+                    {
+                        "type": "Shape",
+                        "w": 20,
+                        "h": 20,
+                        "d": 0
+                    },
+                    {
+                        "type": "Color",
+                        "r": 100,
+                        "g": 80,
+                        "b": 60,
+                        "a": 1
+                    },
+                    {
+                        "type": "RenderPriority",
+                        "z": -1
+                    },
+                    {
+                        "type": "Interior",
+                        "showInside": true
+                    },
+                    {
+                        "type": "Collidable"
+                    }
                 ]
             },
             {
-                id: 2,
-                name: "wall_top",
-                components: [
-                    { type: "Position", x: 0, y: -10, z: 0 },
-                    { type: "Shape", w: 20, h: 1, d: 0 },
-                    { type: "Color", r: 128, g: 128, b: 128, a: 1 },
-                    { type: "Collidable" }
+                "id": 21,
+                "name": "entity21",
+                "components": [
+                    {
+                        "type": "Position",
+                        "x": 20,
+                        "y": 33.5,
+                        "z": 0
+                    },
+                    {
+                        "type": "Shape",
+                        "w": 20,
+                        "h": 1,
+                        "d": 0
+                    },
+                    {
+                        "type": "Color",
+                        "r": 128,
+                        "g": 128,
+                        "b": 128,
+                        "a": 1
+                    }
                 ]
             },
             {
-                id: 3,
-                name: "wall_bottom",
-                components: [
-                    { type: "Position", x: 0, y: 10, z: 0 },
-                    { type: "Shape", w: 20, h: 1, d: 0 },
-                    { type: "Color", r: 128, g: 128, b: 128, a: 1 },
-                    { type: "Collidable" }
+                "id": 22,
+                "name": "entity22",
+                "components": [
+                    {
+                        "type": "Position",
+                        "x": 20,
+                        "y": 12.5,
+                        "z": 0
+                    },
+                    {
+                        "type": "Shape",
+                        "w": 20,
+                        "h": 1,
+                        "d": 0
+                    },
+                    {
+                        "type": "Color",
+                        "r": 128,
+                        "g": 128,
+                        "b": 128,
+                        "a": 1
+                    }
                 ]
             },
             {
-                id: 4,
-                name: "wall_left",
-                components: [
-                    { type: "Position", x: -10, y: 0, z: 0 },
-                    { type: "Shape", w: 1, h: 20, d: 0 },
-                    { type: "Color", r: 128, g: 128, b: 128, a: 1 },
-                    { type: "Collidable" }
+                "id": 23,
+                "name": "entity23",
+                "components": [
+                    {
+                        "type": "Position",
+                        "x": 19,
+                        "y": 13.5,
+                        "z": 0
+                    },
+                    {
+                        "type": "Shape",
+                        "w": 1,
+                        "h": 20,
+                        "d": 0
+                    },
+                    {
+                        "type": "Color",
+                        "r": 128,
+                        "g": 128,
+                        "b": 128,
+                        "a": 1
+                    }
                 ]
             },
             {
-                id: 5,
-                name: "wall_right",
-                components: [
-                    { type: "Position", x: 10, y: 0, z: 0 },
-                    { type: "Shape", w: 1, h: 20, d: 0 },
-                    { type: "Color", r: 128, g: 128, b: 128, a: 1 },
-                    { type: "Collidable" }
+                "id": 24,
+                "name": "entity24",
+                "components": [
+                    {
+                        "type": "Position",
+                        "x": 40,
+                        "y": 13.5,
+                        "z": 0
+                    },
+                    {
+                        "type": "Shape",
+                        "w": 1,
+                        "h": 20,
+                        "d": 0
+                    },
+                    {
+                        "type": "Color",
+                        "r": 128,
+                        "g": 128,
+                        "b": 128,
+                        "a": 1
+                    }
+                ]
+            },
+            {
+                "id": 28,
+                "name": "entity28",
+                "components": [
+                    {
+                        "type": "Position",
+                        "x": 29.5,
+                        "y": 32,
+                        "z": 0
+                    },
+                    {
+                        "type": "Shape",
+                        "w": 1,
+                        "h": 1,
+                        "d": 0
+                    },
+                    {
+                        "type": "RenderPriority",
+                        "z": 0
+                    },
+                    {
+                        "type": "Moveable"
+                    },
+                    {
+                        "type": "Movement",
+                        "speed": 0,
+                        "mass": 1,
+                        "restitution": 0,
+                        "friction": 0
+                    },
+                    {
+                        "type": "Texture",
+                        "name": "key",
+                        "scalex": 1,
+                        "scaley": 1,
+                        "x": 0,
+                        "y": 0,
+                        "w": 1,
+                        "h": 1
+                    },
+                    {
+                        "type": "Inside",
+                        "insideId": 20
+                    },
+                    {
+                        "type": "Hoverable"
+                    },
+                    {
+                        "type": "Interactable",
+                        "radius": 0.5,
+                        "toggleState": false
+                    },
+                    {
+                        "type": "Collidable"
+                    }
+                ]
+            },
+            {
+                "id": 25,
+                "name": "entity25",
+                "components": [
+                    {
+                        "type": "Position",
+                        "x": 28.5,
+                        "y": 12.4,
+                        "z": 0
+                    },
+                    {
+                        "type": "Shape",
+                        "w": 2,
+                        "h": 1.2,
+                        "d": 0
+                    },
+                    {
+                        "type": "Color",
+                        "r": 139,
+                        "g": 255,
+                        "b": 19,
+                        "a": 1
+                    },
+                    {
+                        "type": "InteriorPortal",
+                        "A": 20,
+                        "B": -1,
+                        "locked": true,
+                        "key": 28
+                    },
+                    {
+                        "type": "Inside",
+                        "insideId": 20
+                    },
+                    {
+                        "type": "CustomShader",
+                        "shaderName": "",
+                        "centerX": 0,
+                        "centerY": 0,
+                        "seed": 0
+                    }
                 ]
             }
         ],
-        created: "2024-01-01T00:00:00.000Z"
+        "created": "2025-10-11T19:25:28.194Z"
     }
 ];

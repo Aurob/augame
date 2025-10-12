@@ -282,4 +282,64 @@ void updatePhysics(entt::registry& registry)
             }
         }
     }
+
+    // Apply terrain bounds as physical barriers for entities outside interiors
+    auto& metadata = sceneManager.getCurrentMetadata();
+    if (!metadata.terrain_bounds.empty() && metadata.terrain_bounds.size() == 4) {
+        float minX = metadata.terrain_bounds[0];
+        float minY = metadata.terrain_bounds[1];
+        float maxX = metadata.terrain_bounds[2];
+        float maxY = metadata.terrain_bounds[3];
+
+        // Only apply bounds if they're not all zero (which means no bounds)
+        if (minX != 0.0f || minY != 0.0f || maxX != 0.0f || maxY != 0.0f) {
+            auto terrainBoundsView = registry.view<PhysicsBodyRect, Shape>(entt::exclude<Inside>);
+            for (auto entity : terrainBoundsView) {
+                auto& rect = registry.get<PhysicsBodyRect>(entity);
+                auto& shape = registry.get<Shape>(entity);
+
+                // Get current position
+                float ax = rect.body->getPosition().x;
+                float ay = rect.body->getPosition().y;
+                float halfWidthA = shape.size.x / 2;
+                float halfHeightA = shape.size.y / 2;
+
+                float newX = ax;
+                float newY = ay;
+                bool outOfBounds = false;
+
+                // Clamp entity's position to stay within terrain bounds
+                if (ax - halfWidthA < minX) {
+                    newX = minX + halfWidthA;
+                    outOfBounds = true;
+                }
+                if (ax + halfWidthA > maxX) {
+                    newX = maxX - halfWidthA;
+                    outOfBounds = true;
+                }
+                if (ay - halfHeightA < minY) {
+                    newY = minY + halfHeightA;
+                    outOfBounds = true;
+                }
+                if (ay + halfHeightA > maxY) {
+                    newY = maxY - halfHeightA;
+                    outOfBounds = true;
+                }
+
+                if (outOfBounds) {
+                    // Move the entity back inside bounds
+                    rect.body->setPosition({ newX, newY });
+                    rect.body->setTempPosition({ newX, newY });
+                    // Bounce with damping
+                    auto vel = rect.body->getVelocity();
+                    if (ax - halfWidthA < minX || ax + halfWidthA > maxX)
+                        vel.x = -vel.x * 0.5f;
+                    if (ay - halfHeightA < minY || ay + halfHeightA > maxY)
+                        vel.y = -vel.y * 0.5f;
+                    rect.body->setVelocity(vel);
+                    rect.body->setTempVelocity(vel);
+                }
+            }
+        }
+    }
 }

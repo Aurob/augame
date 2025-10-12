@@ -87,6 +87,27 @@ class SceneEditor {
         this.updateSceneTabs();
         this.setupMetaPanel();
 
+        // Set up terrain bounds callback for renderer
+        this.renderer.getTerrainBounds = () => {
+            const meta = this.sceneManager.getCurrentMeta();
+            const bounds = meta.terrain_bounds;
+
+            // If it's a string, parse it
+            if (typeof bounds === 'string' && bounds.includes(',')) {
+                const parsed = bounds.split(',').map(v => parseFloat(v.trim()));
+                if (parsed.length === 4) {
+                    return parsed;
+                }
+            }
+
+            // If it's already an array, return it
+            if (Array.isArray(bounds) && bounds.length === 4) {
+                return bounds;
+            }
+
+            return null;
+        };
+
         // Wait for default blueprints to load before updating list
         this.initializeBlueprintList();
 
@@ -375,6 +396,21 @@ class SceneEditor {
                         }
                     });
                     this.sceneManager.updateMeta(key, slides);
+                } else if (key === 'terrain_bounds') {
+                    // Parse terrain_bounds value immediately
+                    const value = input.value.trim();
+                    if (value && value.includes(',')) {
+                        const parsed = value.split(',').map(v => parseFloat(v.trim()));
+                        if (parsed.length === 4 && parsed.every(v => !isNaN(v))) {
+                            this.sceneManager.updateMeta(key, parsed);
+                        } else {
+                            this.sceneManager.updateMeta(key, value);
+                        }
+                    } else {
+                        this.sceneManager.updateMeta(key, value);
+                    }
+                    // Force re-render to update visualization
+                    this.renderer.render();
                 } else {
                     this.sceneManager.updateMeta(key, input.value);
                     // If scene name changed, update the tab
@@ -550,15 +586,18 @@ class SceneEditor {
         this.elements.entityList.innerHTML = '';
 
         const entityManager = this.sceneManager.getCurrentEntityManager();
-        const sorted = entityManager.getSorted();
+        // Don't use sorted list - we want to show the actual creation order
+        const entities = entityManager.entities;
 
-        sorted.forEach(entity => {
-            const idx = entityManager.entities.indexOf(entity);
+        entities.forEach((entity, idx) => {
             const pos = getComponent(entity, 'Position');
             const shape = getComponent(entity, 'Shape');
 
             const div = document.createElement('div');
             div.className = 'entity-item';
+            div.draggable = true;
+            div.dataset.idx = idx;
+
             if (idx === entityManager.selectedIdx) {
                 div.classList.add('selected');
             }
@@ -568,7 +607,8 @@ class SceneEditor {
                 info = ` <span class="entity-info">[${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}] ${shape.w.toFixed(1)}×${shape.h.toFixed(1)}</span>`;
             }
 
-            div.innerHTML = `<span>${entity.id}: ${entity.name}${info}</span>`;
+            div.innerHTML = `<span style="cursor: grab;">⋮⋮</span> <span>${entity.id}: ${entity.name}${info}</span>`;
+
             div.onclick = () => {
                 entityManager.select(idx);
                 this.updateEntityList();
@@ -576,6 +616,43 @@ class SceneEditor {
                 this.renderer.render();
                 if (this.renderer.mode === 'edit') {
                     this.showComponentPanel();
+                }
+            };
+
+            // Drag and drop handlers
+            div.ondragstart = (e) => {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', idx);
+                div.style.opacity = '0.5';
+            };
+
+            div.ondragend = (e) => {
+                div.style.opacity = '1';
+            };
+
+            div.ondragover = (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                div.style.borderTop = '2px solid #3a7bd5';
+            };
+
+            div.ondragleave = (e) => {
+                div.style.borderTop = '';
+            };
+
+            div.ondrop = (e) => {
+                e.preventDefault();
+                div.style.borderTop = '';
+
+                const fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
+                const toIdx = idx;
+
+                if (entityManager.reorder(fromIdx, toIdx)) {
+                    this.updateEntityList();
+                    this.renderer.render();
+                    this.saveStateForUndo();
+                    this.autosave();
+                    this.showStatus(`Moved entity to position ${toIdx + 1}`);
                 }
             };
 
@@ -1231,10 +1308,18 @@ class SceneEditor {
             const offsetX = center.x - blueprintCenterX;
             const offsetY = center.y - blueprintCenterY;
 
+            // Store old ID -> new ID mapping for entity reference updates
+            const idMapping = new Map();
+            const loadedEntityIndices = [];
+
             // Add entities with proper offsets to center them
             entities.forEach(entity => {
+                const oldId = entity.id;
                 entity.id = entityManager.nextId++;
                 entity.name = `entity${entity.id}`;
+
+                // Store ID mapping
+                idMapping.set(oldId, entity.id);
 
                 // Apply centering offset
                 const pos = getComponent(entity, 'Position');
@@ -1243,13 +1328,63 @@ class SceneEditor {
                     pos.y += offsetY;
                 }
 
+                const entityIndex = entityManager.entities.length;
                 entityManager.entities.push(entity);
+                loadedEntityIndices.push(entityIndex);
+            });
+
+            // Update entity references in components (InteriorPortal keys, etc.)
+            entities.forEach(entity => {
+                const portalComp = getComponent(entity, 'InteriorPortal');
+                if (portalComp && portalComp.key !== undefined && portalComp.key !== -1) {
+                    // Update key reference to new ID
+                    if (idMapping.has(portalComp.key)) {
+                        portalComp.key = idMapping.get(portalComp.key);
+                    }
+                }
+
+                // Update A and B portal references if needed
+                if (portalComp) {
+                    if (portalComp.A !== undefined && portalComp.A !== -1 && idMapping.has(portalComp.A)) {
+                        portalComp.A = idMapping.get(portalComp.A);
+                    }
+                    if (portalComp.B !== undefined && portalComp.B !== -1 && idMapping.has(portalComp.B)) {
+                        portalComp.B = idMapping.get(portalComp.B);
+                    }
+                }
+
+                // Update other component references as needed
+                const insideComp = getComponent(entity, 'Inside');
+                if (insideComp) {
+                    // Handle both interiorEntity (from parser) and insideId (from schema/export)
+                    const interiorRef = insideComp.interiorEntity !== undefined ? insideComp.interiorEntity : insideComp.insideId;
+                    if (interiorRef !== undefined && idMapping.has(interiorRef)) {
+                        const newId = idMapping.get(interiorRef);
+                        insideComp.interiorEntity = newId;
+                        insideComp.insideId = newId;
+                    }
+                }
+            });
+
+            // Clear single selection
+            entityManager.select(null);
+
+            // Select all loaded entities for multi-selection
+            this.renderer.selectedEntities.clear();
+            loadedEntityIndices.forEach(idx => {
+                this.renderer.selectedEntities.add(idx);
             });
 
             this.updateEntityList();
             this.updateNextValues();
+            this.updateButtons();
             this.renderer.render();
-            this.showStatus(`Loaded blueprint "${name}"`);
+            this.showStatus(`Loaded blueprint "${name}" with ${entities.length} entities (all selected)`);
+
+            // Notify multi-select change
+            if (this.renderer.onMultiSelectChange) {
+                this.renderer.onMultiSelectChange(this.renderer.getSelectedEntities());
+            }
         }
     }
 

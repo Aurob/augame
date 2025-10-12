@@ -28,13 +28,6 @@ void _js__log(string str)
     EM_ASM_({ console.log(UTF8ToString($0)); }, str.c_str());
 }
 
-void _js__ready()
-{
-    // Send a ready signal to JS
-    EM_ASM({
-        Module.ready();
-    });
-}
 
 void _js__show_alert(string message) 
 {

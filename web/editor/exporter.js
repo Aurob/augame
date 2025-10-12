@@ -136,14 +136,9 @@ export class Exporter {
     }
     static exportEntities(entities) {
         const lines = [];
-        const sorted = entities.slice().sort((a, b) => {
-            const az = a.components.find(c => c.type === "RenderPriority")?.z ?? 0;
-            const bz = b.components.find(c => c.type === "RenderPriority")?.z ?? 0;
-            if (az !== bz) return az - bz;
-            return (a.id || 0) - (b.id || 0);
-        });
-
-        for (const entity of sorted) {
+        // Export entities in their actual array order (creation order)
+        // This is important for entity references (e.g., InteriorPortal key references)
+        for (const entity of entities) {
             const parts = [`id ${entity.id} ${entity.name}`];
 
             for (const comp of entity.components) {

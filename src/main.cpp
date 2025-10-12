@@ -46,11 +46,36 @@ int main(int argc, char *argv[])
 
     // Hide the cursor in Emscripten (and SDL in general)
     // SDL_ShowCursor(SDL_DISABLE);
-
+    _js__fetch_configs(); 
     // Trigger JS functions
-    _js__fetch_configs();   
-    _js__ready();
+    // Helper function to read JSON files from embedded filesystem
+    // auto readJsonFile = [](const std::string& filePath) -> std::string {
+    //     FILE* file = fopen(filePath.c_str(), "r");
+    //     if (!file) {
+    //         printf("Failed to open JSON file: %s\n", filePath.c_str());
+    //         return "";
+    //     }
 
+    //     fseek(file, 0, SEEK_END);
+    //     long fileSize = ftell(file);
+    //     fseek(file, 0, SEEK_SET);
+
+    //     std::string content(fileSize, '\0');
+    //     fread(&content[0], 1, fileSize, file);
+    //     fclose(file);
+
+    //     return content;
+    // };
+
+    // std::string jsonContent = readJsonFile("/web/resources/main.json");
+    // if (!jsonContent.empty()) {
+    //     // Create a non-const buffer for the function that requires char*
+    //     std::vector<char> buffer(jsonContent.begin(), jsonContent.end());
+    //     buffer.push_back('\0');
+    //     load_json_to_registry(buffer.data(), sceneManager.getCurrentRegistry(), sceneManager.getCurrentMetadata());
+
+    //     isready();
+    // }
 
     physics.setGravity(p2d::Vec2f{0, 0}); // No gravity for top-down game
     physics.setDrag({4.9f, 4.9f}); // Adjust drag for realistic movement

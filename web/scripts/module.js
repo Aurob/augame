@@ -3,6 +3,7 @@ var Module = {
   initialized: false,
   c_kv_data: { x: 0, y: 0 },
   c_kv_elements: {},
+  engine_json: [],
   canvas: document.getElementById('canvas'),
   show_alert(message) {
     // Create a toast container if it doesn't exist
@@ -47,15 +48,12 @@ var Module = {
     synth.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
-
-    // Apply options
-    Object.assign(utterance, {
-      rate: options.rate ?? 1,
-      pitch: options.pitch ?? 1,
-      volume: options.volume ?? 1,
-      voice: options.voice ?? null,
-      lang: options.lang ?? 'en-US',
-    });
+    // Apply randomized options
+    utterance.rate = options.rate ?? (Math.random() * 1.5 + 0.5); // 0.5 - 2.0
+    utterance.pitch = options.pitch ?? (Math.random() * 2); // 0 - 2
+    utterance.volume = options.volume ?? (Math.random() * 0.5 + 0.5); // 0.5 - 1.0
+    utterance.voice = options.voice ?? null;
+    utterance.lang = options.lang ?? 'en-US';
 
     if (options.onEnd) utterance.onend = options.onEnd;
     if (options.onError) utterance.onerror = options.onError;
@@ -632,8 +630,11 @@ var Module = {
 
   js_to_c_scene(str) {
     if (typeof str === 'object') {
+      this.engine_json.push(str);
       str = JSON.stringify(str);
     }
+
+
     const strPtr = this._malloc(str.length + 1);
     this.stringToUTF8(str, strPtr, str.length + 1);
     this._createSceneFromJson(strPtr);
@@ -668,9 +669,6 @@ var Module = {
     });
 
   },
-
-  ready() {
-  },
   update_color(r, g, b) {
     document.querySelector('#tcolor').style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
   },
@@ -691,8 +689,11 @@ var Module = {
   },
   js_to_c(str) {
     if (typeof str === 'object') {
+
+      this.engine_json.push(str);
       str = JSON.stringify(str);
     }
+
     const strPtr = this._malloc(str.length + 1);
     this.stringToUTF8(str, strPtr, str.length + 1);
     this._load_json(strPtr);

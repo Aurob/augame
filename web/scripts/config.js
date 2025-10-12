@@ -72,6 +72,7 @@ const textures = [
     createBasicTexture("bot_splash1", "bot2.png"),
     createBasicTexture("bot_splash2", "bot3.png"),
     createBasicTexture("red_carpet", "carpet_1.png"),
+    createBasicTexture("tree1", "tree1.png"),
 ];
 
 CONFIG.textures = CONFIG.textures.concat(playerTextures, textures);
