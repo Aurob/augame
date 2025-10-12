@@ -271,12 +271,14 @@ void updateUniforms(GLuint &shaderProgram,
     // terrain_bounds uniform
     GLint terrainBoundsLocation = glGetUniformLocation(shaderProgram, "terrain_bounds");
     if (terrainBoundsLocation != -1) {
+        auto currentMetadata = sceneManager.getCurrentMetadata();
         if (currentMetadata.terrain_bounds.size() == 4) {
+            // Scale down by 10x for shader coordinate system
             glUniform4f(terrainBoundsLocation,
-                       currentMetadata.terrain_bounds[0],
-                       currentMetadata.terrain_bounds[1],
-                       currentMetadata.terrain_bounds[2],
-                       currentMetadata.terrain_bounds[3]);
+                       currentMetadata.terrain_bounds[0] / 10.0f,
+                       currentMetadata.terrain_bounds[1] / 10.0f,
+                       currentMetadata.terrain_bounds[2] / 10.0f,
+                       currentMetadata.terrain_bounds[3] / 10.0f);
         } else {
             // No bounds set, pass zeros
             glUniform4f(terrainBoundsLocation, 0.0f, 0.0f, 0.0f, 0.0f);

@@ -6,6 +6,7 @@
   "engines": {
     "vscode": "^1.70.0"
   },
+  "publisher": "rau-dev",
   "categories": ["Programming Languages"],
   "activationEvents": ["onLanguage:njn"],
   "main": "./extension.js",
