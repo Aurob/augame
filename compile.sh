@@ -1,7 +1,10 @@
 #!/bin/bash
 echo "compile commenced at:" $(date)
 start_time=$(date +%s)
-  em++ -std=c++17 src/main.cpp \
+
+mkdir -p web/build
+
+em++ -std=c++17 src/main.cpp \
   -s WASM=1 -s USE_SDL=2 -s USE_WEBGL2=1\
   -s USE_SDL_IMAGE=2\
   -s STB_IMAGE=1\
