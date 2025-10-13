@@ -273,12 +273,24 @@ void updateUniforms(GLuint &shaderProgram,
     if (terrainBoundsLocation != -1) {
         auto currentMetadata = sceneManager.getCurrentMetadata();
         if (currentMetadata.terrain_bounds.size() == 4) {
-            // Scale down by 10x for shader coordinate system
-            glUniform4f(terrainBoundsLocation,
-                       currentMetadata.terrain_bounds[0] / 10.0f,
-                       currentMetadata.terrain_bounds[1] / 10.0f,
-                       currentMetadata.terrain_bounds[2] / 10.0f,
-                       currentMetadata.terrain_bounds[3] / 10.0f);
+            // The shader uses tile-based coordinates where toplefttile is in tile units (world_units / defaultGSV)
+            // sampleCoord = (coord / grid_spacing) + toplefttile + (offset / grid_spacing) + generationOffset
+            //
+            // Entity bounds are in raw world units, so we need to convert to tile space
+            // by dividing by defaultGSV, then add generationOffset to match the shader's coordinate system
+            entt::entity cameraEntity = selectMainCamera(registry);
+            Camera camera = registry.get<Camera>(cameraEntity);
+
+            float genOffsetX = generationSize[0] / 2.0f;
+            float genOffsetY = generationSize[1] / 2.0f;
+
+            // Convert from world units to tile units, then add generationOffset
+            float minX = (currentMetadata.terrain_bounds[0] / camera.defaultGSV) + genOffsetX;
+            float minY = (currentMetadata.terrain_bounds[1] / camera.defaultGSV) + genOffsetY;
+            float maxX = (currentMetadata.terrain_bounds[2] / camera.defaultGSV) + genOffsetX;
+            float maxY = (currentMetadata.terrain_bounds[3] / camera.defaultGSV) + genOffsetY;
+
+            glUniform4f(terrainBoundsLocation, minX, minY, maxX, maxY);
         } else {
             // No bounds set, pass zeros
             glUniform4f(terrainBoundsLocation, 0.0f, 0.0f, 0.0f, 0.0f);
@@ -297,6 +309,33 @@ void updateUniforms(GLuint &shaderProgram,
     if (rgb != nullptr) {
         GLint rgbLocation = glGetUniformLocation(shaderProgram, "rgb");
         glUniform3fv(rgbLocation, 1, rgb);
+    }
+
+    // terrain_color and void_color uniforms (for solid_color shader)
+    GLint terrainColorLocation = glGetUniformLocation(shaderProgram, "terrain_color");
+    if (terrainColorLocation != -1) {
+        auto currentMetadata = sceneManager.getCurrentMetadata();
+        if (currentMetadata.terrain_color.size() >= 3) {
+            glUniform3f(terrainColorLocation,
+                currentMetadata.terrain_color[0],
+                currentMetadata.terrain_color[1],
+                currentMetadata.terrain_color[2]);
+        } else {
+            glUniform3f(terrainColorLocation, 0.0f, 0.0f, 0.0f);
+        }
+    }
+
+    GLint voidColorLocation = glGetUniformLocation(shaderProgram, "void_color");
+    if (voidColorLocation != -1) {
+        auto currentMetadata = sceneManager.getCurrentMetadata();
+        if (currentMetadata.void_color.size() >= 3) {
+            glUniform3f(voidColorLocation,
+                currentMetadata.void_color[0],
+                currentMetadata.void_color[1],
+                currentMetadata.void_color[2]);
+        } else {
+            glUniform3f(voidColorLocation, 0.0f, 0.0f, 0.0f);
+        }
     }
 }
 
@@ -669,6 +708,11 @@ void loadTextures() {
         readShaderFile("/web/resources/shaders/ocean.glsl")
     };
 
+    // Solid color shader with terrain bounds support
+    shaderGLSLMap["solid_color"] = {
+        readShaderFile("/web/resources/shaders/terrain_v.glsl"),
+        readShaderFile("/web/resources/shaders/solid_color.glsl")
+    };
 
     // Debug entity shader (test_rgb)
     shaderGLSLMap["debug_entity"] = {
@@ -692,6 +736,7 @@ void loadTextures() {
     createShader(shaderProgramMap["terrain"], "terrain");
     createShader(shaderProgramMap["tiles"], "tiles");
     createShader(shaderProgramMap["water"], "water");
+    createShader(shaderProgramMap["solid_color"], "solid_color");
     createShader(shaderProgramMap["ui_layer"], "ui_layer");
     createShader(shaderProgramMap["texture"], "texture");
     createShader(shaderProgramMap["debug_entity"], "debug_entity");
@@ -1005,19 +1050,21 @@ void renderAll() {
         auto& camera = currentRegistry.get<Camera>(cameraEntity);
         auto& cameraShape = currentRegistry.get<Shape>(cameraEntity); // Get camera shape for centering offset
 
-        // Render terrain shader if player is outside and terrain is a shader,
-        // or if player is inside and the void background is set to "terrain"
+        // Render terrain shader if player is outside and terrain is a shader or color,
+        // or if player is inside and the void background is set to "terrain" or "color"
         bool shouldRenderTerrainShader =
-            (!playerIsInside && (currentMetadata.terrain == "terrain" || currentMetadata.terrain == "tiles" || currentMetadata.terrain == "water")) ||
-            (playerIsInside && (currentMetadata.void_bg == "terrain" || currentMetadata.void_bg == "tiles" || currentMetadata.void_bg == "water"));
+            (!playerIsInside && (currentMetadata.terrain == "terrain" || currentMetadata.terrain == "tiles" || currentMetadata.terrain == "water" || currentMetadata.terrain == "color")) ||
+            (playerIsInside && (currentMetadata.void_bg == "terrain" || currentMetadata.void_bg == "tiles" || currentMetadata.void_bg == "water" || currentMetadata.void_bg == "color"));
 
         if (shouldRenderTerrainShader) {
             // Determine which shader to use
             std::string shaderName;
             if (!playerIsInside) {
-                shaderName = currentMetadata.terrain;
+                // Use solid_color shader when terrain is "color"
+                shaderName = (currentMetadata.terrain == "color") ? "solid_color" : currentMetadata.terrain;
             } else {
-                shaderName = currentMetadata.void_bg;
+                // Use solid_color shader when void_bg is "color"
+                shaderName = (currentMetadata.void_bg == "color") ? "solid_color" : currentMetadata.void_bg;
             }
 
             float rgb[3];
@@ -1028,9 +1075,9 @@ void renderAll() {
             if (shaderProgramMap.find(shaderName) != shaderProgramMap.end()) {
                 updateUniforms(
                     shaderProgramMap[shaderName],
-                    camera.gridSpacing, 
-                    offsetArray, 
-                    gameState.width, gameState.height, 
+                    camera.gridSpacing,
+                    offsetArray,
+                    gameState.width, gameState.height,
                     topleftArray,
                     generationSize,
                     currentRegistry,

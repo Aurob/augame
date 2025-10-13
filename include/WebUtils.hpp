@@ -98,7 +98,7 @@ extern "C"
 
     void switchToNextScene()
     {
-        printf("Switching to next scene...\n");
+        // printf("Switching to next scene...\n");
         sceneManager.switchToNextScene();
         
         // Update global player reference safely
@@ -123,7 +123,7 @@ extern "C"
 
     void switchToPrevScene()
     {
-        printf("Switching to prev scene...\n");
+        // printf("Switching to prev scene...\n");
         sceneManager.switchToPrevScene();
 
         // Update global player reference safely
@@ -162,7 +162,7 @@ extern "C"
         // Load the single entity config into the target scene
         load_json_to_registry(entityConfigStr, sceneManager.getCurrentRegistry(), sceneManager.getCurrentMetadata());
 
-        printf("Added entity to scene %d\n", sceneIndex);
+        // printf("Added entity to scene %d\n", sceneIndex);
 
         // Switch back to original scene
         sceneManager.switchToScene(originalSceneIndex);
@@ -204,7 +204,7 @@ void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& 
 
                         // Compile the dynamic shader immediately
                         createShader(shaderProgramMap[shader["name"]], shader["name"]);
-                        printf("Created and compiled dynamic shader %s\n", shader["name"].get<std::string>().c_str());
+                        // printf("Created and compiled dynamic shader %s\n", shader["name"].get<std::string>().c_str());
                     }
                 }
             }
@@ -224,7 +224,7 @@ void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& 
                         std::string texName = texture["name"];
                         std::string texPath = texture["path"];
                         textureMap[texName] = texPath;
-                        printf("Texture loaded: Name='%s', Path='%s'\n", texName.c_str(), texPath.c_str());
+                        // printf("Texture loaded: Name='%s', Path='%s'\n", texName.c_str(), texPath.c_str());
                     }
                 }
             }
@@ -237,6 +237,8 @@ void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& 
                 if (group.contains("name") && group["name"].is_string() && group.contains("parts") && group["parts"].is_array())
                 {
                     std::string groupName = group["name"];
+                    
+                    // printf("Loading texture group: %s %s %zu parts\n", groupName.c_str(), group["name"].get<std::string>().c_str(), group["parts"].size());
 
                     std::unordered_map<std::string, Texture> textureParts;
                     for (const auto &part : group["parts"])
@@ -268,7 +270,7 @@ void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& 
             auto meta = js_json["meta"];
             if (meta.contains("scene") && meta["scene"].is_string()) {
                 targetMetadata.scene = meta["scene"];
-                printf("Meta: Scene set to %s\n", targetMetadata.scene.c_str());
+                // printf("Meta: Scene set to %s\n", targetMetadata.scene.c_str());
             }
             if (meta.contains("title") && meta["title"].is_string()) {
                 targetMetadata.title = meta["title"];
@@ -313,9 +315,9 @@ void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& 
                         meta["terrain_bounds"][2].get<float>(),
                         meta["terrain_bounds"][3].get<float>()
                     };
-                    printf("Meta: Terrain bounds set to [%.1f, %.1f, %.1f, %.1f]\n",
-                           targetMetadata.terrain_bounds[0], targetMetadata.terrain_bounds[1],
-                           targetMetadata.terrain_bounds[2], targetMetadata.terrain_bounds[3]);
+                    // printf("Meta: Terrain bounds set to [%.1f, %.1f, %.1f, %.1f]\n",
+                    //        targetMetadata.terrain_bounds[0], targetMetadata.terrain_bounds[1],
+                    //        targetMetadata.terrain_bounds[2], targetMetadata.terrain_bounds[3]);
                 }
             }
             if (meta.contains("start_menu") && meta["start_menu"].is_string()) {
@@ -332,7 +334,7 @@ void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& 
                         int slideId = std::stoi(it.key());
                         if (it.value().is_string()) {
                             targetMetadata.slides[slideId] = it.value().get<std::string>();
-                            printf("Meta: Slide %d set to '%s'\n", slideId, targetMetadata.slides[slideId].c_str());
+                            // printf("Meta: Slide %d set to '%s'\n", slideId, targetMetadata.slides[slideId].c_str());
                         }
                     } catch (const std::exception& e) {
                         printf("Error parsing slide ID '%s': %s\n", it.key().c_str(), e.what());
@@ -439,13 +441,13 @@ void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& 
                                 removeEntityById(targetRegistry, entityId);
                             }
                             entity = targetRegistry.create();
-                            printf("Created new entity with id %d\n", entityId);
+                            // printf("Created new entity with id %d\n", entityId);
                         } else {
                             // New: false - Update existing entity
                             if (entityId != -1) {
                                 entity = findEntityById(targetRegistry, entityId);
                                 if (entity != entt::null) {
-                                    printf("Updating existing entity with id %d\n", entityId);
+                                    // printf("Updating existing entity with id %d\n", entityId);
                                     // Update components using helper function
                                     if (_el.contains("Components") && _el["Components"].is_object()) {
                                         updateEntityComponents(targetRegistry, entity, _el["Components"]);
@@ -453,11 +455,11 @@ void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& 
                                     // Skip to next entity
                                     goto next_entity;
                                 } else {
-                                    printf("Entity with id %d not found, creating new one\n", entityId);
+                                    // printf("Entity with id %d not found, creating new one\n", entityId);
                                     entity = targetRegistry.create();
                                 }
                             } else {
-                                printf("No ID provided for update, creating new entity\n");
+                                // printf("No ID provided for update, creating new entity\n");
                                 entity = targetRegistry.create();
                             }
                         }
@@ -828,7 +830,7 @@ void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& 
                     }
                     else if (keyEntity != entt::null)
                     {
-                        printf("InteriorPortal assigned key entity ID %d\n", keyId);
+                        // printf("InteriorPortal assigned key entity ID %d\n", keyId);
                     }
                 }
             }
@@ -856,7 +858,7 @@ void removeEntityById(entt::registry& registry, int id)
     entt::entity entity = findEntityById(registry, id);
     if (entity != entt::null) {
         registry.destroy(entity);
-        printf("Removed entity with id %d\n", id);
+        // printf("Removed entity with id %d\n", id);
     }
 }
 

@@ -135,6 +135,20 @@ Module.add_entity(0, {
 
 **Requirements**: Vertex shaders use `attribute vec2 position`, `uniform vec2 instancePosition`, `uniform vec2 entityScale`
 
+### Terrain Shader Seeds
+The `seed` uniform is passed to terrain shaders (`terrain_gradient.glsl`, `terrain_simple.glsl`) to vary noise patterns.
+
+**IMPORTANT**: The seed must be incorporated into noise functions with phase shifts:
+```glsl
+float phaseShift = seed * 0.1;
+float noise = sin(coord.x * freq + phaseShift) + cos(coord.y * freq + phaseShift * 1.3);
+```
+
+**Why**: Using `seed` directly in sin/cos (e.g., `sin(coord + seed)`) doesn't create sufficient variation because the small coordinate changes dominate. Phase shifts multiply the seed effect, creating distinct patterns.
+
+**Don't**: Just add seed to coordinates: `sin(p.x + seed)` - minimal visible change
+**Do**: Use seed as phase shift multiplier: `sin(p.x * freq + seed * 0.1)` - distinct patterns
+
 ## Interaction System
 
 ### Mouse/Touch Handling (`include/Systems/ActionSystems.hpp`)
@@ -159,6 +173,44 @@ Module.add_entity(0, {
 - Uses SDL_ttf with OpenGL texture generation
 - Font shader handles coloring via `uTextColor` uniform
 - SDL_ttf renders white, shader applies final color
+
+### Coordinate Systems (CRITICAL)
+
+**Two Different Coordinate Spaces:**
+
+1. **Entity/Physics Space** (World Units)
+   - Used by physics engine (`include/Systems/PhysicsSystems.hpp`)
+   - Entity positions are in raw world units (e.g., `x = -10`)
+   - Collision bounds use these directly
+   - Terrain bounds in meta tags use this space
+
+2. **Shader/Terrain Space** (Tile Units)
+   - Used by terrain shaders (`web/resources/shaders/terrain_*.glsl`)
+   - Calculated as: `sampleCoord = (coord / grid_spacing) + toplefttile + (offset / grid_spacing) + generationOffset`
+   - Where `toplefttile` is in tile units: `cameraPos / defaultGSV`
+   - Each tile = `defaultGSV` world units (default: 16)
+
+**Converting Terrain Bounds for Shaders:**
+When passing `terrain_bounds` to shaders, convert from world units to tile units:
+```cpp
+// Entity bounds are in world units (e.g., -10, -10, 10, 10)
+// Convert to tile space for shader comparison
+float tileMinX = (worldMinX / camera.defaultGSV) + generationOffset.x;
+float tileMaxX = (worldMaxX / camera.defaultGSV) + generationOffset.x;
+// Then pass to shader uniform
+```
+
+**Why This Matters:**
+- Physics checks: `if (entity.x < terrain_bounds.minX)` uses world units
+- Shader checks: `if (sampleCoord.x < terrain_bounds.x)` uses tile units
+- Must convert bounds when passing to shaders (`GLUtils.hpp:271-306`)
+- `generationOffset` is added in shader, so add it to converted bounds too
+
+**Example:**
+- Entity bounds: `-10, -10, 10, 10` (world units)
+- defaultGSV: `16`
+- generationOffset: `[1.0, 1.0]`
+- Shader bounds: `(-10/16 + 1.0, -10/16 + 1.0, 10/16 + 1.0, 10/16 + 1.0)` = `(0.375, 0.375, 1.625, 1.625)` (tile units)
 
 ## Build & Development
 

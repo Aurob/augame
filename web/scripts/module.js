@@ -89,6 +89,10 @@ var Module = {
     if (Array.isArray(json.textures)) {
       this.processTextures(json.textures);
     }
+    if (Array.isArray(json.textureGroups)) {
+      this.js_to_c({ textureGroups: json.textureGroups });
+    }
+    
     const shadersPromise = Array.isArray(json.shaders) ? this.processShaders(json.shaders) : Promise.resolve();
     shadersPromise.then(() => {
 

@@ -85,13 +85,16 @@ float smoothNoise(vec2 p) {
     const float yFreq1 = 0.1;
     const float xFreq2 = 0.05;
     const float yFreq2 = 0.07;
-    
-    float noise1 = 0.5 * sin(p.x * xFreq1) + 0.5 * cos(p.y * yFreq1);
-    float noise2 = 0.3 * sin(p.x * xFreq2 + p.y * 0.08) + 0.3 * cos(p.y * yFreq2 - p.x * 0.06);
-    float noise3 = 0.2 * sin((p.x + p.y) * 0.12) * cos((p.x - p.y) * 0.09);
-    
-    float combinedNoise = noise1 + noise2 * (1.0 + 0.2 * sin(p.x * 0.3)) + noise3;
-    
+
+    // Add seed-based phase shifts to make noise vary with different seeds
+    float phaseShift = seed * 0.1;
+
+    float noise1 = 0.5 * sin(p.x * xFreq1 + phaseShift) + 0.5 * cos(p.y * yFreq1 + phaseShift * 1.3);
+    float noise2 = 0.3 * sin(p.x * xFreq2 + p.y * 0.08 + phaseShift * 0.7) + 0.3 * cos(p.y * yFreq2 - p.x * 0.06 + phaseShift * 1.7);
+    float noise3 = 0.2 * sin((p.x + p.y) * 0.12 + phaseShift * 2.1) * cos((p.x - p.y) * 0.09 + phaseShift * 1.1);
+
+    float combinedNoise = noise1 + noise2 * (1.0 + 0.2 * sin(p.x * 0.3 + phaseShift * 0.5)) + noise3;
+
     return (combinedNoise + 1.5) * 0.33;
 }
 
@@ -118,9 +121,10 @@ float calculate_n(vec2 _coord) {
         float noiseVal = smoothNoise(rotatedCoord);
         
         if (i > 3) {
+            // Add seed to domain warping for variation
             vec2 warp = vec2(
-                sin(rotatedCoord.y * 0.5 + float(i) * 0.1),
-                cos(rotatedCoord.x * 0.5 + float(i) * 0.2)
+                sin(rotatedCoord.y * 0.5 + float(i) * 0.1 + seed * 0.05),
+                cos(rotatedCoord.x * 0.5 + float(i) * 0.2 + seed * 0.07)
             ) * 0.15;
             noiseVal = smoothNoise(rotatedCoord + warp);
         }

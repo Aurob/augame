@@ -8,6 +8,7 @@ export class CanvasRenderer {
         this.mode = 'draw';
         this.snapEnabled = true;
         this.snapSize = 0.5;
+        this.gridVisible = true;
 
         // Viewport state
         this.viewport = {
@@ -93,6 +94,10 @@ export class CanvasRenderer {
     setSnap(enabled, size = 0.5) {
         this.snapEnabled = enabled;
         this.snapSize = size;
+    }
+
+    setGridVisible(visible) {
+        this.gridVisible = visible;
     }
 
     snap(val) {
@@ -683,6 +688,65 @@ export class CanvasRenderer {
         this.drawViewportInfo();
     }
 
+    // Helper to parse color from meta value
+    parseMetaColor(metaValue) {
+        if (!metaValue) return null;
+
+        // Already an array [r, g, b] (0-1 range from parser)
+        if (Array.isArray(metaValue) && metaValue.length === 3) {
+            const r = Math.round(metaValue[0] * 255);
+            const g = Math.round(metaValue[1] * 255);
+            const b = Math.round(metaValue[2] * 255);
+            return { r, g, b };
+        }
+
+        // Hex color
+        if (typeof metaValue === 'string' && metaValue.startsWith('#')) {
+            const hex = metaValue.substring(1);
+            const r = parseInt(hex.substring(0, 2), 16);
+            const g = parseInt(hex.substring(2, 4), 16);
+            const b = parseInt(hex.substring(4, 6), 16);
+            return { r, g, b };
+        }
+
+        // RGB string "r,g,b"
+        if (typeof metaValue === 'string' && metaValue.includes(',')) {
+            const parts = metaValue.split(',').map(s => parseInt(s.trim()));
+            if (parts.length === 3) {
+                return { r: parts[0], g: parts[1], b: parts[2] };
+            }
+        }
+
+        return null;
+    }
+
+    // Calculate complementary grid color
+    getComplementaryGridColor(bgColor) {
+        if (!bgColor) return 'rgba(42, 42, 42, 0.5)';
+
+        // Calculate relative luminance
+        const r = bgColor.r / 255;
+        const g = bgColor.g / 255;
+        const b = bgColor.b / 255;
+        const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+
+        // If background is dark, use lighter grid lines
+        // If background is light, use darker grid lines
+        if (luminance < 0.5) {
+            // Dark background - lighten by adding to RGB
+            const gridR = Math.min(255, bgColor.r + 60);
+            const gridG = Math.min(255, bgColor.g + 60);
+            const gridB = Math.min(255, bgColor.b + 60);
+            return `rgba(${gridR}, ${gridG}, ${gridB}, 0.3)`;
+        } else {
+            // Light background - darken by subtracting from RGB
+            const gridR = Math.max(0, bgColor.r - 60);
+            const gridG = Math.max(0, bgColor.g - 60);
+            const gridB = Math.max(0, bgColor.b - 60);
+            return `rgba(${gridR}, ${gridG}, ${gridB}, 0.5)`;
+        }
+    }
+
     // Draw grid
     drawGrid() {
         const effectiveScale = this.scale * this.viewport.zoom;
@@ -694,27 +758,79 @@ export class CanvasRenderer {
             terrainBounds = this.getTerrainBounds();
         }
 
-        // Draw grid lines only if large enough
-        if (gridSize >= 4) {
+        // Get world and void colors from meta
+        let worldColor = null;
+        let voidColor = null;
+        if (this.getMetaValue) {
+            const worldMeta = this.getMetaValue('world');
+            const voidMeta = this.getMetaValue('void');
+            worldColor = this.parseMetaColor(worldMeta);
+            voidColor = this.parseMetaColor(voidMeta);
+        }
+
+        // Fill entire canvas with world color (or default)
+        if (worldColor) {
+            this.ctx.fillStyle = `rgb(${worldColor.r}, ${worldColor.g}, ${worldColor.b})`;
+        } else {
+            this.ctx.fillStyle = '#222';
+        }
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Fill void color outside terrain bounds
+        if (voidColor && terrainBounds && terrainBounds.length === 4) {
+            const [minX, minY, maxX, maxY] = terrainBounds;
+            const boundsStart = this.worldToCanvas(minX, minY);
+            const boundsEnd = this.worldToCanvas(maxX, maxY);
+
+            this.ctx.fillStyle = `rgb(${voidColor.r}, ${voidColor.g}, ${voidColor.b})`;
+
+            // Fill areas outside the bounds
+            // Top area
+            if (boundsStart.y > 0) {
+                this.ctx.fillRect(0, 0, this.canvas.width, boundsStart.y);
+            }
+            // Bottom area
+            if (boundsEnd.y < this.canvas.height) {
+                this.ctx.fillRect(0, boundsEnd.y, this.canvas.width, this.canvas.height - boundsEnd.y);
+            }
+            // Left area (between top and bottom bounds)
+            if (boundsStart.x > 0) {
+                this.ctx.fillRect(0, Math.max(0, boundsStart.y), boundsStart.x, Math.min(this.canvas.height, boundsEnd.y) - Math.max(0, boundsStart.y));
+            }
+            // Right area (between top and bottom bounds)
+            if (boundsEnd.x < this.canvas.width) {
+                this.ctx.fillRect(boundsEnd.x, Math.max(0, boundsStart.y), this.canvas.width - boundsEnd.x, Math.min(this.canvas.height, boundsEnd.y) - Math.max(0, boundsStart.y));
+            }
+        }
+
+        // Draw grid lines if visible and large enough
+        if (this.gridVisible && gridSize >= 4) {
+            const gridColor = this.getComplementaryGridColor(worldColor);
+
             // Calculate visible grid range
             const startX = Math.floor(this.viewport.x / this.snapSize) * this.snapSize;
             const startY = Math.floor(this.viewport.y / this.snapSize) * this.snapSize;
             const endX = this.viewport.x + this.canvas.width / effectiveScale;
             const endY = this.viewport.y + this.canvas.height / effectiveScale;
 
+            this.ctx.strokeStyle = gridColor;
+            this.ctx.lineWidth = 0.5;
+
+            // Clip to terrain bounds if they exist
+            if (terrainBounds && terrainBounds.length === 4) {
+                const [minX, minY, maxX, maxY] = terrainBounds;
+                const boundsStart = this.worldToCanvas(minX, minY);
+                const boundsEnd = this.worldToCanvas(maxX, maxY);
+
+                this.ctx.save();
+                this.ctx.beginPath();
+                this.ctx.rect(boundsStart.x, boundsStart.y, boundsEnd.x - boundsStart.x, boundsEnd.y - boundsStart.y);
+                this.ctx.clip();
+            }
+
             // Draw vertical lines
             for (let x = startX; x <= endX; x += this.snapSize) {
                 const canvasX = (x - this.viewport.x) * effectiveScale;
-
-                // Check if this line is outside terrain bounds
-                let outsideBounds = false;
-                if (terrainBounds && terrainBounds.length === 4) {
-                    const [minX, minY, maxX, maxY] = terrainBounds;
-                    outsideBounds = (x < minX || x > maxX);
-                }
-
-                this.ctx.strokeStyle = outsideBounds ? '#1a1a1a' : '#2a2a2a';
-                this.ctx.lineWidth = 0.5;
                 this.ctx.beginPath();
                 this.ctx.moveTo(canvasX, 0);
                 this.ctx.lineTo(canvasX, this.canvas.height);
@@ -724,20 +840,14 @@ export class CanvasRenderer {
             // Draw horizontal lines
             for (let y = startY; y <= endY; y += this.snapSize) {
                 const canvasY = (y - this.viewport.y) * effectiveScale;
-
-                // Check if this line is outside terrain bounds
-                let outsideBounds = false;
-                if (terrainBounds && terrainBounds.length === 4) {
-                    const [minX, minY, maxX, maxY] = terrainBounds;
-                    outsideBounds = (y < minY || y > maxY);
-                }
-
-                this.ctx.strokeStyle = outsideBounds ? '#1a1a1a' : '#2a2a2a';
-                this.ctx.lineWidth = 0.5;
                 this.ctx.beginPath();
                 this.ctx.moveTo(0, canvasY);
                 this.ctx.lineTo(this.canvas.width, canvasY);
                 this.ctx.stroke();
+            }
+
+            if (terrainBounds && terrainBounds.length === 4) {
+                this.ctx.restore();
             }
         }
 
@@ -767,7 +877,7 @@ export class CanvasRenderer {
         }
 
         // Draw origin axes
-        this.ctx.strokeStyle = '#444';
+        this.ctx.strokeStyle = this.getComplementaryGridColor(worldColor);
         this.ctx.lineWidth = 1;
 
         const originX = -this.viewport.x * effectiveScale;

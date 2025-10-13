@@ -75,6 +75,11 @@ class SceneEditor {
         this.undoManager = new UndoManager(100); // 100 action history limit
         this.canvas = document.getElementById('canvas');
 
+        // Blueprint tracking: Maps blueprint name to array of entity indices
+        this.blueprintInstances = {}; // { blueprintName: [entityIdx1, entityIdx2, ...] }
+        this.entityBlueprintMap = {}; // { entityIdx: blueprintName }
+        this.stickySelection = true; // Whether clicking a blueprint entity selects all
+
         // Initialize renderer with first scene's entity manager
         this.renderer = new CanvasRenderer(
             this.canvas,
@@ -106,6 +111,12 @@ class SceneEditor {
             }
 
             return null;
+        };
+
+        // Set up meta value callback for renderer
+        this.renderer.getMetaValue = (key) => {
+            const meta = this.sceneManager.getCurrentMeta();
+            return meta[key];
         };
 
         // Wait for default blueprints to load before updating list
@@ -140,6 +151,7 @@ class SceneEditor {
             nextId: document.getElementById('nextId'),
             nextName: document.getElementById('nextName'),
             snapToggle: document.getElementById('snapToggle'),
+            gridToggle: document.getElementById('gridToggle'),
 
             // Entity list
             entityList: document.getElementById('entityList'),
@@ -170,6 +182,10 @@ class SceneEditor {
             blueprintList: document.getElementById('blueprintList'),
             exportBlueprintsBtn: document.getElementById('exportBlueprintsBtn'),
             importBlueprintsBtn: document.getElementById('importBlueprintsBtn'),
+            blueprintPanel: document.getElementById('blueprintPanel'),
+            blueprintPanelName: document.getElementById('blueprintPanelName'),
+            blueprintEntityList: document.getElementById('blueprintEntityList'),
+            stickySelectionToggle: document.getElementById('stickySelectionToggle'),
 
             // Panels
             componentPanel: document.getElementById('componentPanel'),
@@ -177,6 +193,12 @@ class SceneEditor {
             metaPanel: document.getElementById('metaPanel'),
             metaFields: document.getElementById('metaFields'),
             toggleMetaBtn: document.getElementById('toggleMetaBtn'),
+            toolsPanel: document.getElementById('toolsPanel'),
+            toggleToolsBtn: document.getElementById('toggleToolsBtn'),
+            colorPicker: document.getElementById('colorPicker'),
+            colorHex: document.getElementById('colorHex'),
+            copyColorBtn: document.getElementById('copyColorBtn'),
+            textureGallery: document.getElementById('textureGallery'),
 
             // Status
             status: document.getElementById('status'),
@@ -212,6 +234,27 @@ class SceneEditor {
             this.elements.metaPanel.style.display = isVisible ? 'none' : 'block';
         });
 
+        // Tools panel toggle
+        this.elements.toggleToolsBtn.addEventListener('click', () => {
+            const isVisible = this.elements.toolsPanel.style.display !== 'none';
+            this.elements.toolsPanel.style.display = isVisible ? 'none' : 'block';
+        });
+
+        // Color picker
+        this.elements.colorPicker.addEventListener('input', (e) => {
+            this.elements.colorHex.value = e.target.value.toUpperCase();
+        });
+
+        // Copy color button
+        this.elements.copyColorBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(this.elements.colorHex.value).then(() => {
+                this.showStatus('Color hex copied to clipboard');
+            });
+        });
+
+        // Load texture gallery
+        this.loadTextureGallery();
+
         // Mode switching
         this.elements.modeBtns.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -229,6 +272,12 @@ class SceneEditor {
         // Snap toggle
         this.elements.snapToggle.addEventListener('change', () => {
             this.renderer.setSnap(this.elements.snapToggle.checked);
+        });
+
+        // Grid toggle
+        this.elements.gridToggle.addEventListener('change', () => {
+            this.renderer.setGridVisible(this.elements.gridToggle.checked);
+            this.renderer.render();
         });
 
         // Entity controls
@@ -269,6 +318,11 @@ class SceneEditor {
         this.elements.exportBlueprintsBtn.addEventListener('click', () => this.exportBlueprints());
         this.elements.importBlueprintsBtn.addEventListener('click', () => this.importBlueprints());
 
+        // Sticky selection toggle
+        this.elements.stickySelectionToggle.addEventListener('change', () => {
+            this.stickySelection = this.elements.stickySelectionToggle.checked;
+        });
+
         // Renderer callbacks
         this.renderer.onChange = () => {
             this.updateEntityList();
@@ -279,9 +333,28 @@ class SceneEditor {
         };
 
         this.renderer.onSelectionChange = () => {
+            const entityManager = this.sceneManager.getCurrentEntityManager();
+            const selectedIdx = entityManager.selectedIdx;
+
+            // Check if sticky selection should apply
+            if (this.stickySelection && selectedIdx !== null && this.entityBlueprintMap[selectedIdx]) {
+                const bpName = this.entityBlueprintMap[selectedIdx];
+                const entityIndices = this.blueprintInstances[bpName] || [];
+
+                // Select all entities in blueprint
+                this.renderer.selectedEntities.clear();
+                entityIndices.forEach(idx => {
+                    if (idx !== selectedIdx) {
+                        this.renderer.selectedEntities.add(idx);
+                    }
+                });
+            }
+
             this.updateEntityList();
             this.updateButtons();
-            if (this.renderer.mode === 'edit' && this.renderer.entityManager.getSelected()) {
+            this.updateBlueprintPanel();
+
+            if (this.renderer.mode === 'edit' && entityManager.getSelected()) {
                 this.showComponentPanel();
             } else {
                 this.hideComponentPanel();
@@ -298,10 +371,12 @@ class SceneEditor {
 
         // Keyboard shortcuts
         document.addEventListener('keydown', e => {
-            if (e.key === 'Delete' && this.renderer.entityManager.selectedIdx !== null) {
+            const hasSelection = this.renderer.entityManager.selectedIdx !== null || this.renderer.selectedEntities.size > 0;
+
+            if (e.key === 'Delete' && hasSelection) {
                 this.deleteSelected();
             }
-            if ((e.ctrlKey || e.metaKey) && e.key === 'd' && this.renderer.entityManager.selectedIdx !== null) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'd' && hasSelection) {
                 e.preventDefault();
                 this.duplicateSelected();
             }
@@ -680,25 +755,134 @@ class SceneEditor {
 
     deleteSelected() {
         const entityManager = this.sceneManager.getCurrentEntityManager();
-        if (entityManager.selectedIdx === null) return;
-        entityManager.delete(entityManager.selectedIdx);
+
+        // Collect all indices to delete (multi-select + single select)
+        const indicesToDelete = new Set();
+
+        // Add multi-selected entities
+        if (this.renderer.selectedEntities.size > 0) {
+            this.renderer.selectedEntities.forEach(idx => indicesToDelete.add(idx));
+        }
+
+        // Add single selected entity
+        if (entityManager.selectedIdx !== null) {
+            indicesToDelete.add(entityManager.selectedIdx);
+        }
+
+        if (indicesToDelete.size === 0) return;
+
+        // Sort indices in descending order to delete from end to start
+        const sortedIndices = Array.from(indicesToDelete).sort((a, b) => b - a);
+
+        // Delete each entity
+        sortedIndices.forEach(idxToDelete => {
+            // Clean up blueprint tracking for this entity
+            if (this.entityBlueprintMap[idxToDelete]) {
+                const bpName = this.entityBlueprintMap[idxToDelete];
+                delete this.entityBlueprintMap[idxToDelete];
+
+                // Remove from blueprint instance list
+                if (this.blueprintInstances[bpName]) {
+                    this.blueprintInstances[bpName] = this.blueprintInstances[bpName].filter(i => i !== idxToDelete);
+                    if (this.blueprintInstances[bpName].length === 0) {
+                        delete this.blueprintInstances[bpName];
+                    }
+                }
+            }
+
+            entityManager.delete(idxToDelete);
+        });
+
+        // Reindex blueprint tracking after all deletions
+        const newEntityBlueprintMap = {};
+        const newBlueprintInstances = {};
+
+        Object.entries(this.entityBlueprintMap).forEach(([idx, bpName]) => {
+            const oldIdx = parseInt(idx);
+            // Count how many entities below this one were deleted
+            const deletedBelow = sortedIndices.filter(delIdx => delIdx < oldIdx).length;
+            const newIdx = oldIdx - deletedBelow;
+
+            newEntityBlueprintMap[newIdx] = bpName;
+            if (!newBlueprintInstances[bpName]) newBlueprintInstances[bpName] = [];
+            newBlueprintInstances[bpName].push(newIdx);
+        });
+
+        this.entityBlueprintMap = newEntityBlueprintMap;
+        this.blueprintInstances = newBlueprintInstances;
+
+        // Clear multi-selection
+        this.renderer.selectedEntities.clear();
+
         this.updateEntityList();
         this.updateButtons();
         this.renderer.render();
         this.hideComponentPanel();
+        this.updateBlueprintPanel();
         this.saveStateForUndo();
         this.autosave();
     }
 
     duplicateSelected() {
         const entityManager = this.sceneManager.getCurrentEntityManager();
-        if (entityManager.selectedIdx === null) return;
-        const copy = entityManager.duplicate(entityManager.selectedIdx);
-        if (copy) {
-            entityManager.select(entityManager.entities.length - 1);
+
+        // Collect all indices to duplicate (multi-select + single select)
+        const indicesToDuplicate = new Set();
+
+        // Add multi-selected entities
+        if (this.renderer.selectedEntities.size > 0) {
+            this.renderer.selectedEntities.forEach(idx => indicesToDuplicate.add(idx));
+        }
+
+        // Add single selected entity
+        if (entityManager.selectedIdx !== null) {
+            indicesToDuplicate.add(entityManager.selectedIdx);
+        }
+
+        if (indicesToDuplicate.size === 0) return;
+
+        const newIndices = [];
+
+        // Duplicate each entity
+        Array.from(indicesToDuplicate).forEach(originalIdx => {
+            const copy = entityManager.duplicate(originalIdx);
+
+            if (copy) {
+                const newIdx = entityManager.entities.length - 1;
+                newIndices.push(newIdx);
+
+                // If original was part of blueprint, add duplicate to same blueprint
+                if (this.entityBlueprintMap[originalIdx]) {
+                    const bpName = this.entityBlueprintMap[originalIdx];
+                    this.entityBlueprintMap[newIdx] = bpName;
+                    if (!this.blueprintInstances[bpName]) {
+                        this.blueprintInstances[bpName] = [];
+                    }
+                    this.blueprintInstances[bpName].push(newIdx);
+                }
+            }
+        });
+
+        if (newIndices.length > 0) {
+            // Select the duplicated entities
+            if (newIndices.length === 1) {
+                entityManager.select(newIndices[0]);
+                this.renderer.selectedEntities.clear();
+            } else {
+                // Multi-select all duplicated entities
+                entityManager.select(newIndices[0]);
+                this.renderer.selectedEntities.clear();
+                newIndices.forEach(idx => {
+                    if (idx !== newIndices[0]) {
+                        this.renderer.selectedEntities.add(idx);
+                    }
+                });
+            }
+
             this.updateEntityList();
             this.updateButtons();
             this.renderer.render();
+            this.updateBlueprintPanel();
             this.saveStateForUndo();
             this.autosave();
         }
@@ -1273,6 +1457,80 @@ class SceneEditor {
         });
     }
 
+    updateBlueprintPanel() {
+        // Check if any selected entity belongs to a blueprint
+        const entityManager = this.sceneManager.getCurrentEntityManager();
+        const selectedIdx = entityManager.selectedIdx;
+
+        if (selectedIdx === null || !this.entityBlueprintMap[selectedIdx]) {
+            this.elements.blueprintPanel.style.display = 'none';
+            return;
+        }
+
+        const bpName = this.entityBlueprintMap[selectedIdx];
+        const entityIndices = this.blueprintInstances[bpName] || [];
+
+        this.elements.blueprintPanel.style.display = 'block';
+        this.elements.blueprintPanelName.textContent = bpName;
+        this.elements.blueprintEntityList.innerHTML = '';
+
+        entityIndices.forEach(idx => {
+            if (idx >= entityManager.entities.length) return;
+
+            const entity = entityManager.entities[idx];
+            const pos = getComponent(entity, 'Position');
+            const shape = getComponent(entity, 'Shape');
+
+            const div = document.createElement('div');
+            div.className = 'entity-item';
+            if (idx === selectedIdx) div.classList.add('selected');
+            div.style.fontSize = '12px';
+            div.style.display = 'flex';
+            div.style.alignItems = 'center';
+            div.style.gap = '8px';
+
+            // Checkbox to include/exclude from blueprint
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = true;
+            checkbox.onclick = (e) => {
+                e.stopPropagation();
+                if (!checkbox.checked) {
+                    // Remove from blueprint tracking
+                    delete this.entityBlueprintMap[idx];
+                    this.blueprintInstances[bpName] = this.blueprintInstances[bpName].filter(i => i !== idx);
+                    if (this.blueprintInstances[bpName].length === 0) {
+                        delete this.blueprintInstances[bpName];
+                    }
+                    this.updateBlueprintPanel();
+                }
+            };
+
+            const label = document.createElement('span');
+            label.style.flex = '1';
+            label.style.cursor = 'pointer';
+            let info = '';
+            if (pos && shape) {
+                info = ` [${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}] ${shape.w.toFixed(1)}×${shape.h.toFixed(1)}`;
+            }
+            label.textContent = `#${entity.id} ${entity.name}${info}`;
+            label.onclick = () => {
+                entityManager.select(idx);
+                this.updateEntityList();
+                this.updateButtons();
+                this.renderer.render();
+                this.updateBlueprintPanel();
+                if (this.renderer.mode === 'edit') {
+                    this.showComponentPanel();
+                }
+            };
+
+            div.appendChild(checkbox);
+            div.appendChild(label);
+            this.elements.blueprintEntityList.appendChild(div);
+        });
+    }
+
     loadBlueprint(name) {
         // Get viewport center for placement
         const center = this.renderer.getViewCenter();
@@ -1380,6 +1638,15 @@ class SceneEditor {
             this.updateButtons();
             this.renderer.render();
             this.showStatus(`Loaded blueprint "${name}" with ${entities.length} entities (all selected)`);
+
+            // Track blueprint instance
+            this.blueprintInstances[name] = loadedEntityIndices;
+            loadedEntityIndices.forEach(idx => {
+                this.entityBlueprintMap[idx] = name;
+            });
+
+            // Update blueprint panel
+            this.updateBlueprintPanel();
 
             // Notify multi-select change
             if (this.renderer.onMultiSelectChange) {
@@ -1530,6 +1797,113 @@ class SceneEditor {
         setTimeout(() => {
             this.elements.status.classList.remove('show');
         }, 3000);
+    }
+
+    loadTextureGallery() {
+        // List of texture files
+        const textures = [
+            '1_Template_Idle_Down-Sheet.png',
+            '1_Template_Idle_Left-Sheet.png',
+            '1_Template_Idle_Right-Sheet.png',
+            '1_Template_Idle_Up-Sheet.png',
+            '2_Template_Run_Down-Sheet.png',
+            '2_Template_Run_Left-Sheet.png',
+            '2_Template_Run_Right-Sheet.png',
+            '2_Template_Run_Up-Sheet.png',
+            'bot2.png',
+            'bot3.png',
+            'carpet_1.png',
+            'center.png',
+            'hand_thin_small_closed.png',
+            'hand_thin_small_open.png',
+            'key.png',
+            'terrain_s.png',
+            'tilewall1.png',
+            'tree1.png',
+            'tree2.png',
+            'tree3.png',
+            'tree4.png',
+            'tree5.png',
+            'scr1.png'
+        ];
+
+        this.elements.textureGallery.innerHTML = '';
+
+        textures.forEach(filename => {
+            const textureDiv = document.createElement('div');
+            textureDiv.style.cssText = `
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                cursor: pointer;
+                padding: 8px;
+                border-radius: 4px;
+                background: #2a2a2a;
+                border: 2px solid #444;
+                transition: all 0.2s;
+            `;
+
+            // Create image preview
+            const img = document.createElement('img');
+            const path = `../resources/textures/${filename}`;
+            img.src = path;
+            img.style.cssText = `
+                width: 60px;
+                height: 60px;
+                object-fit: contain;
+                image-rendering: pixelated;
+                background: #222;
+                border-radius: 2px;
+            `;
+            img.onerror = () => {
+                img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="60" height="60"%3E%3Crect fill="%23444" width="60" height="60"/%3E%3Ctext x="50%25" y="50%25" fill="%23888" text-anchor="middle" dominant-baseline="middle" font-size="10"%3E?%3C/text%3E%3C/svg%3E';
+            };
+
+            // Create name label
+            const name = document.createElement('div');
+            // Remove extension and shorten long names
+            const baseName = filename.replace(/\.(png|jpg|jpeg)$/i, '');
+            name.textContent = baseName.length > 12 ? baseName.substring(0, 12) + '...' : baseName;
+            name.title = filename; // Full name on hover
+            name.style.cssText = `
+                font-size: 10px;
+                color: #aaa;
+                margin-top: 4px;
+                text-align: center;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                width: 100%;
+            `;
+
+            textureDiv.appendChild(img);
+            textureDiv.appendChild(name);
+
+            // Click to copy texture name (without extension)
+            textureDiv.onclick = () => {
+                const textureName = filename.replace(/\.(png|jpg|jpeg)$/i, '');
+                navigator.clipboard.writeText(textureName).then(() => {
+                    this.showStatus(`Texture name "${textureName}" copied to clipboard`);
+                    // Visual feedback
+                    textureDiv.style.borderColor = '#3a7bd5';
+                    setTimeout(() => {
+                        textureDiv.style.borderColor = '#444';
+                    }, 300);
+                });
+            };
+
+            // Hover effect
+            textureDiv.onmouseenter = () => {
+                textureDiv.style.borderColor = '#7ec7ff';
+                textureDiv.style.background = '#333';
+            };
+            textureDiv.onmouseleave = () => {
+                textureDiv.style.borderColor = '#444';
+                textureDiv.style.background = '#2a2a2a';
+            };
+
+            this.elements.textureGallery.appendChild(textureDiv);
+        });
     }
 }
 
