@@ -20,7 +20,7 @@ jobs:
       uses: mymindstorm/setup-emsdk@v14
       with:
         version: 'latest'
-        actions-cache-folder: 'emsdk-cache'
+        actions-cache-folder: 'emsdk-cache-${{ runner.os }}'
 
     - name: Verify Emscripten installation
       run: |
