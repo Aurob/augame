@@ -52,7 +52,20 @@ jobs:
 
     - name: Package zip
       run: |
-        zip -r augame.com .init.lua resources web build index.html README LICENSE
+        zip -r augame.com \
+               .init.lua \
+               404.html \
+               index.html \
+               web/index.html \
+               web/editor  \
+               web/econfigs/default.njn \
+               web/scripts/ \
+               web/resources/page/ \
+               README.md \
+               LICENSE
+        zip -0 augame.com web/build/main.wasm web/build/main.js
+        cp web/resources/page/Diogenex10.gif redbean.png
+        zip -0 augame.com redbean.png
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
