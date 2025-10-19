@@ -30,7 +30,7 @@ jobs:
 
     - name: Set release filename
       id: vars
-      run: echo "RELNAME=augame-${{ github.run_number }}.com" >> $GITHUB_ENV
+      run: echo "RELNAME=augame-${{ github.ref_name }}.com" >> $GITHUB_ENV
 
     - name: Download redbean with fallbacks
       shell: bash
