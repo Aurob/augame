@@ -2,25 +2,20 @@ name: Build Release and Upload
 
 on:
   push:
-    branches:
-      - main
-      - itch
+    tags:
+      - 'v[0-9]*.[0-9]*.[0-9]*'           # v0.1.0, v1.2.3
+      - 'v[0-9]*.[0-9]*.[0-9]*-*'         # v0.1.0-beta, v1.2.3-rc.1
   workflow_dispatch:
 
 jobs:
-  # ===== MAIN BRANCH RELEASE =====
   build-and-release:
-    if: github.ref == 'refs/heads/main'
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    container:
+      image: emscripten/emsdk:latest
 
     steps:
     - uses: actions/checkout@v3
-
-    - name: Setup Emscripten
-      uses: mymindstorm/setup-emsdk@v14
-      with:
-        version: 'latest'
-        actions-cache-folder: 'emsdk-cache-${{ runner.os }}'
 
     - name: Verify Emscripten installation
       run: |
@@ -37,6 +32,7 @@ jobs:
       run: echo "RELNAME=augame-${{ github.run_number }}.com" >> $GITHUB_ENV
 
     - name: Download redbean with fallbacks
+      shell: bash
       run: |
         set -e
         urls=(
@@ -74,31 +70,31 @@ jobs:
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: v${{ github.run_number }}
-        name: Release ${{ github.run_number }}
+        tag_name: ${{ github.ref_name }}
+        name: Release ${{ github.ref_name }}
         files: ${{ env.RELNAME }}
       env:
-        GITHUB_TOKEN: ${{ secrets.TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ===== ITCH.IO DEPLOY =====
-  build-and-upload-itch:
-    if: github.ref == 'refs/heads/itch'
-    runs-on: ubuntu-latest
+  # build-and-upload-itch:
+  #   if: github.ref == 'refs/heads/itch'
+  #   runs-on: ubuntu-latest
 
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        fetch-depth: 0
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #     with:
+  #       fetch-depth: 0
 
-    - name: Zip Repository
-      run: |
-        zip -r augame.zip .
+  #   - name: Zip Repository
+  #     run: |
+  #       zip -r augame.zip .
 
-    - name: Upload to itch.io
-      env:
-        BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-      run: |
-        curl -L -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
-        unzip butler.zip
-        chmod +x butler
-        ./butler push augame.zip aurob/augame:main
+  #   - name: Upload to itch.io
+  #     env:
+  #       BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+  #     run: |
+  #       curl -L -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
+  #       unzip butler.zip
+  #       chmod +x butler
+  #       ./butler push augame.zip aurob/augame:main
