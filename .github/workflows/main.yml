@@ -75,6 +75,7 @@ jobs:
     - name: Generate release notes
       id: notes
       run: |
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
         LAST_TAG=$(git describe --tags --abbrev=0 "$(git rev-list --tags --skip=1  --max-count=1)" 2>/dev/null || echo "")
         if [ -n "$LAST_TAG" ]; then
           RANGE="${LAST_TAG}..HEAD"
@@ -104,7 +105,6 @@ jobs:
           echo "**Note:** This is an unstable development build for testing purposes."
         } > release_body.txt
         
-
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
@@ -112,6 +112,7 @@ jobs:
         name: Release ${{ github.ref_name }}
         body_path: release_body.txt
         files: ${{ env.RELNAME }}
+        prerelease: true
       env:
         GITHUB_TOKEN: ${{ secrets.TOKEN }}
 
