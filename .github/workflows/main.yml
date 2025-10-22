@@ -56,25 +56,22 @@ jobs:
 
     - name: Package zip
       run: |
-        # Create empty root directory in zip
-        mkdir empty_dir
-        zip -r "$RELNAME" empty_dir
-        rm -rf empty_dir
+        # Include both root index.html and web/index.html so "/" and "/web/" are different
+        # and add the rest of the web tree preserving paths.
+        zip -r "$RELNAME" .init.lua index.html \
+          web/index.html \
+          web/editor \
+          web/econfigs/default.njn \
+          web/scripts \
+          web/resources/page
 
-        # Add files with proper paths
-        zip -r "$RELNAME" .init.lua
-        zip -r "$RELNAME" web/index.html
-        zip -r "$RELNAME" web/editor
-        zip -r "$RELNAME" web/econfigs/default.njn
-        zip -r "$RELNAME" web/scripts
-        zip -0 "$RELNAME" web/build/main.wasm web/build/main.js
-        zip -r "$RELNAME" web/resources/page
+        # Add build artifacts without compression
+        zip -0 "$RELNAME" web/build/main.wasm web/build/main.js || true
 
-        # Add custom redbean icon
+        # Add custom redbean icon (store with no compression)
         cp web/resources/page/Diogenex10.gif redbean.png
         zip -0 "$RELNAME" redbean.png
-        rm redbean.png
-  
+        rm -f redbean.png
 
     - name: Extract tag message
       id: tag_message
