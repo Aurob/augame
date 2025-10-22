@@ -16,7 +16,9 @@ jobs:
       image: emscripten/emsdk:latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Verify Emscripten installation
       run: |
@@ -30,10 +32,7 @@ jobs:
 
     - name: Set release filename
       id: vars
-      run: |
-        TAG="${{ github.ref_name }}"
-        TAG="${TAG#v}"
-        echo "RELNAME=augame-${TAG}.com" >> $GITHUB_ENV
+      run: echo "RELNAME=augame-${{ github.ref_name }}.com" >> $GITHUB_ENV
 
     - name: Download redbean with fallbacks
       shell: bash
@@ -56,48 +55,62 @@ jobs:
 
     - name: Package zip
       run: |
-        # Include both root index.html and web/index.html so "/" and "/web/" are different
-        # and add the rest of the web tree preserving paths.
-        zip -r "$RELNAME" .init.lua index.html \
-          web/index.html \
-          web/editor \
-          web/econfigs/default.njn \
-          web/scripts \
-          web/resources/page
-
-        # Add build artifacts without compression
-        zip -0 "$RELNAME" web/build/main.wasm web/build/main.js || true
-
-        # Add custom redbean icon (store with no compression)
+        zip -r "$RELNAME" \
+               .init.lua \
+               404.html \
+               index.html \
+               web \
+               web/index.html \
+               web/editor  \
+               web/econfigs/default.njn \
+               web/scripts/ \
+               web/resources/page/ \
+               README.md \
+               LICENSE
+        zip -0 "$RELNAME" web/build/main.wasm web/build/main.js
         cp web/resources/page/Diogenex10.gif redbean.png
         zip -0 "$RELNAME" redbean.png
-        rm -f redbean.png
-
-        # Ensure requests to "/web" (no trailing slash) serve web/index.html:
-        # create a temporary file named "web" and add it as a top-level entry in the archive
-        tmpdir=$(mktemp -d)
-        cp web/index.html "$tmpdir/web"
-        (cd "$tmpdir" && zip -0 "$GITHUB_WORKSPACE/$RELNAME" web)
-        rm -rf "$tmpdir"
-
-    - name: Extract tag message
-      id: tag_message
+        rm redbean.png
+    
+    - name: Generate release notes
+      id: notes
       run: |
-        # Mark the workspace as a safe directory for git (fixes "dubious ownership" error)
-        git config --global --add safe.directory "$GITHUB_WORKSPACE"
-        # Get the full tag annotation message
-        TAG_MESSAGE=$(git tag -l --format='%(contents)' "${{ github.ref_name }}")
-        # Use multiline output format for GitHub Actions
-        echo "message<<EOF" >> $GITHUB_OUTPUT
-        echo "$TAG_MESSAGE" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
+        LAST_TAG=$(git describe --tags --abbrev=0 "$(git rev-list --tags --skip=1  --max-count=1)" 2>/dev/null || echo "")
+        if [ -n "$LAST_TAG" ]; then
+          RANGE="${LAST_TAG}..HEAD"
+        else
+          RANGE="HEAD"
+        fi
+
+        {
+          echo "### Changes in this release"
+          echo ""
+          git log $RANGE --pretty=format:'- %ad — %s%n  %b%n' --date=short
+          echo ""
+          echo "---"
+          echo ""
+          echo "To run, install **augame-\${version}.com** and follow the steps below for your platform."
+          echo ""
+          echo "Instructions:"
+          echo "- Windows"
+          echo "  1. Double-click \`augame-\${version}.com\`"
+          echo "     - Click 'More info' → 'Run anyway'"
+          echo "- macOS"
+          echo "  1. Right-click (or control-click) \`augame-\${version}.com\` → 'Open'"
+          echo "     - Click 'Open' to proceed"
+          echo "- Linux"
+          echo "  1. \`chmod +x augame-\${version}.com && ./augame-\${version}.com\`"
+          echo ""
+          echo "**Note:** This is an unstable development build for testing purposes."
+        } > release_body.txt
+        
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ github.ref_name }}
         name: Release ${{ github.ref_name }}
-        body: ${{ steps.tag_message.outputs.message }}
+        body_path: release_body.txt
         files: ${{ env.RELNAME }}
       env:
         GITHUB_TOKEN: ${{ secrets.TOKEN }}
