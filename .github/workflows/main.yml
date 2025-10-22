@@ -53,25 +53,25 @@ jobs:
 
     - name: Package zip
       run: |
-        mv web web.temp
-        mkdir web
-        zip -0 augame.com web
-        rm -rf web
-        mv web.temp web
-        zip -r "$RELNAME" \
-               .init.lua \
-               404.html \
-               index.html \
-               web/index.html \
-               web/editor  \
-               web/econfigs/default.njn \
-               web/scripts/ \
-               web/resources/page/ \
-               README.md \
-               LICENSE
+        # Create empty root directory in zip
+        mkdir empty_dir
+        zip -r "$RELNAME" empty_dir
+        rm -rf empty_dir
+
+        # Add files with proper paths
+        zip -r "$RELNAME" .init.lua
+        zip -r "$RELNAME" web/index.html
+        zip -r "$RELNAME" web/editor
+        zip -r "$RELNAME" web/econfigs/default.njn
+        zip -r "$RELNAME" web/scripts
         zip -0 "$RELNAME" web/build/main.wasm web/build/main.js
-        cp web/resources/page/Diogenex10.gif redbean.png
+        zip -r "$RELNAME" web/resources/page
+
+        # Add custom redbean icon
+        cp web/resources/Diogenex10.gif redbean.png
         zip -0 "$RELNAME" redbean.png
+        rm redbean.png
+  
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
