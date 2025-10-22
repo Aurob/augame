@@ -73,6 +73,13 @@ jobs:
         zip -0 "$RELNAME" redbean.png
         rm -f redbean.png
 
+        # Ensure requests to "/web" (no trailing slash) serve web/index.html:
+        # create a temporary file named "web" and add it as a top-level entry in the archive
+        tmpdir=$(mktemp -d)
+        cp web/index.html "$tmpdir/web"
+        (cd "$tmpdir" && zip -0 "$GITHUB_WORKSPACE/$RELNAME" web)
+        rm -rf "$tmpdir"
+
     - name: Extract tag message
       id: tag_message
       run: |
