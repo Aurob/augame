@@ -68,16 +68,27 @@ jobs:
         zip -r "$RELNAME" web/resources/page
 
         # Add custom redbean icon
-        cp web/resources/Diogenex10.gif redbean.png
+        cp web/resources/page/Diogenex10.gif redbean.png
         zip -0 "$RELNAME" redbean.png
         rm redbean.png
   
+
+    - name: Extract tag message
+      id: tag_message
+      run: |
+        # Get the full tag annotation message
+        TAG_MESSAGE=$(git tag -l --format='%(contents)' "${{ github.ref_name }}")
+        # Use multiline output format for GitHub Actions
+        echo "message<<EOF" >> $GITHUB_OUTPUT
+        echo "$TAG_MESSAGE" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ github.ref_name }}
         name: Release ${{ github.ref_name }}
+        body: ${{ steps.tag_message.outputs.message }}
         files: ${{ env.RELNAME }}
       env:
         GITHUB_TOKEN: ${{ secrets.TOKEN }}
