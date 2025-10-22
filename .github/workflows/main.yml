@@ -3,9 +3,9 @@ name: Build Release and Upload
 on:
   push:
     tags:
-      - '[0-9]*.[0-9]*.[0-9]*'           # 0.1.0, v1.2.3
-      - '[0-9]*.[0-9]*.[0-9]*-*'         # 0.1.0-beta, v1.2.3-rc.1
-      - '0.x.x'                          # 0.x.x (unstable dev marker)
+      - 'v[0-9]*.[0-9]*.[0-9]*'           # v0.1.0, v1.2.3
+      - 'v[0-9]*.[0-9]*.[0-9]*-*'         # v0.1.0-beta, v1.2.3-rc.1
+      - 'v0.x.x'                          # v0.x.x (unstable dev marker)
   workflow_dispatch:
 
 jobs:
@@ -30,7 +30,10 @@ jobs:
 
     - name: Set release filename
       id: vars
-      run: echo "RELNAME=augame-${{ github.ref_name }}.com" >> $GITHUB_ENV
+      run: |
+        TAG="${{ github.ref_name }}"
+        TAG="${TAG#v}"
+        echo "RELNAME=augame-${TAG}.com" >> $GITHUB_ENV
 
     - name: Download redbean with fallbacks
       shell: bash
