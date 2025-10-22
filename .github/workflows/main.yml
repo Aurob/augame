@@ -79,6 +79,8 @@ jobs:
     - name: Extract tag message
       id: tag_message
       run: |
+        # Mark the workspace as a safe directory for git (fixes "dubious ownership" error)
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
         # Get the full tag annotation message
         TAG_MESSAGE=$(git tag -l --format='%(contents)' "${{ github.ref_name }}")
         # Use multiline output format for GitHub Actions
