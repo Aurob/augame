@@ -53,6 +53,11 @@ jobs:
 
     - name: Package zip
       run: |
+        mv web web.temp
+        mkdir web
+        zip -0 augame.com web
+        rm -rf web
+        mv web.temp web
         zip -r "$RELNAME" \
                .init.lua \
                404.html \
