@@ -75,32 +75,18 @@ jobs:
     - name: Generate release notes
       id: notes
       run: |
-        git config --global --add safe.directory "$GITHUB_WORKSPACE"
-        LAST_TAG=$(git describe --tags --abbrev=0 "$(git rev-list --tags --skip=1  --max-count=1)" 2>/dev/null || echo "")
-        if [ -n "$LAST_TAG" ]; then
-          RANGE="${LAST_TAG}..HEAD"
-        else
-          RANGE="HEAD"
-        fi
-
         {
-          echo "### Changes in this release"
-          echo ""
-          git log $RANGE --pretty=format:'- %ad — %s%n  %b%n' --date=short
-          echo ""
-          echo "---"
-          echo ""
-          echo "To run, install **augame-\${version}.com** and follow the steps below for your platform."
+          echo "To run, install **augame-${{ github.ref_name }}.com** and follow the steps below for your platform."
           echo ""
           echo "Instructions:"
           echo "- Windows"
-          echo "  1. Double-click \`augame-\${version}.com\`"
+          echo "  1. Double-click \`augame-${{ github.ref_name }}.com\`"
           echo "     - Click 'More info' → 'Run anyway'"
           echo "- macOS"
-          echo "  1. Right-click (or control-click) \`augame-\${version}.com\` → 'Open'"
+          echo "  1. Right-click (or control-click) \`augame-${{ github.ref_name }}.com\` → 'Open'"
           echo "     - Click 'Open' to proceed"
           echo "- Linux"
-          echo "  1. \`chmod +x augame-\${version}.com && ./augame-\${version}.com\`"
+          echo "  1. \`chmod +x augame-${{ github.ref_name }}.com && ./augame-${{ github.ref_name }}.com\`"
           echo ""
           echo "**Note:** This is an unstable development build for testing purposes."
         } > release_body.txt
