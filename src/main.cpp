@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
     //     return content;
     // };
 
-    // std::string jsonContent = readJsonFile("/web/resources/main.json");
+    // std::string jsonContent = readJsonFile("resources/main.json");
     // if (!jsonContent.empty()) {
     //     // Create a non-const buffer for the function that requires char*
     //     std::vector<char> buffer(jsonContent.begin(), jsonContent.end());

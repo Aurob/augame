@@ -1,42 +1,144 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>AuGame Engine Landing Page</title>
 
-  <style>
-    html, body {
-      width: 100%;
-      height: 100%;
-      display: flex;
-    }
-    main {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      text-align: center;
-    }
-  </style>
+<head>
+    <title>AuGame - Prototype</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Game Engine by Au">
+    <meta property="og:title" content="AuGame">
+    <meta property="og:description" content="Prototype open world procedural roguelike">
+    <meta property="og:image" content="https://tilesh.com/og-image.jpg">
+    <link rel="shortcut icon" href="favicon.ico">
+    <style>
+        :root {
+            --bg-color: #2c2c2c;
+            --text-color: #e0e0e0;
+            --header-bg: #1a1a1a;
+            --content-bg: #3a3a3a;
+            --input-bg: #4a4a4a;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        #header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 10px;
+            z-index: 1000;
+            flex-wrap: wrap;
+        }
+
+        .toggle-btn {
+            background-color: var(--input-bg);
+            border: none;
+            color: var(--text-color);
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin: 2px;
+        }
+
+        #content {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        #loading {
+            position: absolute;
+            z-index: -1;
+            font-size: 5rem;
+            background-color: black;
+            color: white;
+        }
+
+        #main {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #canvas {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: none;
+            cursor: none;
+        }
+
+        #footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background-color: var(--header-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 10px;
+            z-index: 1000;
+            color: var(--text-color);
+            font-size: 0.9em;
+        }
+
+        #tcolor {
+            display: inline-block;
+            background-color: rgb(1, 1, 1);
+            width: 1em;
+            height: 1em;
+            border: solid white .1em;
+            padding-left: 4em;
+            margin-left: 4em;
+        }
+
+        #upos {
+            padding-left: 1em;
+        }
+    </style>
 </head>
+
 <body>
-  <main>
-    <h1>Hello World! :)</h1>
-    <p>
-      This is the landing page for the
-      <a href="https://github.com/aurob/augame" target="_blank" rel="noopener noreferrer">
-        AuGame Engine repository
-      </a>
-    </p>
-    <p>
-      Click to Play!<br>
-      <a href="web" aria-label="Play AuGame"><img src="web/resources/page/enter.gif"></a><br>
-      (WIP) Try the scene editor:<br>
-      <a href="web/editor" aria-label="Scene Editor"><img src="web/resources/page/build.gif"></a><br>
-      Learn More<br>
-      <a href="README.html" aria-label="More Information"><img src="web/resources/page/info.gif"></a><br>
-      
-    </p>
-  </main>
+    <div id="header">
+        <div id="toastContainer"></div>
+    </div>
+    <div id="content">
+        <div id="main">
+            <div id="loading">Loading...</div>
+            <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+        </div>
+    </div>
+    <div id="footer">
+        Controls: WASD for movement, Scroll/Zoom to change scale, Cursor/Touch to interact, C to switch camera mode
+        <div id="tcolor"></div>
+        <div id="upos"></div>
+    </div>
+    <script src="./scripts/scripts.js"></script>
+    <script src="./scripts/config.js"></script>
+    <script type="module">
+        // Load ebuilder as module and expose globally
+        import EntityBuilder, { ComponentSchemas, MetaSchemas } from './scripts/ebuilder.js';
+        window.EntityBuilder = EntityBuilder;
+        window.ComponentSchemas = ComponentSchemas;
+        window.MetaSchemas = MetaSchemas;
+    </script>
+    <script src="./scripts/module.js"></script>
+    <script src="./build/main.js"></script>
 </body>
+
+
 </html>

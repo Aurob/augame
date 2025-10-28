@@ -8,12 +8,34 @@
 #include "JSUtils.hpp"
 #include "SceneManager.hpp"
 
+// GL Error checking macro for debugging
+#ifdef __EMSCRIPTEN__
+#define CHECK_GL_ERROR(msg) \
+    { GLenum err = glGetError(); \
+      if (err != GL_NO_ERROR) \
+          printf("GL Error at %s:%d - %s: 0x%x\n", __FILE__, __LINE__, msg, err); }
+
+#define CHECK_SHADER_PROGRAM(msg) \
+    { GLint currentProgram; \
+      glGetIntegerv(GL_CURRENT_PROGRAM, &currentProgram); \
+      if (currentProgram == 0) \
+          printf("Warning at %s:%d - %s: No shader program bound\n", __FILE__, __LINE__, msg); }
+#else
+#define CHECK_GL_ERROR(msg)
+#define CHECK_SHADER_PROGRAM(msg)
+#endif
+
 extern float generationSize[2];
 extern SceneManager sceneManager;
 extern GameState gameState;
 extern MetaData metaData;
 
 GLuint textShaderProgram;
+
+
+// Font caching to avoid reopening font file every frame
+static TTF_Font* cachedFont = nullptr;
+static std::string cachedFontPath = "";
 
 SDL_Window* loadSDL() {
     // Initialize SDL and SDL_Image
@@ -424,13 +446,13 @@ void createShader(GLuint &shaderProgram, std::string program_name) {
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &shaderGLSLMap[program_name][0], NULL);
     glCompileShader(vertexShader);
-    
+
     // Check for vertex shader compilation errors
     GLint success;
     GLchar infoLog[512];
     glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
     if (!success)
-    {   
+    {
         glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
         printf("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n%s\n", infoLog);
     }
@@ -538,9 +560,10 @@ void createShader(GLuint &shaderProgram, std::string program_name) {
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
-    // Clean up buffers to prevent memory leak
-    glDeleteBuffers(1, &vbo);
-    glDeleteBuffers(1, &ebo);
+    // DON'T delete VBO/EBO - they're needed for drawing!
+    // The vertex attributes still reference these buffers
+    // glDeleteBuffers(1, &vbo);  // COMMENTED OUT - was causing WebGL warnings
+    // glDeleteBuffers(1, &ebo);  // COMMENTED OUT - was causing WebGL warnings
 
     shaderProgramMap[program_name] = shaderProgram;
 }
@@ -686,50 +709,50 @@ void loadTextures() {
 
     // Font shader
     shaderGLSLMap["font"] = {
-        readShaderFile("/web/resources/shaders/font_v.glsl"),
-        readShaderFile("/web/resources/shaders/font_f.glsl")
+        readShaderFile("/resources/shaders/font_v.glsl"),
+        readShaderFile("/resources/shaders/font_f.glsl")
     };
 
     // Terrain shaders (gradient and tileset versions)
     shaderGLSLMap["terrain"] = {
-        readShaderFile("/web/resources/shaders/terrain_v.glsl"),
-        readShaderFile("/web/resources/shaders/terrain_gradient.glsl")
+        readShaderFile("/resources/shaders/terrain_v.glsl"),
+        readShaderFile("/resources/shaders/terrain_gradient.glsl")
     };
 
     // uses texture tileset for terrain
     shaderGLSLMap["tiles"] = {
-        readShaderFile("/web/resources/shaders/terrain_v.glsl"),
-        readShaderFile("/web/resources/shaders/terrain_simple.glsl")
+        readShaderFile("/resources/shaders/terrain_v.glsl"),
+        readShaderFile("/resources/shaders/terrain_simple.glsl")
     };
 
     // all water terrain shader
     shaderGLSLMap["water"] = {
-        readShaderFile("/web/resources/shaders/terrain_v.glsl"),
-        readShaderFile("/web/resources/shaders/ocean.glsl")
+        readShaderFile("/resources/shaders/terrain_v.glsl"),
+        readShaderFile("/resources/shaders/ocean.glsl")
     };
 
     // Solid color shader with terrain bounds support
     shaderGLSLMap["solid_color"] = {
-        readShaderFile("/web/resources/shaders/terrain_v.glsl"),
-        readShaderFile("/web/resources/shaders/solid_color.glsl")
+        readShaderFile("/resources/shaders/terrain_v.glsl"),
+        readShaderFile("/resources/shaders/solid_color.glsl")
     };
 
     // Debug entity shader (test_rgb)
     shaderGLSLMap["debug_entity"] = {
-        readShaderFile("/web/resources/shaders/test_rgb_v.glsl"),
-        readShaderFile("/web/resources/shaders/test_rgb_f.glsl")
+        readShaderFile("/resources/shaders/test_rgb_v.glsl"),
+        readShaderFile("/resources/shaders/test_rgb_f.glsl")
     };
 
     // UI Layer shader
     shaderGLSLMap["ui_layer"] = {
-        readShaderFile("/web/resources/shaders/ui_layer_v.glsl"),
-        readShaderFile("/web/resources/shaders/ui_layer_f.glsl")
+        readShaderFile("/resources/shaders/ui_layer_v.glsl"),
+        readShaderFile("/resources/shaders/ui_layer_f.glsl")
     };
 
     // Texture shader (vert_tex + frag_tex)
     shaderGLSLMap["texture"] = {
-        readShaderFile("/web/resources/shaders/vert_tex.glsl"),
-        readShaderFile("/web/resources/shaders/frag_tex.glsl")
+        readShaderFile("/resources/shaders/vert_tex.glsl"),
+        readShaderFile("/resources/shaders/frag_tex.glsl")
     };
 
     // Create static shader programs
@@ -744,7 +767,7 @@ void loadTextures() {
 
     // Load terrain tileset texture
     GLuint terrainTextureID;
-    loadImageAndCreateTexture("/web/resources/textures/terrain_s.png", terrainTextureID);
+    loadImageAndCreateTexture("/resources/textures/terrain_s.png", terrainTextureID);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     textureIDMap["terrain_tileset"] = terrainTextureID;
@@ -872,18 +895,26 @@ void renderText(const std::string& text, float x, float y, float scale, float r,
     SDL_Color color = {255, 255, 255, 255}; // Always render white, let shader handle coloring
 
     // Build the full font path and validate
-    std::string fontPath = "web/resources/fonts/" + sceneManager.getCurrentMetadata().font;
-    
+    std::string fontPath = "resources/fonts/" + sceneManager.getCurrentMetadata().font;
+
     // Validate the font exists, otherwise use default
     if (!isValidFont(fontPath)) {
-        fontPath = "web/resources/fonts/HomeVideo-Regular.ttf";
+        fontPath = "resources/fonts/HomeVideo-Regular.ttf";
     }
 
-    TTF_Font* font = TTF_OpenFont(fontPath.c_str(), 64);
-    if (!font) {
-        printf("TTF_OpenFont failed for %s: %s\n", fontPath.c_str(), TTF_GetError());
-        return;
+    // Use cached font to avoid reopening file every frame
+    if (cachedFont == nullptr || cachedFontPath != fontPath) {
+        if (cachedFont) {
+            TTF_CloseFont(cachedFont);
+        }
+        cachedFont = TTF_OpenFont(fontPath.c_str(), 64);
+        cachedFontPath = fontPath;
+        if (!cachedFont) {
+            printf("TTF_OpenFont failed for %s: %s\n", fontPath.c_str(), TTF_GetError());
+            return;
+        }
     }
+    TTF_Font* font = cachedFont;
 
     // Process embedded images and get clean text
     auto [cleanText, embeddedImages] = processEmbeddedImages(text, x, y, scale, font);
@@ -939,10 +970,17 @@ void renderText(const std::string& text, float x, float y, float scale, float r,
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
-    GLint texLoc = glGetUniformLocation(shaderProgramMap["font"], "uTexture");
-    glUniform1i(texLoc, 0);
 
+    // Ensure program is active before setting uniforms
+    glUseProgram(shaderProgramMap["font"]);
+    GLint texLoc = glGetUniformLocation(shaderProgramMap["font"], "uTexture");
+    if (texLoc != -1) {
+        glUniform1i(texLoc, 0);
+    }
+
+    //CHECK_SHADER_PROGRAM("Font render glDrawElements");
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    //CHECK_GL_ERROR("Font render glDrawElements");
 
     // Clean up the texture to prevent memory leak and unbind to prevent flicker
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -950,19 +988,21 @@ void renderText(const std::string& text, float x, float y, float scale, float r,
 
     SDL_FreeSurface(rgba_surface);
     SDL_FreeSurface(surface);
-    TTF_CloseFont(font);
+    // Don't close font - it's cached for reuse
 
     // Render embedded images
     for (const auto& img : embeddedImages) {
         // Check if texture exists
         if (textureIDMap.find(img.textureName) != textureIDMap.end()) {
-            updateUniformsTexture(shaderProgramMap["texture"], 
+            updateUniformsTexture(shaderProgramMap["texture"],
                 textureIDMap[img.textureName],
                 img.x, img.y,
                 img.width, img.height,
                 0.0f, 0.0f, 1.0f, 1.0f  // Use full texture (no cropping)
             );
+            //CHECK_SHADER_PROGRAM("Embedded image glDrawElements");
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            //CHECK_GL_ERROR("Embedded image glDrawElements");
         } else {
             printf("Warning: Embedded image texture '%s' not found\n", img.textureName.c_str());
         }
@@ -975,7 +1015,7 @@ void loadFont() {
         printf("TTF_Init: %s\n", TTF_GetError());
         // Handle error
     }
-    
+
     // Create and store the font shader program
     GLuint textShaderProgram = createProgram(shaderGLSLMap["font"][0], shaderGLSLMap["font"][1]);
     shaderProgramMap["font"] = textShaderProgram;
@@ -1083,7 +1123,9 @@ void renderAll() {
                     currentRegistry,
                     rgb
                 );
+                // //CHECK_SHADER_PROGRAM("Terrain glDrawElements");
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                // //CHECK_GL_ERROR("Terrain glDrawElements");
             }
         }
 
@@ -1147,7 +1189,9 @@ void renderAll() {
                     position.sy + cameraShape.scaled_size.y + shape.scaled_size.y + (standardWallHeight + standardWallHeight*1.5),
                     shape.scaled_size.x, standardWallHeight + standardWallHeight*1.5,
                     0.0f);
+                //CHECK_SHADER_PROGRAM("Interior back wall glDrawElements");
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                //CHECK_GL_ERROR("Interior back wall glDrawElements");
             }
         } else {
         }
@@ -1162,26 +1206,28 @@ void renderAll() {
 
             // Render texture components (if any)
             if (currentRegistry.all_of<Texture>(entity)) {
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
                 const auto& texture = currentRegistry.get<Texture>(entity);
 
                 // Use entity's own position, not offset by player
-                updateUniformsTexture(shaderProgramMap["texture"], 
+                updateUniformsTexture(shaderProgramMap["texture"],
                     textureIDMap[texture.name],
                     position.sx + cameraShape.scaled_size.x,
                     position.sy + cameraShape.scaled_size.y,
-                    shape.scaled_size.x, 
+                    shape.scaled_size.x,
                     shape.scaled_size.y,
                     texture.x, texture.y, texture.w, texture.h
                 );
+                // Set texture filtering after binding
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                //CHECK_GL_ERROR("Texture component render");
+                //CHECK_SHADER_PROGRAM("Texture glDrawElements");
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                //CHECK_GL_ERROR("Texture glDrawElements");
             }
             
             // Render TextureGroupPart components (if any)
             if (currentRegistry.all_of<TextureGroupPart>(entity)) {
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
                 const auto& textureGroupPart = currentRegistry.get<TextureGroupPart>(entity);
                 auto groupName = textureGroupPart.groupName;
                 auto partName = textureGroupPart.partName;
@@ -1204,19 +1250,25 @@ void renderAll() {
 
                     for (int i = 0; i < divisorX; ++i) {
                         for (int j = 0; j < divisorY; ++j) {
-                            updateUniformsTexture(shaderProgramMap["texture"], 
+                            updateUniformsTexture(shaderProgramMap["texture"],
                                 rootTexture,
                                 (posX + i * ssizex*2) - shape.scaled_size.x + ssizex - (increasedSsizex - ssizex) / 2,
                                 (posY + j * ssizey*2),
                                 increasedSsizex, increasedSsizey,
                                 texture.x, texture.y, texture.w, texture.h
                             );
+                            // Set texture filtering after binding
+                            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                            //CHECK_GL_ERROR("TextureGroupPart tiled render");
+                            //CHECK_SHADER_PROGRAM("TextureGroupPart tiled glDrawElements");
                             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                            //CHECK_GL_ERROR("TextureGroupPart tiled glDrawElements");
                         }
                     }
-                } 
+                }
                 else {
-                    updateUniformsTexture(shaderProgramMap["texture"], 
+                    updateUniformsTexture(shaderProgramMap["texture"],
                         rootTexture,
                         position.sx + cameraShape.scaled_size.x,
                         position.sy + cameraShape.scaled_size.y,
@@ -1224,14 +1276,18 @@ void renderAll() {
                         shape.scaled_size.y,
                         texture.x, texture.y, texture.w, texture.h
                     );
+                    // Set texture filtering after binding
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                    //CHECK_GL_ERROR("TextureGroupPart render");
+                    //CHECK_SHADER_PROGRAM("TextureGroupPart glDrawElements");
                     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                    //CHECK_GL_ERROR("TextureGroupPart glDrawElements");
                 }
             }
             
             // Render Textures (animated or multi-frame) components (if any)
             if (currentRegistry.all_of<Textures>(entity)) {
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
                 const auto& textures = currentRegistry.get<Textures>(entity);
                 const auto& current_texture = textures.textures[textures.current];
 
@@ -1240,31 +1296,41 @@ void renderAll() {
                     angle = currentRegistry.get<Rotation>(entity).angle;
                 }
 
-                updateUniformsTexture(shaderProgramMap["texture"], 
+                updateUniformsTexture(shaderProgramMap["texture"],
                     textureIDMap[current_texture.name],
                     position.sx + cameraShape.scaled_size.x, position.sy + cameraShape.scaled_size.y,
                     shape.scaled_size.x * current_texture.scalex, shape.scaled_size.y * current_texture.scaley,
                     current_texture.x, current_texture.y, current_texture.w, current_texture.h, angle);
+                // Set texture filtering after binding
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                //CHECK_GL_ERROR("Textures render");
+                //CHECK_SHADER_PROGRAM("Textures glDrawElements");
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                //CHECK_GL_ERROR("Textures glDrawElements");
             }
             
             // Render TextureAlts (player) components (if any)
             if (currentRegistry.all_of<TextureAlts>(entity) && currentRegistry.all_of<Player>(entity)) {
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
                 const auto& textureAlts = currentRegistry.get<TextureAlts>(entity);
                 const auto& currentTextures = textureAlts.alts.at(textureAlts.current);
                 const auto& current_texture = currentTextures.textures[currentTextures.current];
 
-                updateUniformsTexture(shaderProgramMap["texture"], 
+                updateUniformsTexture(shaderProgramMap["texture"],
                     textureIDMap[current_texture.name],
                     position.sx + cameraShape.scaled_size.x,
                     position.sy + cameraShape.scaled_size.y,
-                    shape.scaled_size.x * current_texture.scalex, 
+                    shape.scaled_size.x * current_texture.scalex,
                     shape.scaled_size.y * current_texture.scaley,
-                    current_texture.x, current_texture.y, 
+                    current_texture.x, current_texture.y,
                     current_texture.w, current_texture.h);
+                // Set texture filtering after binding
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                //CHECK_GL_ERROR("TextureAlts render");
+                //CHECK_SHADER_PROGRAM("TextureAlts glDrawElements");
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                //CHECK_GL_ERROR("TextureAlts glDrawElements");
             }
                 
             // Render CustomShader components (if any)
@@ -1317,11 +1383,16 @@ void renderAll() {
                 
                 // Keep seed in reasonable range (similar to original shader expectations)
                 uniqueSeed = fmod(abs(uniqueSeed), 1000.0f);
-                
+
+                // Ensure the custom shader is active before setting additional uniforms
+                glUseProgram(shaderProgramMap[customShader.shaderName]);
+
                 // All cshaders now support unique per-entity seed
                 GLint seedLocation = glGetUniformLocation(shaderProgramMap[customShader.shaderName], "uSeed");
-                glUniform1f(seedLocation, uniqueSeed);
-                
+                if (seedLocation != -1) {
+                    glUniform1f(seedLocation, uniqueSeed);
+                }
+
                 // Pass entity color to shaders that support it (like carpet)
                 if (currentRegistry.all_of<Color>(entity)) {
                     const auto& color = currentRegistry.get<Color>(entity);
@@ -1330,14 +1401,18 @@ void renderAll() {
                         glUniform4f(colorLocation, color.r, color.g, color.b, color.a);
                     }
                 }
-                
+
                 // Terrain shader also needs center position
                 if (customShader.shaderName == "terrainmap" && customShader.uniforms.size() >= 2) {
                     GLint centerPosLocation = glGetUniformLocation(shaderProgramMap[customShader.shaderName], "uCenterPos");
-                    glUniform2f(centerPosLocation, customShader.uniforms[0], customShader.uniforms[1]);
+                    if (centerPosLocation != -1) {
+                        glUniform2f(centerPosLocation, customShader.uniforms[0], customShader.uniforms[1]);
+                    }
                 }
-                
+
+                //CHECK_SHADER_PROGRAM("CustomShader glDrawElements");
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                //CHECK_GL_ERROR("CustomShader glDrawElements");
             }
             
             // Render Color components (if any)
@@ -1397,9 +1472,11 @@ void renderAll() {
                     r, g, b, color.a,
                     position.sx + cameraShape.scaled_size.x,
                     position.sy + cameraShape.scaled_size.y,
-                    shape.scaled_size.x, shape.scaled_size.y, 
+                    shape.scaled_size.x, shape.scaled_size.y,
                     angle);
+                //CHECK_SHADER_PROGRAM("Color component glDrawElements");
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                //CHECK_GL_ERROR("Color component glDrawElements");
             }
             
             // Render text component if present (on top of other render types)
@@ -1447,7 +1524,9 @@ void renderAll() {
                     position.sy + cameraShape.scaled_size.y + shape.scaled_size.y + (standardWallHeight + standardWallHeight*1.5),
                     shape.scaled_size.x, standardWallHeight + standardWallHeight*1.5,
                     0.0f);
+                //CHECK_SHADER_PROGRAM("Interior back wall (PASS3) glDrawElements");
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                //CHECK_GL_ERROR("Interior back wall (PASS3) glDrawElements");
 
                 // Front wall (bottom of interior shape) - rendered first when outside, opaque
                 updateUniformsDebug(shaderProgramMap["debug_entity"],
@@ -1456,9 +1535,11 @@ void renderAll() {
                     position.sy + cameraShape.scaled_size.y - shape.scaled_size.y + 2.5f * standardWallHeight,
                     shape.scaled_size.x, standardWallHeight + standardWallHeight*1.5,
                     0.0f);
+                //CHECK_SHADER_PROGRAM("Interior front wall glDrawElements");
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                //CHECK_GL_ERROR("Interior front wall glDrawElements");
 
-                
+
                 // Roof/Ceiling
                 updateUniformsDebug(shaderProgramMap["debug_entity"],
                     1, 0, 0, 0.3, // Opaque when outside
@@ -1466,7 +1547,9 @@ void renderAll() {
                     position.sy + cameraShape.scaled_size.y + (standardWallHeight + standardWallHeight*1.5)*2,
                     shape.scaled_size.x, shape.scaled_size.y,
                     0.0f);
+                //CHECK_SHADER_PROGRAM("Interior roof glDrawElements");
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                //CHECK_GL_ERROR("Interior roof glDrawElements");
             }
 
             
@@ -1497,6 +1580,7 @@ void renderAll() {
             }
             
             if (!menuText.empty()) {
+                printf("abc\n");
                 // Center of the screen
                 float xScale = camera.gridSpacing / (camera.defaultGSV * gameState.width);
                 float yScale = camera.gridSpacing / (camera.defaultGSV * gameState.height);
