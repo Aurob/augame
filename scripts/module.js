@@ -5,85 +5,6 @@ var Module = {
   c_kv_elements: {},
   engine_json: [],
   canvas: document.getElementById('canvas'),
-  show_alert(message) {
-    // Create a toast container if it doesn't exist
-    let toastContainer = document.getElementById('toast-container');
-    if (!toastContainer) {
-      toastContainer = document.createElement('div');
-      toastContainer.id = 'toast-container';
-      toastContainer.style.cssText = 'position: fixed; bottom: 20px; right: 20px; z-index: 9999; max-width: 80%;';
-      document.body.appendChild(toastContainer);
-    }
-
-    // Create the toast element
-    const toast = document.createElement('div');
-    toast.style.cssText = 'background-color: rgba(0, 0, 0, 0.8); color: white; padding: 12px 20px; border-radius: 4px; margin-top: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); opacity: 0; transition: opacity 0.3s, transform 0.3s; transform: translateY(20px); max-width: 100%; word-wrap: break-word;';
-    toast.textContent = message;
-
-    // Add to container
-    toastContainer.appendChild(toast);
-
-    // Trigger animation
-    setTimeout(() => {
-      toast.style.opacity = '1';
-      toast.style.transform = 'translateY(0)';
-    }, 10);
-
-    // Remove after 5 seconds
-    setTimeout(() => {
-      toast.style.opacity = '0';
-      toast.style.transform = 'translateY(20px)';
-      setTimeout(() => {
-        if (toast.parentNode) {
-          toast.parentNode.removeChild(toast);
-        }
-      }, 300);
-    }, 5000);
-  },
-  speak(text, options = {}) {
-    const synth = window.speechSynthesis;
-    if (!synth) return console.error('Speech synthesis not supported');
-
-    // Cancel any ongoing speech
-    synth.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    // Apply randomized options
-    utterance.rate = options.rate ?? (Math.random() * 1.5 + 0.5); // 0.5 - 2.0
-    utterance.pitch = options.pitch ?? (Math.random() * 2); // 0 - 2
-    utterance.volume = options.volume ?? (Math.random() * 0.5 + 0.5); // 0.5 - 1.0
-    utterance.voice = options.voice ?? null;
-    utterance.lang = options.lang ?? 'en-US';
-
-    if (options.onEnd) utterance.onend = options.onEnd;
-    if (options.onError) utterance.onerror = options.onError;
-
-    // Add event listener for page unload/refresh to stop speech
-    const cancelSpeechOnUnload = () => synth.cancel();
-    window.addEventListener('beforeunload', cancelSpeechOnUnload);
-
-    // Clean up event listener when speech ends
-    utterance.onend = (event) => {
-      window.removeEventListener('beforeunload', cancelSpeechOnUnload);
-      if (options.onEnd) options.onEnd(event);
-    };
-
-    // Also clean up on error
-    utterance.onerror = (event) => {
-      window.removeEventListener('beforeunload', cancelSpeechOnUnload);
-      if (options.onError) options.onError(event);
-    };
-
-    synth.speak(utterance);
-
-    // Return a function that can be used to manually stop the speech
-    return {
-      stop: () => {
-        synth.cancel();
-        window.removeEventListener('beforeunload', cancelSpeechOnUnload);
-      }
-    };
-  },
   fetch_configs() {
     const json = CONFIG;
     if (Array.isArray(json.textures)) {
@@ -575,16 +496,6 @@ var Module = {
     this._createSceneFromJson(strPtr);
     this._free(strPtr);
   },
-
-  add_entity(sceneIndex, entityConfig) {
-    if (typeof entityConfig === 'object') {
-      entityConfig = JSON.stringify(entityConfig);
-    }
-    const strPtr = this._malloc(entityConfig.length + 1);
-    this.stringToUTF8(entityConfig, strPtr, entityConfig.length + 1);
-    this._addEntityToScene(sceneIndex, strPtr);
-    this._free(strPtr);
-  },
   
   start() {
     console.log("Starting...");
@@ -603,9 +514,6 @@ var Module = {
       update_worldsize(window.innerWidth, window.innerHeight);
     });
 
-  },
-  update_color(r, g, b) {
-    document.querySelector('#tcolor').style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
   },
   update_user_position(x, y) {
     document.querySelector('#upos').innerText = `${Math.round(x)}, ${Math.round(y)}`;
@@ -915,5 +823,4 @@ var Module = {
       primary_scene_file_path
     };
   }
-
 }

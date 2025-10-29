@@ -7,7 +7,7 @@ meta font HomeVideo-Regular.ttf
 meta world terrain
 meta void #000000
 meta terrain_bounds -15,-15,15,15
-meta start_menu Demo
+meta start_menu @resources/text/intro.txt
 meta pause_menu Paused
 
 id 122 entity122 position -9.5061 -11.0816 0.0000 shape 20.0000 20.0000 0.0000 color 0.39 0.31 0.24 1.00 renderPriority -1 interior true collidable

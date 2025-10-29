@@ -45,12 +45,6 @@ void _js__fetch_configs()
     });
 }
 
-void _js__update_color(float r, float g, float b) {
-    EM_ASM({
-        Module.update_color($0, $1, $2);
-    }, r, g, b);
-}
-
 void _js__update_user_position(float x, float y) {
     EM_ASM({
         Module.update_user_position($0, $1);
