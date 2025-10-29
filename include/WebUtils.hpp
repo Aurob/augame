@@ -59,6 +59,7 @@ entt::entity findEntityById(entt::registry& registry, int id);
 void removeEntityById(entt::registry& registry, int id);
 void updateEntityComponents(entt::registry& registry, entt::entity entity, const nlohmann::json& components);
 
+
 extern "C"
 {
     EMSCRIPTEN_KEEPALIVE
@@ -66,6 +67,35 @@ extern "C"
     void isready()
     {
         ready = true;
+    }
+
+    void set_inactive()
+    {
+        printf("Setting scene inactive...\n");
+        gameState.active = false;
+
+        // Clear all velocities when tabbing out to prevent corrupted physics state
+        for (auto entity : sceneManager.getCurrentRegistry().view<PhysicsBodyRect>()) {
+            auto& rect = sceneManager.getCurrentRegistry().get<PhysicsBodyRect>(entity);
+            if (rect.added && rect.body != nullptr) {
+                rect.body->setVelocity({ 0.0f, 0.0f });
+                rect.body->setTempVelocity({ 0.0f, 0.0f });
+            }
+        }
+    }
+
+    void set_active()
+    {
+        printf("Setting scene active...\n");
+        gameState.active = true;
+
+        // Clear keys to prevent stuck inputs when gamestate is returned to active
+        auto& registry = sceneManager.getCurrentRegistry();
+        auto keyView = registry.view<Keys>();
+        for (auto entity : keyView) {
+            auto& keys = registry.get<Keys>(entity).keys;
+            keys.clear();
+        }
     }
 
     void reload()
@@ -204,7 +234,6 @@ void load_json_to_registry(char *str, entt::registry& targetRegistry, MetaData& 
 
                         // Compile the dynamic shader immediately
                         createShader(shaderProgramMap[shader["name"]], shader["name"]);
-                        // printf("Created and compiled dynamic shader %s\n", shader["name"].get<std::string>().c_str());
                     }
                 }
             }

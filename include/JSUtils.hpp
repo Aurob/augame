@@ -56,3 +56,25 @@ void _js__update_user_position(float x, float y) {
         Module.update_user_position($0, $1);
     }, x, y);
 }
+
+void _js__load_events()
+{
+    // Set the active gamestate to true by default
+    gameState.active = true;
+
+    EM_ASM({
+        window.addEventListener('blur', () => {
+            Module._set_inactive();
+        });
+        window.addEventListener('focus', () => {
+            Module._set_active();
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden)
+                Module._set_inactive();
+            else
+                Module._set_active();
+        });
+    });
+}

@@ -20,7 +20,22 @@ em++ -std=c++17 src/main.cpp \
   -sNO_DISABLE_EXCEPTION_CATCHING\
   -lSDL\
   -s SDL2_IMAGE_FORMATS='["png", "jpg"]'\
-  -s EXPORTED_FUNCTIONS="['_main', '_load_json', '_isready','_reload', '_createSceneFromJson', '_switchToNextScene', '_switchToPrevScene', '_addEntityToScene', _malloc, _free, UTF8ToString, stringToUTF8]"\
+  -s EXPORTED_FUNCTIONS="[\
+    '_main',\
+    '_load_json',\
+    '_isready',\
+    '_reload',\
+    '_createSceneFromJson',\
+    '_switchToNextScene',\
+    '_switchToPrevScene',\
+    '_addEntityToScene',\
+    '_set_inactive',\
+    '_set_active',\
+    _malloc,\
+    _free,\
+    UTF8ToString,\
+    stringToUTF8\
+  ]"\
   -o build/main.js\
   -O0
   

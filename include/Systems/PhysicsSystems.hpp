@@ -151,18 +151,25 @@ void updatePhysics(entt::registry& registry)
             auto& keys = registry.get<Keys>(entity).keys;
             auto& movement = registry.get<Movement>(entity);
             Vector3f input { static_cast<float>(keys[SDLK_d]) - static_cast<float>(keys[SDLK_a]), static_cast<float>(keys[SDLK_s]) - static_cast<float>(keys[SDLK_w]), 0.0f };
-
             float length = std::sqrt(input.x * input.x + input.y * input.y);
             if (length != 0) {
                 float fx = (input.x / length) * movement.speed;
                 float fy = (input.y / length) * movement.speed;
+
                 rect.body->applyForce({ fx, fy });
                 rect.body->applyThetaDotDot(1.0);
+            } else {
+                // Apply friction when no input
+                auto vel = rect.body->getVelocity();
+                vel.x *= 0.9f; // Damping factor
+                vel.y *= 0.9f;
+                rect.body->setVelocity(vel);
             }
         }
     }
 
-    physics.update(deltaTime);
+    float clampedDeltaTime = std::min(deltaTime, 0.1f); // Max 100ms per 
+    physics.update(clampedDeltaTime);
 
     // After update, you can also access all collisions that occurred
     const auto& collisions = physics.getCollisions();
@@ -255,6 +262,7 @@ void updatePhysics(entt::registry& registry)
                 vel.x = -vel.x * 0.5f; // bounce with damping
             if (ay - halfHeightA < top || ay + halfHeightA > bottom)
                 vel.y = -vel.y * 0.5f;
+            
             rectA.body->setVelocity(vel);
             rectA.body->setTempVelocity(vel);
         }
@@ -333,9 +341,10 @@ void updatePhysics(entt::registry& registry)
                     // Bounce with damping
                     auto vel = rect.body->getVelocity();
                     if (ax - halfWidthA < minX || ax + halfWidthA > maxX)
-                        vel.x = -vel.x * 0.5f;
+                        vel.x = 0.0f;
                     if (ay - halfHeightA < minY || ay + halfHeightA > maxY)
-                        vel.y = -vel.y * 0.5f;
+                        vel.y = 0.0f;
+
                     rect.body->setVelocity(vel);
                     rect.body->setTempVelocity(vel);
                 }

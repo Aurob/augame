@@ -296,7 +296,6 @@ struct MetaData {
     int seed = 0;              // numeric seed, converted from str_seed
     std::unordered_map<int, std::string> slides; // gameState -> text content mapping
 
-
 };
 
 struct GameState {
@@ -309,6 +308,9 @@ struct GameState {
     bool playerCameraMode = false; // true for player camera, false for priority camera
 
     int intro_scenes = 3;
+    context* ctx = nullptr;
+    bool active = true;
+
 };
 
 struct world {

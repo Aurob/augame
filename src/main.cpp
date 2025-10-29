@@ -82,6 +82,7 @@ int main(int argc, char *argv[])
 
     // Set the main loop
     ctx.window = mpWindow;
+    gameState.ctx = &ctx;
     SDL_SetWindowSize(mpWindow, gameState.width, gameState.height);
 
     emscripten_set_main_loop_arg(mainloop, &ctx, 0, 1);
@@ -103,7 +104,7 @@ bool js_loaded() {
         metaData = sceneManager.getCurrentMetadata();
         srand(metaData.seed);
         gameState.seed = rand() % 10000;
-
+        _js__load_events();
         loadTextures();
         loadFont();
 
@@ -122,19 +123,20 @@ void mainloop(void *arg)
     deltaTime = (SDL_GetTicks() - lastTime) / 5000.0f;
     lastTime = SDL_GetTicks();
         
-    context *ctx = (context *)arg;
-    
     // Handle events
     processEvents();
 
-    // Sync global metadata with current scene
-    metaData = sceneManager.getCurrentMetadata();
-    
+    if (!gameState.active) {
+        // Scene is inactive, skip update and render
+        return;
+    }
+
     // Update frame
     updateFrame();
 
     // Render
     renderAll();
     // Swap buffers
-    SDL_GL_SwapWindow(ctx->window);
+    
+    SDL_GL_SwapWindow(gameState.ctx->window);
 }

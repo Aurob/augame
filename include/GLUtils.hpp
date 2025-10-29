@@ -79,164 +79,6 @@ SDL_GLContext loadGl(SDL_Window *mpWindow)
     return glc;
 }
 
-inline float fract(float x) {
-    return x - std::floor(x);
-}
-
-// Helper function to hash a 3D point
-// Renamed to hashPoint to avoid ambiguity with std::hash
-float* hashPoint(float p[3]) {
-    static float result[3];
-    float dot1 = p[0] * 127.1f + p[1] * 311.7f + p[2] * 74.7f;
-    float dot2 = p[0] * 269.5f + p[1] * 183.3f + p[2] * 246.1f;
-    float dot3 = p[0] * 113.5f + p[1] * 271.9f + p[2] * 101.5f;
-    
-    result[0] = -1.0f + 2.0f * fract(sin(dot1 + gameState.seed) * 43758.5453f);
-    result[1] = -1.0f + 2.0f * fract(sin(dot2 + gameState.seed) * 43758.5453f);
-    result[2] = -1.0f + 2.0f * fract(sin(dot3 + gameState.seed) * 43758.5453f);
-    
-    return result;
-}
-
-// Helper function for smooth noise, matching the shader implementation
-float smoothNoise(float x, float y) {
-    // More complex noise using multiple trigonometric functions with phase shifts
-    const float xFreq1 = 0.1f;  // Primary frequency for x component
-    const float yFreq1 = 0.1f;  // Primary frequency for y component
-    const float xFreq2 = 0.05f; // Secondary frequency for x component
-    const float yFreq2 = 0.07f; // Secondary frequency for y component
-    
-    // Add phase shifts based on seed for more variation
-    float phaseX = sin(gameState.seed * 0.1f) * 3.14f;
-    float phaseY = cos(gameState.seed * 0.1f) * 3.14f;
-    
-    // Combine multiple sine and cosine waves with different frequencies and phases
-    float noise1 = 0.5f * sin(x * xFreq1 + phaseX) + 0.5f * cos(y * yFreq1 + phaseY);
-    float noise2 = 0.3f * sin(x * xFreq2 + y * 0.08f) + 0.3f * cos(y * yFreq2 - x * 0.06f);
-    float noise3 = 0.2f * sin((x + y) * 0.12f) * cos((x - y) * 0.09f);
-    
-    // Combine the noise components with some non-linear operations
-    float combinedNoise = noise1 + noise2 * (1.0f + 0.2f * sin(x * 0.3f)) + noise3;
-    
-    // Normalize to 0.0-1.0 range
-    return (combinedNoise + 1.5f) * 0.33f;
-}
-
-float frequency = 9.5f;
-float amplitude = 0.70f;
-
-// Helper function to calculate n value for terrain, matching the shader implementation
-float calculate_n(float x, float y) {
-    float n = 0.0f;
-    float layerFrequency = frequency;
-    float layerAmplitude = amplitude;
-    const int numLayers = 10; // Adjust as needed for desired complexity
-
-    // Add a slight rotation to each octave for more natural patterns
-    float rotationAngle = 0.15f;
-    float sinRot = sin(rotationAngle);
-    float cosRot = cos(rotationAngle);
-
-    for (int i = 0; i < numLayers; i++) {
-        // Apply slight rotation to coordinates for each layer
-        float rotatedCoord_x = x * layerFrequency;
-        float rotatedCoord_y = y * layerFrequency;
-        
-        if (i > 0) {
-            float rotAmount = float(i) * rotationAngle;
-            float s = sin(rotAmount);
-            float c = cos(rotAmount);
-            float temp_x = rotatedCoord_x;
-            rotatedCoord_x = rotatedCoord_x * c - rotatedCoord_y * s;
-            rotatedCoord_y = temp_x * s + rotatedCoord_y * c;
-        }
-        
-        // Get noise value and apply domain warping for more complex patterns
-        float noiseVal = smoothNoise(rotatedCoord_x, rotatedCoord_y);
-        
-        // Apply domain warping for higher octaves
-        if (i > 3) {
-            float warp_x = sin(rotatedCoord_y * 0.5f + gameState.seed * 0.1f) * 0.15f;
-            float warp_y = cos(rotatedCoord_x * 0.5f + gameState.seed * 0.2f) * 0.15f;
-            noiseVal = smoothNoise(rotatedCoord_x + warp_x, rotatedCoord_y + warp_y);
-        }
-        
-        n += layerAmplitude * noiseVal;
-        
-        // Adjust frequency and amplitude for next layer
-        layerFrequency *= 1.5f;
-        layerAmplitude *= 0.55f;
-    }
-
-    // Apply a subtle ridge effect to create more interesting terrain features
-    n = abs(n * 2.0f - 1.0f);
-    n = 1.0f - n;
-    n = n * n;
-    
-    // Ensure n stays within reasonable bounds (0.0 to 1.0)
-    n = (n < 0.0f) ? 0.0f : ((n > 1.0f) ? 1.0f : n);
-    
-    return n;
-}
-
-// Log uniform values and update color in JS
-void logUniformValues(float _width, float _height, float gridSpacingValue, 
-                     float offsetValue[2], float toplefttile[2], float generationSize[2]) {
-    // Calculate the same values as in the shader
-    // Example coordinates at the center of the screen
-    float coord_x = _width / 2.0f;
-    float coord_y = _height / 2.0f;
-    
-    // Invert y-coordinate as in the shader
-    coord_y = _height - coord_y;
-    
-    // Calculate generationOffset
-    float generationOffset_x = generationSize[0] / 2.0f;
-    float generationOffset_y = generationSize[1] / 2.0f;
-    
-    // Adjust coordinates with grid spacing, toplefttile, offset, and generationOffset
-    float adjustedCoord_x = (coord_x / gridSpacingValue) + toplefttile[0] + (offsetValue[0] / gridSpacingValue) + generationOffset_x;
-    float adjustedCoord_y = (coord_y / gridSpacingValue) + toplefttile[1] + (offsetValue[1] / gridSpacingValue) + generationOffset_y;
-    
-    // Calculate n using helper function
-    float n = calculate_n(adjustedCoord_x, adjustedCoord_y);
-    // Determine color based on n value, similar to simple_tile_color in shader
-    float r, g, b;
-    if (n < 0.1f) {
-        // Water - slightly lighter ocean
-        float depth = 0.1f - n;  // Deeper water is darker
-        float depthFactor = depth / 0.1f;  // Normalize to 0-1 range
-        r = 0.12f * (1.0f - depthFactor) + 0.08f * depthFactor;
-        g = 0.16f * (1.0f - depthFactor) + 0.12f * depthFactor;
-        b = 0.24f * (1.0f - depthFactor) + 0.20f * depthFactor;
-    } else if (n < 0.3f) {
-        // Sand - more pale with variation
-        float sandFactor = (n - 0.1f) / 0.2f;  // Normalize to 0-1 range
-        r = 0.92f * (1.0f - sandFactor) + 0.85f * sandFactor;
-        g = 0.88f * (1.0f - sandFactor) + 0.82f * sandFactor;
-        b = 0.78f * (1.0f - sandFactor) + 0.70f * sandFactor;
-    } else if (n < 0.6f) {
-        // Grass with variation
-        float grassFactor = (n - 0.3f) / 0.3f;  // Normalize to 0-1 range
-        r = 0.2f * (1.0f - grassFactor) + 0.15f * grassFactor;
-        g = 0.6f * (1.0f - grassFactor) + 0.5f * grassFactor;
-        b = 0.3f * (1.0f - grassFactor) + 0.2f * grassFactor;
-    } else if (n < 0.8f) {
-        // Greyish brownish green transition zone
-        float transitionFactor = (n - 0.6f) / 0.2f;  // Normalize to 0-1 range
-        r = 0.4f * (1.0f - transitionFactor) + 0.35f * transitionFactor;
-        g = 0.4f * (1.0f - transitionFactor) + 0.35f * transitionFactor;
-        b = 0.3f * (1.0f - transitionFactor) + 0.25f * transitionFactor;
-    } else {
-        // Stone/mountain
-        float stoneFactor = (n - 0.8f) / 0.2f;  // Normalize to 0-1 range
-        r = 0.5f * (1.0f - stoneFactor) + 0.4f * stoneFactor;
-        g = 0.5f * (1.0f - stoneFactor) + 0.4f * stoneFactor;
-        b = 0.5f * (1.0f - stoneFactor) + 0.45f * stoneFactor;
-    }
-    // Update color in JS
-    _js__update_color(r*256, g*256, b*256);
-}
 
 void updateUniforms(GLuint &shaderProgram,
                     float gridSpacingValue,
@@ -446,13 +288,13 @@ void createShader(GLuint &shaderProgram, std::string program_name) {
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &shaderGLSLMap[program_name][0], NULL);
     glCompileShader(vertexShader);
-
+    
     // Check for vertex shader compilation errors
     GLint success;
     GLchar infoLog[512];
     glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
     if (!success)
-    {
+    {   
         glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
         printf("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n%s\n", infoLog);
     }
@@ -560,10 +402,8 @@ void createShader(GLuint &shaderProgram, std::string program_name) {
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
-    // DON'T delete VBO/EBO - they're needed for drawing!
-    // The vertex attributes still reference these buffers
-    // glDeleteBuffers(1, &vbo);  // COMMENTED OUT - was causing WebGL warnings
-    // glDeleteBuffers(1, &ebo);  // COMMENTED OUT - was causing WebGL warnings
+    //glDeleteBuffers(1, &vbo);
+    //glDeleteBuffers(1, &ebo);
 
     shaderProgramMap[program_name] = shaderProgram;
 }
@@ -707,7 +547,7 @@ GLuint loadGLTexture(GLuint &shaderProgram, std::string textureSrc, int &width, 
 void loadTextures() {
     // Load static shaders from embedded files
 
-    // Font shader
+     // Font shader
     shaderGLSLMap["font"] = {
         readShaderFile("/resources/shaders/font_v.glsl"),
         readShaderFile("/resources/shaders/font_f.glsl")
@@ -894,7 +734,7 @@ void renderText(const std::string& text, float x, float y, float scale, float r,
 
     SDL_Color color = {255, 255, 255, 255}; // Always render white, let shader handle coloring
 
-    // Build the full font path and validate
+        // Build the full font path and validate
     std::string fontPath = "resources/fonts/" + sceneManager.getCurrentMetadata().font;
 
     // Validate the font exists, otherwise use default
@@ -970,17 +810,10 @@ void renderText(const std::string& text, float x, float y, float scale, float r,
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
-
-    // Ensure program is active before setting uniforms
-    glUseProgram(shaderProgramMap["font"]);
     GLint texLoc = glGetUniformLocation(shaderProgramMap["font"], "uTexture");
-    if (texLoc != -1) {
-        glUniform1i(texLoc, 0);
-    }
+    glUniform1i(texLoc, 0);
 
-    //CHECK_SHADER_PROGRAM("Font render glDrawElements");
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    //CHECK_GL_ERROR("Font render glDrawElements");
 
     // Clean up the texture to prevent memory leak and unbind to prevent flicker
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -988,21 +821,19 @@ void renderText(const std::string& text, float x, float y, float scale, float r,
 
     SDL_FreeSurface(rgba_surface);
     SDL_FreeSurface(surface);
-    // Don't close font - it's cached for reuse
+    // TTF_CloseFont(font);
 
     // Render embedded images
     for (const auto& img : embeddedImages) {
         // Check if texture exists
         if (textureIDMap.find(img.textureName) != textureIDMap.end()) {
-            updateUniformsTexture(shaderProgramMap["texture"],
+            updateUniformsTexture(shaderProgramMap["texture"], 
                 textureIDMap[img.textureName],
                 img.x, img.y,
                 img.width, img.height,
                 0.0f, 0.0f, 1.0f, 1.0f  // Use full texture (no cropping)
             );
-            //CHECK_SHADER_PROGRAM("Embedded image glDrawElements");
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-            //CHECK_GL_ERROR("Embedded image glDrawElements");
         } else {
             printf("Warning: Embedded image texture '%s' not found\n", img.textureName.c_str());
         }
@@ -1015,7 +846,7 @@ void loadFont() {
         printf("TTF_Init: %s\n", TTF_GetError());
         // Handle error
     }
-
+    
     // Create and store the font shader program
     GLuint textShaderProgram = createProgram(shaderGLSLMap["font"][0], shaderGLSLMap["font"][1]);
     shaderProgramMap["font"] = textShaderProgram;
@@ -1076,7 +907,7 @@ void renderAll() {
             clearColor[2] = 0.0f;
         }
     }
-    
+
     glClearColor(clearColor[0], clearColor[1], clearColor[2], 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     glEnable(GL_BLEND);
@@ -1107,7 +938,7 @@ void renderAll() {
                 shaderName = (currentMetadata.void_bg == "color") ? "solid_color" : currentMetadata.void_bg;
             }
 
-            float rgb[3];
+                        float rgb[3];
             float offsetArray[2] = {camera.offset.x, camera.offset.y};
             float topleftArray[2] = {camera.topLeftTile.x, camera.topLeftTile.y};
 
@@ -1168,7 +999,7 @@ void renderAll() {
             }
         }
 
-        // Wall rendering constants
+                // Wall rendering constants
         float wallR = 0.3f, wallG = 0.25f, wallB = 0.2f, wallA = 1.0f;
         
         // Calculate scaled wall height using same logic as ViewSystems.hpp
@@ -1336,12 +1167,20 @@ void renderAll() {
             // Render CustomShader components (if any)
             if(currentRegistry.all_of<CustomShader>(entity)) {
                 const auto& customShader = currentRegistry.get<CustomShader>(entity);
-                
+                if(!shaderProgramMap.count(customShader.shaderName)) {
+                    // Shader not found, skip rendering
+                    // Optionally remove the invalid CustomShader component to prevent repeated warnings
+                    printf("Warning: CustomShader '%s' not found. Removing component from entity.\n", customShader.shaderName.c_str());
+                    currentRegistry.remove<CustomShader>(entity);
+                    continue;
+                }
+
                 float angle = 0.0f;
                 if(currentRegistry.all_of<Rotation>(entity)) {
                     angle = currentRegistry.get<Rotation>(entity).angle;
                 }
                 
+          
                 // Use the same update pattern as debug/color entities
                 updateUniformsDebug(shaderProgramMap[customShader.shaderName],
                     1.0f, 1.0f, 1.0f, 1.0f, // Default white color
@@ -1386,6 +1225,8 @@ void renderAll() {
 
                 // Ensure the custom shader is active before setting additional uniforms
                 glUseProgram(shaderProgramMap[customShader.shaderName]);
+                
+                printf("CustomShader '%s' unique seed: %f\n", customShader.shaderName.c_str(), uniqueSeed);
 
                 // All cshaders now support unique per-entity seed
                 GLint seedLocation = glGetUniformLocation(shaderProgramMap[customShader.shaderName], "uSeed");
@@ -1472,12 +1313,11 @@ void renderAll() {
                     r, g, b, color.a,
                     position.sx + cameraShape.scaled_size.x,
                     position.sy + cameraShape.scaled_size.y,
-                    shape.scaled_size.x, shape.scaled_size.y,
+                    shape.scaled_size.x, shape.scaled_size.y, 
                     angle);
-                //CHECK_SHADER_PROGRAM("Color component glDrawElements");
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-                //CHECK_GL_ERROR("Color component glDrawElements");
-            }
+                    
+                           }
             
             // Render text component if present (on top of other render types)
             if(currentRegistry.all_of<Text>(entity)) {
@@ -1580,7 +1420,6 @@ void renderAll() {
             }
             
             if (!menuText.empty()) {
-                printf("abc\n");
                 // Center of the screen
                 float xScale = camera.gridSpacing / (camera.defaultGSV * gameState.width);
                 float yScale = camera.gridSpacing / (camera.defaultGSV * gameState.height);
